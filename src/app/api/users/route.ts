@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/roles";
-import { auth } from "@/lib/auth";
 
 // GET /api/users - Liste tous les utilisateurs (admin seulement)
 export async function GET(request: NextRequest) {
@@ -51,12 +50,12 @@ export async function POST(request: NextRequest) {
     await requireAdmin(request.headers);
     
     const body = await request.json();
-    const { name, email, password, role = "USER" } = body;
+    const { name, email, role = "USER" } = body;
 
     // Validation
-    if (!name || !email || !password) {
+    if (!name || !email) {
       return NextResponse.json(
-        { error: "Nom, email et mot de passe requis" },
+        { error: "Nom et email requis" },
         { status: 400 }
       );
     }
@@ -64,53 +63,99 @@ export async function POST(request: NextRequest) {
     // Vérifier si l'email existe déjà
     const existingUser = await prisma.user.findUnique({
       where: { email },
+      include: {
+        accounts: {
+          where: { providerId: "credential" },
+        },
+      },
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: "Cet email est déjà utilisé" },
-        { status: 400 }
-      );
+      // Si l'utilisateur existe déjà avec un compte, erreur
+      if (existingUser.accounts.length > 0) {
+        return NextResponse.json(
+          { error: "Cet email est déjà utilisé" },
+          { status: 400 }
+        );
+      }
+      // Si l'utilisateur existe mais sans compte, on peut régénérer un token
     }
 
-    // Utiliser l'API de Better Auth pour créer l'utilisateur avec le mot de passe
-    // Cela garantit que le mot de passe est haché correctement selon le format de Better Auth
-    const signUpResult = await auth.api.signUpEmail({
-      body: {
-        name,
-        email,
-        password,
+    let user;
+    if (existingUser && existingUser.accounts.length === 0) {
+      // Utilisateur existe déjà sans compte, on met à jour et régénère le token
+      user = await prisma.user.update({
+        where: { id: existingUser.id },
+        data: {
+          name,
+          role: role as any,
+        },
+      });
+    } else {
+      // Créer l'utilisateur SANS mot de passe (sans Account)
+      user = await prisma.user.create({
+        data: {
+          id: crypto.randomUUID(),
+          name,
+          email,
+          role: role as any,
+          emailVerified: false, // Pas encore vérifié
+        },
+      });
+    }
+
+    // Générer un token d'invitation
+    const token = crypto.randomUUID();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 1); // Valide 1 jour
+
+    // Supprimer les anciens tokens pour cet email
+    await prisma.verification.deleteMany({
+      where: {
+        identifier: email,
       },
-      headers: request.headers,
     });
 
-    if (!signUpResult || !signUpResult.user) {
-      return NextResponse.json(
-        { error: "Erreur lors de la création de l'utilisateur" },
-        { status: 500 }
-      );
-    }
-
-    // Mettre à jour le rôle de l'utilisateur créé
-    const user = await prisma.user.update({
-      where: { id: signUpResult.user.id },
+    // Créer le nouveau token
+    await prisma.verification.create({
       data: {
-        role: role as any,
-        emailVerified: true, // Auto-vérifié par l'admin
+        id: crypto.randomUUID(),
+        identifier: email,
+        value: token,
+        expiresAt,
       },
     });
 
-    // Retourner l'utilisateur avec le rôle
-    const userWithRole = {
+    // Envoyer l'email d'invitation
+    const baseUrl = process.env.BETTER_AUTH_URL || 'http://localhost:3000';
+    const invitationUrl = `${baseUrl}/invite/${token}`;
+    
+    try {
+      await fetch(`${baseUrl}/api/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: email,
+          subject: 'Invitation à rejoindre le CRM',
+          template: 'invitation',
+          invitationUrl,
+          name,
+        }),
+      });
+    } catch (emailError) {
+      console.error("Erreur lors de l'envoi de l'email:", emailError);
+      // On continue même si l'email échoue, l'utilisateur est créé
+    }
+
+    return NextResponse.json({
       id: user.id,
       name: user.name,
       email: user.email,
       role: (user as any).role || "USER",
       emailVerified: user.emailVerified,
       createdAt: user.createdAt,
-    };
-
-    return NextResponse.json(userWithRole, { status: 201 });
+      message: 'Utilisateur créé, email d\'invitation envoyé',
+    }, { status: 201 });
   } catch (error: any) {
     console.error("Erreur lors de la création de l'utilisateur:", error);
     
@@ -122,7 +167,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
-    // Gérer les erreurs spécifiques de Better Auth
+    // Gérer les erreurs spécifiques
     if (error.message?.includes("email") || error.message?.includes("Email") || error.message?.includes("already exists")) {
       return NextResponse.json(
         { error: "Cet email est déjà utilisé" },

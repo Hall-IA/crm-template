@@ -20,7 +20,6 @@ export default function UsersPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: '',
     role: 'USER',
   });
   const [error, setError] = useState('');
@@ -68,9 +67,9 @@ export default function UsersPage() {
         throw new Error(data.error || 'Erreur lors de la création');
       }
 
-      setSuccessMessage('Utilisateur créé avec succès');
+      setSuccessMessage(data.message || 'Utilisateur créé avec succès, email d\'invitation envoyé');
       setShowAddModal(false);
-      setFormData({ name: '', email: '', password: '', role: 'USER' });
+      setFormData({ name: '', email: '', role: 'USER' });
       fetchUsers();
     } catch (error: any) {
       setError(error.message);
@@ -268,18 +267,9 @@ export default function UsersPage() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Mot de passe</label>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
-                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Un email d'invitation sera envoyé à cet utilisateur
+                </p>
               </div>
 
               <div>
@@ -299,7 +289,7 @@ export default function UsersPage() {
                   type="button"
                   onClick={() => {
                     setShowAddModal(false);
-                    setFormData({ name: '', email: '', password: '', role: 'USER' });
+                    setFormData({ name: '', email: '', role: 'USER' });
                     setError('');
                   }}
                   className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
