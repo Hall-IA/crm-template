@@ -1,5 +1,6 @@
 import { EmailTemplate } from '@/components/email-template';
 import { InvitationEmailTemplate } from '@/components/invitation-email-template';
+import { ResetPasswordEmailTemplate } from '@/components/reset-password-email-template';
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -27,6 +28,11 @@ export async function POST(request: Request) {
         console.log('🔗 Lien d\'invitation:', emailData.invitationUrl);
       }
       
+      // Afficher le code de réinitialisation dans la console
+      if (template === 'reset-password' && emailData.code) {
+        console.log('🔑 Code de réinitialisation:', emailData.code);
+      }
+      
       // Optionnel : retourner une réponse simulée
       return Response.json({
         id: 'dev-email-id',
@@ -40,6 +46,10 @@ export async function POST(request: Request) {
       emailComponent = InvitationEmailTemplate({
         name: emailData.name || 'Utilisateur',
         invitationUrl: emailData.invitationUrl || '',
+      });
+    } else if (template === 'reset-password') {
+      emailComponent = ResetPasswordEmailTemplate({
+        code: emailData.code || '',
       });
     } else {
       emailComponent = EmailTemplate(emailData);

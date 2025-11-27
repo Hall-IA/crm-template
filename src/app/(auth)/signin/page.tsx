@@ -1,15 +1,27 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { signIn } from "@/lib/auth-client";
 
 export default function SignInPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const message = searchParams.get("message");
+    if (message) {
+      setSuccessMessage(message);
+      // Nettoyer l'URL
+      router.replace("/signin", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +54,13 @@ export default function SignInPage() {
               Connectez-vous à votre compte CRM
             </p>
           </div>
+
+          {/* Success Message */}
+          {successMessage && (
+            <div className="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-600">
+              {successMessage}
+            </div>
+          )}
 
           {/* Error Message */}
           {error && (
@@ -96,6 +115,13 @@ export default function SignInPage() {
               {loading ? "Connexion..." : "Se connecter"}
             </button>
           </form>
+
+          <Link
+            href="/reset-password"
+            className="mt-4 block text-center text-sm text-indigo-600 hover:text-indigo-700"
+          >
+            Mot de passe oublié ?
+          </Link>
         </div>
       </div>
     </div>
