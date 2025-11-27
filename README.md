@@ -7,10 +7,14 @@ Un système CRM moderne et complet construit avec **Next.js 15**, **Better Auth*
 - 🔐 **Authentification sécurisée** avec Better Auth
   - Inscription/Connexion par email et mot de passe
   - Sessions sécurisées
-  - Protection des routes via un composant proxy
-- 👥 **Gestion des contacts** (structure prête)
+  - Protection des routes via proxy Next.js
+- 👥 **Système de rôles** (USER, ADMIN)
+  - Gestion des utilisateurs (admin)
+  - Création/suppression de comptes
+  - Modification des rôles
+  - Protection des routes par rôle
 - 📊 **Tableau de bord analytique**
-- 🎯 **Gestion des leads et opportunités**
+- 👥 **Gestion des contacts** (structure prête)
 - ⚙️ **Page de paramètres utilisateur**
 - 🎨 **UI moderne** avec Tailwind CSS v4
 - 📱 **Design responsive**
@@ -46,10 +50,10 @@ Créez un fichier `.env` à la racine du projet :
 
 ```env
 # Database
-DATABASE_URL="postgresql://user:password@localhost:5432/crm_db"
+DATABASE_URL="postgresql://postgres:password@localhost:5432/crm_db"
 
-# Better Auth
-BETTER_AUTH_SECRET="votre-clé-secrète-changez-en-production"
+# Better Auth (générer avec: openssl rand -base64 32)
+BETTER_AUTH_SECRET="votre-clé-secrète-minimum-32-caractères"
 BETTER_AUTH_URL="http://localhost:3000"
 
 # Application
@@ -57,23 +61,35 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 NODE_ENV="development"
 ```
 
-4. **Configurer la base de données**
+4. **Créer la base de données**
 
 ```bash
-# Appliquer les migrations Prisma
-pnpm prisma migrate dev
-
-# Ou générer le client Prisma
-pnpm prisma generate
+createdb crm_db
+# Ou: psql -U postgres -c "CREATE DATABASE crm_db;"
 ```
 
-5. **Lancer le serveur de développement**
+5. **Appliquer les migrations**
+
+```bash
+pnpm prisma migrate deploy
+```
+
+6. **Lancer le serveur de développement**
 
 ```bash
 pnpm dev
 ```
 
 Ouvrez [http://localhost:3000](http://localhost:3000) pour voir l'application.
+
+7. **Créer votre premier admin**
+
+```bash
+# Ouvrir Prisma Studio
+pnpm prisma studio
+
+# Modifier le champ "role" de votre utilisateur en "ADMIN"
+```
 
 ## 📁 Structure du projet
 
@@ -82,55 +98,54 @@ src/
 ├── app/
 │   ├── (auth)/              # Groupe de routes d'authentification
 │   │   ├── signin/          # Page de connexion
-│   │   └── signup/          # Page d'inscription
-│   ├── (app)/               # Groupe de routes protégées
+│   │   └── layout.tsx       # Layout d'authentification
+│   ├── (dashboard)/         # Groupe de routes protégées
 │   │   ├── dashboard/       # Tableau de bord
 │   │   ├── contacts/        # Gestion des contacts
-│   │   ├── leads/           # Gestion des leads
-│   │   ├── opportunities/   # Gestion des opportunités
 │   │   ├── settings/        # Paramètres utilisateur
+│   │   ├── users/           # Gestion des utilisateurs (admin)
 │   │   └── layout.tsx       # Layout avec sidebar
 │   ├── api/
-│   │   └── auth/[...all]/   # API routes Better Auth
-│   └── page.tsx             # Page d'accueil (landing page)
+│   │   ├── auth/[...all]/   # API routes Better Auth
+│   │   └── users/           # API gestion utilisateurs
+│   └── page.tsx             # Page d'accueil (redirection)
 ├── components/
-│   ├── route-guard.tsx      # Composant de protection des routes (proxy)
 │   └── sidebar.tsx          # Navigation sidebar
-└── lib/
-    ├── auth.ts              # Configuration Better Auth (serveur)
-    ├── auth-client.ts       # Client Better Auth
-    └── prisma.ts            # Client Prisma
+├── lib/
+│   ├── auth.ts              # Configuration Better Auth (serveur)
+│   ├── auth-client.ts       # Client Better Auth
+│   ├── prisma.ts            # Client Prisma
+│   └── roles.ts             # Helpers de gestion des rôles
+└── proxy.ts            # Protection des routes (proxy)
 ```
 
 ## 🔒 Système de protection des routes
 
-Ce projet utilise un **composant proxy** (`RouteGuard`) au lieu d'un middleware Next.js pour protéger les routes :
+Ce projet utilise un **proxy Next.js** (`src/proxy.ts`) pour protéger les routes côté serveur :
 
-- Les pages dans `(app)/` sont automatiquement protégées via le layout
+- Les pages dans `(dashboard)/` sont automatiquement protégées
 - Redirection automatique vers `/signin` si non authentifié
-- Redirection vers `/app/dashboard` si déjà connecté sur les pages d'auth
+- Redirection vers `/dashboard` si déjà connecté sur les pages d'auth
+- Routes admin (`/users`) réservées aux utilisateurs avec le rôle ADMIN
+
+## 👥 Système de rôles
+
+Deux rôles sont disponibles :
+
+- **USER** : Accès standard (dashboard, contacts, settings)
+- **ADMIN** : Accès complet + gestion des utilisateurs
 
 ## 🎨 Personnalisation
 
 ### Ajouter une nouvelle page protégée
 
-1. Créez votre page dans `src/app/(app)/ma-page/page.tsx`
+1. Créez votre page dans `src/app/(dashboard)/ma-page/page.tsx`
 2. Ajoutez-la dans la navigation (`src/components/sidebar.tsx`)
+3. (Optionnel) Protégez-la par rôle dans `src/proxy.ts`
 
 ### Modifier le thème
 
 Les couleurs principales sont configurées avec Tailwind. Modifiez les classes dans les composants pour personnaliser le thème.
-
-## 📚 Documentation
-
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Better Auth Documentation](https://better-auth.com/docs)
-- [Prisma Documentation](https://www.prisma.io/docs)
-- [Tailwind CSS](https://tailwindcss.com/docs)
-
-## 🤝 Contribuer
-
-Les contributions sont les bienvenues ! N'hésitez pas à ouvrir une issue ou une pull request.
 
 ## 📝 Scripts disponibles
 

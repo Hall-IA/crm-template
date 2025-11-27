@@ -4,17 +4,35 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
-
-const navigation = [
-  { name: "Tableau de bord", href: "/dashboard", icon: "📊" },
-  { name: "Contacts", href: "/contacts", icon: "👥" },
-  { name: "Paramètres", href: "/settings", icon: "⚙️" },
-];
+import { useMemo } from "react";
+import { useUserRole } from "@/hooks/use-user-role";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const router = useRouter();
+
+  // Obtenir le rôle de l'utilisateur via le hook personnalisé
+  const { isAdmin } = useUserRole();
+  // Navigation conditionnelle basée sur le rôle
+  const navigation = useMemo(() => {
+    const baseNav = [
+      { name: 'Tableau de bord', href: '/dashboard', icon: '📊' },
+      { name: 'Contacts', href: '/contacts', icon: '👥' },
+      { name: 'Paramètres', href: '/settings', icon: '⚙️' },
+    ];
+
+    // Ajouter la gestion des utilisateurs seulement pour les admins
+    if (isAdmin) {
+      baseNav.splice(2, 0, {
+        name: "Gestions d'utilisateurs",
+        href: "/users",
+        icon: "👤",
+      });
+    }
+
+    return baseNav;
+  }, [isAdmin]);
 
   const handleSignOut = async () => {
     await signOut();

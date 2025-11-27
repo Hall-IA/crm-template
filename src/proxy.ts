@@ -1,12 +1,17 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { auth } from "./lib/auth";
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { auth } from './lib/auth';
+import { isAdmin } from './lib/roles';
+import { prisma } from './lib/prisma';
 
 // Routes qui nécessitent une authentification
-const protectedRoutes = ["/dashboard", "/contacts", "/settings"];
+const protectedRoutes = ['/dashboard', '/contacts', '/settings', '/users'];
+
+// Routes réservées aux admins
+const adminRoutes = ['/users'];
 
 // Routes d'authentification
-const authRoutes = ["/signin", "/signup"];
+const authRoutes = ['/signin'];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -17,26 +22,47 @@ export async function proxy(request: NextRequest) {
   });
 
   const isAuthenticated = !!session;
+  
+  // Récupérer le rôle depuis la session ou depuis la base de données
+  let userRole: string | null = null;
+  if (session) {
+    // Essayer d'obtenir le rôle depuis la session
+    userRole = (session.user as any).role;
+    
+    // Si le rôle n'est pas dans la session, le récupérer depuis la base de données
+    if (!userRole && session.user?.id) {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+      });
+      userRole = user?.role || null;
+    }
+  }
 
   // Vérifier si la route actuelle est protégée
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route)
-  );
+  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
+
+  // Vérifier si la route est réservée aux admins
+  const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route));
 
   // Vérifier si la route actuelle est une route d'auth
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
   // Si l'utilisateur n'est pas connecté et tente d'accéder à une route protégée
   if (!isAuthenticated && isProtectedRoute) {
-    const signInUrl = new URL("/signin", request.url);
-    // Optionnel : ajouter l'URL de retour après connexion
-    signInUrl.searchParams.set("callbackUrl", pathname);
+    const signInUrl = new URL('/signin', request.url);
+    signInUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(signInUrl);
+  }
+
+  // Si l'utilisateur est connecté mais n'est pas admin et tente d'accéder à une route admin
+  if (isAuthenticated && isAdminRoute && !isAdmin(userRole || undefined)) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   // Si l'utilisateur est connecté et tente d'accéder aux pages d'auth
   if (isAuthenticated && isAuthRoute) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   return NextResponse.next();
@@ -51,7 +77,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };
-
