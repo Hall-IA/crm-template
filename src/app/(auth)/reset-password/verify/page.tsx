@@ -132,7 +132,7 @@ export default function VerifyResetCodePage() {
             <button
               type="submit"
               disabled={loading || code.join("").length !== 6}
-              className="w-full rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? "Vérification..." : "Vérifier le code"}
             </button>
@@ -152,7 +152,7 @@ export default function VerifyResetCodePage() {
                   // Ignorer les erreurs silencieusement
                 }
               }}
-              className="text-sm text-indigo-600 hover:text-indigo-700"
+              className="cursor-pointer text-sm text-indigo-600 hover:text-indigo-700"
             >
               Renvoyer le code
             </button>

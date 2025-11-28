@@ -96,10 +96,10 @@ export default function DashboardPage() {
             développer vos fonctionnalités CRM.
           </p>
           <div className="mt-6 flex gap-4">
-            <button className="rounded-lg bg-white px-6 py-2 font-medium text-indigo-600 transition-colors hover:bg-indigo-50">
+            <button className="cursor-pointer rounded-lg bg-white px-6 py-2 font-medium text-indigo-600 transition-colors hover:bg-indigo-50">
               Ajouter un contact
             </button>
-            <button className="rounded-lg border border-white px-6 py-2 font-medium text-white transition-colors hover:bg-white/10">
+            <button className="cursor-pointer rounded-lg border border-white px-6 py-2 font-medium text-white transition-colors hover:bg-white/10">
               Explorer
             </button>
           </div>

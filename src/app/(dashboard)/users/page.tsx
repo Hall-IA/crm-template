@@ -133,7 +133,7 @@ export default function UsersPage() {
           </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white transition-colors hover:bg-indigo-700"
+            className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white transition-colors hover:bg-indigo-700"
           >
             + Ajouter un utilisateur
           </button>
@@ -226,7 +226,7 @@ export default function UsersPage() {
                       {user.id !== session?.user?.id && (
                         <button
                           onClick={() => handleDeleteUser(user.id, user.name)}
-                          className="text-red-600 hover:text-red-900"
+                          className="cursor-pointer text-red-600 hover:text-red-900"
                         >
                           Supprimer
                         </button>
@@ -292,13 +292,13 @@ export default function UsersPage() {
                     setFormData({ name: '', email: '', role: 'USER' });
                     setError('');
                   }}
-                  className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
+                  className="cursor-pointer flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
+                  className="cursor-pointer flex-1 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
                 >
                   Créer
                 </button>

@@ -12,7 +12,7 @@ export default function ContactsPage() {
               Gérez tous vos contacts en un seul endroit
             </p>
           </div>
-          <button className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white transition-colors hover:bg-indigo-700">
+          <button className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white transition-colors hover:bg-indigo-700">
             + Nouveau contact
           </button>
         </div>
@@ -28,7 +28,7 @@ export default function ContactsPage() {
           <p className="mt-2 text-gray-600">
             Commencez par ajouter votre premier contact
           </p>
-          <button className="mt-6 rounded-lg bg-indigo-600 px-6 py-2 font-medium text-white transition-colors hover:bg-indigo-700">
+          <button className="cursor-pointer mt-6 rounded-lg bg-indigo-600 px-6 py-2 font-medium text-white transition-colors hover:bg-indigo-700">
             Ajouter un contact
           </button>
         </div>

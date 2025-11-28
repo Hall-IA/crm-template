@@ -108,7 +108,7 @@ export default function SettingsPage() {
                 <p className="text-sm font-medium text-green-800">{passwordSuccess}</p>
                 <button
                   onClick={() => setPasswordSuccess("")}
-                  className="ml-auto text-green-600 hover:text-green-800"
+                  className="cursor-pointer ml-auto text-green-600 hover:text-green-800"
                 >
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -139,7 +139,7 @@ export default function SettingsPage() {
                       <p className="font-medium text-gray-900">{field.label}</p>
                       <p className="mt-1 text-sm text-gray-600">{field.value}</p>
                     </div>
-                    <button className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50">
+                    <button className="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50">
                       Modifier
                     </button>
                   </div>
@@ -164,7 +164,7 @@ export default function SettingsPage() {
                   </div>
                   <button
                     onClick={() => setShowPasswordForm(true)}
-                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                    className="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                   >
                     Modifier
                   </button>
@@ -249,7 +249,7 @@ export default function SettingsPage() {
                     <button
                       type="submit"
                       disabled={passwordLoading}
-                      className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {passwordLoading ? "Modification..." : "Modifier le mot de passe"}
                     </button>
@@ -265,7 +265,7 @@ export default function SettingsPage() {
                         setPasswordError("");
                         setPasswordSuccess("");
                       }}
-                      className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                      className="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                     >
                       Annuler
                     </button>
@@ -281,7 +281,7 @@ export default function SettingsPage() {
             <p className="mt-1 text-sm text-red-700">
               Actions irréversibles sur votre compte
             </p>
-            <button className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700">
+            <button className="cursor-pointer mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700">
               Supprimer mon compte
             </button>
           </div>
