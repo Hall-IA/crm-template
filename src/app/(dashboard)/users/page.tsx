@@ -2,6 +2,7 @@
 
 import { useSession } from "@/lib/auth-client";
 import { useEffect, useState } from "react";
+import { PageHeader } from "@/components/page-header";
 
 interface User {
   id: string;
@@ -123,50 +124,46 @@ export default function UsersPage() {
   return (
     <div className="h-full">
       {/* Header */}
-      <div className="border-b border-gray-200 bg-white px-8 py-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Gestion des utilisateurs</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Gérez les comptes et les rôles des utilisateurs
-            </p>
-          </div>
+      <PageHeader
+        title="Gestion des utilisateurs"
+        description="Gérez les comptes et les rôles des utilisateurs"
+        action={
           <button
             onClick={() => setShowAddModal(true)}
-            className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white transition-colors hover:bg-indigo-700"
+            className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
           >
             + Ajouter un utilisateur
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Content */}
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         {/* Messages */}
-        {error && <div className="mb-4 rounded-lg bg-red-50 p-4 text-red-600">{error}</div>}
+        {error && <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>}
 
         {successMessage && (
-          <div className="mb-4 rounded-lg bg-green-50 p-4 text-green-600">{successMessage}</div>
+          <div className="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-600">{successMessage}</div>
         )}
 
         {/* Table */}
-        <div className="overflow-hidden rounded-lg bg-white shadow">
+        <div className="overflow-x-auto rounded-lg bg-white shadow">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
                   Utilisateur
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
                   Email
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
                   Rôle
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
                   Statut
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
+                <th className="px-3 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
                   Actions
                 </th>
               </tr>
@@ -174,44 +171,44 @@ export default function UsersPage() {
             <tbody className="divide-y divide-gray-200 bg-white">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={5} className="px-3 py-4 text-center text-sm text-gray-500 sm:px-6">
                     Chargement...
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={5} className="px-3 py-4 text-center text-sm text-gray-500 sm:px-6">
                     Aucun utilisateur
                   </td>
                 </tr>
               ) : (
                 users.map((user) => (
                   <tr key={user.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
                       <div className="flex items-center">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 sm:h-10 sm:w-10">
                           {user.name[0].toUpperCase()}
                         </div>
-                        <div className="ml-4">
-                          <div className="font-medium text-gray-900">{user.name}</div>
+                        <div className="ml-2 sm:ml-4 min-w-0">
+                          <div className="truncate text-sm font-medium text-gray-900 sm:text-base">{user.name}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
-                      {user.email}
+                    <td className="px-3 py-4 text-xs whitespace-nowrap text-gray-500 sm:px-6 sm:text-sm">
+                      <span className="truncate block max-w-[150px] sm:max-w-none">{user.email}</span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
                       <select
                         value={user.role}
                         onChange={(e) => handleChangeRole(user.id, e.target.value as any)}
                         disabled={user.id === session?.user?.id}
-                        className="rounded-md border border-gray-300 px-3 py-1 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-sm"
                       >
                         <option value="USER">Utilisateur</option>
                         <option value="ADMIN">Admin</option>
                       </select>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
                       {user.emailVerified ? (
                         <span className="inline-flex rounded-full bg-green-100 px-2 text-xs leading-5 font-semibold text-green-800">
                           Vérifié
@@ -222,7 +219,7 @@ export default function UsersPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
+                    <td className="px-3 py-4 text-right text-xs font-medium whitespace-nowrap sm:px-6 sm:text-sm">
                       {user.id !== session?.user?.id && (
                         <button
                           onClick={() => handleDeleteUser(user.id, user.name)}
@@ -242,9 +239,9 @@ export default function UsersPage() {
 
       {/* Modal d'ajout */}
       {showAddModal && (
-        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black">
-          <div className="w-full max-w-md rounded-lg bg-white p-8">
-            <h2 className="text-2xl font-bold text-gray-900">Ajouter un utilisateur</h2>
+        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl sm:p-8">
+            <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Ajouter un utilisateur</h2>
 
             <form onSubmit={handleAddUser} className="mt-6 space-y-4">
               <div>

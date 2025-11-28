@@ -41,11 +41,11 @@ export default function ResetPasswordPage() {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
         <div className="w-full max-w-md">
-          <div className="rounded-2xl bg-white p-8 shadow-xl">
-            <div className="mb-8 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+          <div className="rounded-2xl bg-white p-6 shadow-xl sm:p-8">
+            <div className="mb-6 text-center sm:mb-8">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 sm:h-16 sm:w-16">
                 <svg
-                  className="h-8 w-8 text-green-600"
+                  className="h-6 w-6 text-green-600 sm:h-8 sm:w-8"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -58,10 +58,10 @@ export default function ResetPasswordPage() {
                   />
                 </svg>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
                 Code envoyé
               </h1>
-              <p className="mt-2 text-sm text-gray-600">
+              <p className="mt-2 break-all text-sm text-gray-600">
                 Un code à 6 chiffres a été envoyé à <strong>{email}</strong>
               </p>
               <p className="mt-2 text-sm text-gray-500">
@@ -91,10 +91,10 @@ export default function ResetPasswordPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md">
-        <div className="rounded-2xl bg-white p-8 shadow-xl">
+        <div className="rounded-2xl bg-white p-6 shadow-xl sm:p-8">
           {/* Header */}
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold text-gray-900">
+          <div className="mb-6 text-center sm:mb-8">
+            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
               Réinitialiser le mot de passe
             </h1>
             <p className="mt-2 text-sm text-gray-600">

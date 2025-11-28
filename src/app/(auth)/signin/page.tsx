@@ -46,10 +46,10 @@ export default function SignInPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md">
-        <div className="rounded-2xl bg-white p-8 shadow-xl">
+        <div className="rounded-2xl bg-white p-6 shadow-xl sm:p-8">
           {/* Header */}
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold text-gray-900">Connexion</h1>
+          <div className="mb-6 text-center sm:mb-8">
+            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Connexion</h1>
             <p className="mt-2 text-sm text-gray-600">
               Connectez-vous à votre compte CRM
             </p>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "@/lib/auth-client";
 import { useUserRole } from "@/hooks/use-user-role";
+import { PageHeader } from "@/components/page-header";
 
 export default function SettingsPage() {
   const { data: session } = useSession();
@@ -162,14 +163,14 @@ export default function SettingsPage() {
   return (
     <div className="h-full">
       {/* Header */}
-      <div className="border-b border-gray-200 bg-white px-8 py-6">
-        <h1 className="text-2xl font-bold text-gray-900">Paramètres</h1>
-        <p className="mt-1 text-sm text-gray-600">Gérez vos préférences et paramètres de compte</p>
-      </div>
+      <PageHeader
+        title="Paramètres"
+        description="Gérez vos préférences et paramètres de compte"
+      />
 
       {/* Content */}
-      <div className="p-8">
-        <div className="mx-auto max-w-3xl space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
           {/* Message de succès global */}
           {passwordSuccess && !showPasswordForm && (
             <div className="rounded-lg border border-green-200 bg-green-50 p-4">
@@ -205,21 +206,21 @@ export default function SettingsPage() {
             </div>
           )}
           {sections.map((section) => (
-            <div key={section.title} className="rounded-lg bg-white p-6 shadow">
-              <h2 className="text-lg font-semibold text-gray-900">{section.title}</h2>
+            <div key={section.title} className="rounded-lg bg-white p-4 shadow sm:p-6">
+              <h2 className="text-base font-semibold text-gray-900 sm:text-lg">{section.title}</h2>
               <p className="mt-1 text-sm text-gray-600">{section.description}</p>
 
-              <div className="mt-6 space-y-4">
+              <div className="mt-4 space-y-4 sm:mt-6">
                 {section.fields.map((field) => (
                   <div
                     key={field.label}
-                    className="flex items-center justify-between border-b border-gray-100 pb-4 last:border-0 last:pb-0"
+                    className="flex flex-col gap-3 border-b border-gray-100 pb-4 last:border-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="font-medium text-gray-900">{field.label}</p>
-                      <p className="mt-1 text-sm text-gray-600">{field.value}</p>
+                      <p className="mt-1 truncate text-sm text-gray-600">{field.value}</p>
                     </div>
-                    <button className="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50">
+                    <button className="cursor-pointer w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto">
                       Modifier
                     </button>
                   </div>
@@ -230,8 +231,8 @@ export default function SettingsPage() {
 
           {/* Section Informations de l'entreprise - Admin uniquement */}
           {isAdmin && (
-            <div className="rounded-lg bg-white p-6 shadow">
-              <h2 className="text-lg font-semibold text-gray-900">Informations de l'entreprise</h2>
+            <div className="rounded-lg bg-white p-4 shadow sm:p-6">
+              <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Informations de l'entreprise</h2>
               <p className="mt-1 text-sm text-gray-600">
                 Gérez les informations de votre entreprise (visible uniquement par les
                 administrateurs)
@@ -437,22 +438,22 @@ export default function SettingsPage() {
           )}
 
           {/* Section Sécurité - Mot de passe */}
-          <div className="rounded-lg bg-white p-6 shadow">
-            <h2 className="text-lg font-semibold text-gray-900">Sécurité</h2>
+          <div className="rounded-lg bg-white p-4 shadow sm:p-6">
+            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Sécurité</h2>
             <p className="mt-1 text-sm text-gray-600">
               Gérez votre mot de passe et vos paramètres de sécurité
             </p>
 
-            <div className="mt-6">
+            <div className="mt-4 sm:mt-6">
               {!showPasswordForm ? (
-                <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-                  <div>
+                <div className="flex flex-col gap-3 border-b border-gray-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 flex-1">
                     <p className="font-medium text-gray-900">Mot de passe</p>
                     <p className="mt-1 text-sm text-gray-600">••••••••</p>
                   </div>
                   <button
                     onClick={() => setShowPasswordForm(true)}
-                    className="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                    className="cursor-pointer w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
                   >
                     Modifier
                   </button>
@@ -531,11 +532,11 @@ export default function SettingsPage() {
                     />
                   </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row">
                     <button
                       type="submit"
                       disabled={passwordLoading}
-                      className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                      className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                     >
                       {passwordLoading ? 'Modification...' : 'Modifier le mot de passe'}
                     </button>
@@ -551,7 +552,7 @@ export default function SettingsPage() {
                         setPasswordError('');
                         setPasswordSuccess('');
                       }}
-                      className="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                      className="cursor-pointer w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
                     >
                       Annuler
                     </button>
@@ -562,10 +563,10 @@ export default function SettingsPage() {
           </div>
 
           {/* Danger Zone */}
-          <div className="rounded-lg border-2 border-red-200 bg-red-50 p-6">
-            <h2 className="text-lg font-semibold text-red-900">Zone de danger</h2>
+          <div className="rounded-lg border-2 border-red-200 bg-red-50 p-4 sm:p-6">
+            <h2 className="text-base font-semibold text-red-900 sm:text-lg">Zone de danger</h2>
             <p className="mt-1 text-sm text-red-700">Actions irréversibles sur votre compte</p>
-            <button className="mt-4 cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700">
+            <button className="mt-4 w-full cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 sm:w-auto">
               Supprimer mon compte
             </button>
           </div>

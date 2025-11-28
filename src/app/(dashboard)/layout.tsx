@@ -1,4 +1,5 @@
 import { Sidebar } from "@/components/sidebar";
+import { MobileMenuProvider } from "@/contexts/mobile-menu-context";
 
 export default function DashboardLayout({
   children,
@@ -6,12 +7,14 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
-    </div>
+    <MobileMenuProvider>
+      <div className="flex h-screen overflow-hidden bg-gray-50">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto lg:ml-0">
+          {children}
+        </main>
+      </div>
+    </MobileMenuProvider>
   );
 }
 

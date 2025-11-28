@@ -112,15 +112,15 @@ export default function InvitePage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900">Définir votre mot de passe</h1>
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:p-8">
+        <div className="mb-6 text-center sm:mb-8">
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Définir votre mot de passe</h1>
           {userName && (
             <p className="mt-2 text-sm text-gray-600">
               Bienvenue, <span className="font-semibold">{userName}</span>
             </p>
           )}
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 break-all text-sm text-gray-500">
             {userEmail}
           </p>
         </div>

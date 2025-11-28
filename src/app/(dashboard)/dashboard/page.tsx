@@ -1,6 +1,7 @@
 "use client";
 
 import { useSession } from "@/lib/auth-client";
+import { PageHeader } from "@/components/page-header";
 
 export default function DashboardPage() {
   const { data: session } = useSession();
@@ -22,35 +23,32 @@ export default function DashboardPage() {
   return (
     <div className="h-full">
       {/* Header */}
-      <div className="border-b border-gray-200 bg-white px-8 py-6">
-        <h1 className="text-2xl font-bold text-gray-900">Tableau de bord</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Bienvenue, {session?.user?.name || "Utilisateur"} ! Voici un aperçu de
-          votre activité.
-        </p>
-      </div>
+      <PageHeader
+        title="Tableau de bord"
+        description={`Bienvenue, ${session?.user?.name || "Utilisateur"} ! Voici un aperçu de votre activité.`}
+      />
 
       {/* Content */}
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         {/* Stats Grid */}
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
           {stats.map((stat) => (
             <div
               key={stat.name}
               className="overflow-hidden rounded-lg bg-white shadow"
             >
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 <div className="flex items-center">
                   <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-lg ${stat.color}`}
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg sm:h-12 sm:w-12 ${stat.color}`}
                   >
-                    <span className="text-2xl">{stat.icon}</span>
+                    <span className="text-xl sm:text-2xl">{stat.icon}</span>
                   </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">
+                  <div className="ml-3 sm:ml-4 min-w-0">
+                    <p className="text-xs font-medium text-gray-600 sm:text-sm">
                       {stat.name}
                     </p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-xl font-bold text-gray-900 sm:text-2xl">
                       {stat.value}
                     </p>
                   </div>
@@ -61,18 +59,18 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Activity */}
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold text-gray-900">
+        <div className="mt-6 sm:mt-8">
+          <h2 className="text-base font-semibold text-gray-900 sm:text-lg">
             Activité récente
           </h2>
           <div className="mt-4 space-y-4">
             {recentActivities.map((activity) => (
               <div
                 key={activity.id}
-                className="rounded-lg bg-white p-6 shadow"
+                className="rounded-lg bg-white p-4 shadow sm:p-6"
               >
-                <div className="flex items-start justify-between">
-                  <div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-gray-900">
                       {activity.title}
                     </h3>
@@ -80,28 +78,10 @@ export default function DashboardPage() {
                       {activity.description}
                     </p>
                   </div>
-                  <span className="text-xs text-gray-500">{activity.time}</span>
+                  <span className="text-xs text-gray-500 shrink-0">{activity.time}</span>
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* Welcome Card */}
-        <div className="mt-8 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 p-8 text-white shadow-lg">
-          <h2 className="text-2xl font-bold">🎉 Votre CRM est prêt !</h2>
-          <p className="mt-2 text-indigo-100">
-            Votre système d'authentification avec Better Auth et Prisma est
-            configuré et fonctionnel. Vous pouvez maintenant commencer à
-            développer vos fonctionnalités CRM.
-          </p>
-          <div className="mt-6 flex gap-4">
-            <button className="cursor-pointer rounded-lg bg-white px-6 py-2 font-medium text-indigo-600 transition-colors hover:bg-indigo-50">
-              Ajouter un contact
-            </button>
-            <button className="cursor-pointer rounded-lg border border-white px-6 py-2 font-medium text-white transition-colors hover:bg-white/10">
-              Explorer
-            </button>
           </div>
         </div>
       </div>
