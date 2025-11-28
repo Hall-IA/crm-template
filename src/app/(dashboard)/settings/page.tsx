@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth-client";
 import { useUserRole } from "@/hooks/use-user-role";
 import { PageHeader } from "@/components/page-header";
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { data: session } = useSession();
   const { isAdmin } = useUserRole();
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -17,6 +19,13 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
+
+  // État pour la modification du nom
+  const [showNameForm, setShowNameForm] = useState(false);
+  const [nameValue, setNameValue] = useState(session?.user?.name || "");
+  const [nameError, setNameError] = useState("");
+  const [nameSuccess, setNameSuccess] = useState("");
+  const [nameLoading, setNameLoading] = useState(false);
 
   // État pour les informations de l'entreprise
   const [companyData, setCompanyData] = useState({
@@ -36,6 +45,13 @@ export default function SettingsPage() {
   const [companySaving, setCompanySaving] = useState(false);
   const [companyError, setCompanyError] = useState("");
   const [companySuccess, setCompanySuccess] = useState("");
+
+  // Mettre à jour le nom quand la session change
+  useEffect(() => {
+    if (session?.user?.name) {
+      setNameValue(session.user.name);
+    }
+  }, [session?.user?.name]);
 
   // Charger les informations de l'entreprise au montage (si admin)
   useEffect(() => {
@@ -100,6 +116,48 @@ export default function SettingsPage() {
     }
   };
 
+  const handleNameUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setNameError("");
+    setNameSuccess("");
+
+    if (!nameValue.trim()) {
+      setNameError("Le nom ne peut pas être vide");
+      return;
+    }
+
+    setNameLoading(true);
+
+    try {
+      const response = await fetch("/api/settings/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: nameValue.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Erreur lors de la mise à jour du nom");
+      }
+
+      setNameSuccess("✅ Nom mis à jour avec succès !");
+      setShowNameForm(false);
+      
+      // Rafraîchir la page pour mettre à jour la session
+      router.refresh();
+
+      // Effacer le message après 5 secondes
+      setTimeout(() => {
+        setNameSuccess("");
+      }, 5000);
+    } catch (err: any) {
+      setNameError(err.message);
+    } finally {
+      setNameLoading(false);
+    }
+  };
+
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError("");
@@ -149,16 +207,6 @@ export default function SettingsPage() {
     }
   };
 
-  const sections = [
-    {
-      title: "Profil",
-      description: "Gérez vos informations personnelles",
-      fields: [
-        { label: "Nom", value: session?.user?.name || "Non défini" },
-        { label: "Email", value: session?.user?.email || "Non défini" },
-      ],
-    },
-  ];
 
   return (
     <div className="h-full">
@@ -205,29 +253,103 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
-          {sections.map((section) => (
-            <div key={section.title} className="rounded-lg bg-white p-4 shadow sm:p-6">
-              <h2 className="text-base font-semibold text-gray-900 sm:text-lg">{section.title}</h2>
-              <p className="mt-1 text-sm text-gray-600">{section.description}</p>
+          {/* Section Profil */}
+          <div className="rounded-lg bg-white p-4 shadow sm:p-6">
+            <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Profil</h2>
+            <p className="mt-1 text-sm text-gray-600">Gérez vos informations personnelles</p>
 
-              <div className="mt-4 space-y-4 sm:mt-6">
-                {section.fields.map((field) => (
-                  <div
-                    key={field.label}
-                    className="flex flex-col gap-3 border-b border-gray-100 pb-4 last:border-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
-                  >
+            <div className="mt-4 space-y-4 sm:mt-6">
+              {/* Nom - Modifiable */}
+              <div className="border-b border-gray-100 pb-4">
+                {!showNameForm ? (
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900">{field.label}</p>
-                      <p className="mt-1 truncate text-sm text-gray-600">{field.value}</p>
+                      <p className="font-medium text-gray-900">Nom</p>
+                      <p className="mt-1 truncate text-sm text-gray-600">
+                        {session?.user?.name || "Non défini"}
+                      </p>
                     </div>
-                    <button className="cursor-pointer w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto">
+                    <button
+                      onClick={() => {
+                        setShowNameForm(true);
+                        setNameValue(session?.user?.name || "");
+                        setNameError("");
+                        setNameSuccess("");
+                      }}
+                      className="cursor-pointer w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                    >
                       Modifier
                     </button>
                   </div>
-                ))}
+                ) : (
+                  <form onSubmit={handleNameUpdate} className="space-y-4">
+                    {nameSuccess && (
+                      <div className="rounded-lg bg-green-50 p-4 text-sm text-green-600">
+                        {nameSuccess}
+                      </div>
+                    )}
+
+                    {nameError && (
+                      <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">
+                        {nameError}
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Nom
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={nameValue}
+                        onChange={(e) => setNameValue(e.target.value)}
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="Votre nom"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <button
+                        type="submit"
+                        disabled={nameLoading}
+                        className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                      >
+                        {nameLoading ? "Enregistrement..." : "Enregistrer"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowNameForm(false);
+                          setNameValue(session?.user?.name || "");
+                          setNameError("");
+                          setNameSuccess("");
+                        }}
+                        className="cursor-pointer w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+
+              {/* Email - Lecture seule */}
+              <div className="pb-0">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-gray-900">Email</p>
+                    <p className="mt-1 truncate text-sm text-gray-600">
+                      {session?.user?.email || "Non défini"}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      L'email ne peut pas être modifié
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-          ))}
+          </div>
 
           {/* Section Informations de l'entreprise - Admin uniquement */}
           {isAdmin && (
@@ -560,15 +682,6 @@ export default function SettingsPage() {
                 </form>
               )}
             </div>
-          </div>
-
-          {/* Danger Zone */}
-          <div className="rounded-lg border-2 border-red-200 bg-red-50 p-4 sm:p-6">
-            <h2 className="text-base font-semibold text-red-900 sm:text-lg">Zone de danger</h2>
-            <p className="mt-1 text-sm text-red-700">Actions irréversibles sur votre compte</p>
-            <button className="mt-4 w-full cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 sm:w-auto">
-              Supprimer mon compte
-            </button>
           </div>
         </div>
       </div>
