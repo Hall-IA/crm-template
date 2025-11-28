@@ -81,3 +81,22 @@ model Verification {
   @@index([identifier])
   @@map("verification")
 }
+
+model Company {
+  id          String   @id @default("company")
+  name        String?
+  address     String?
+  city        String?
+  postalCode  String?
+  country     String?
+  phone       String?
+  email       String?
+  website     String?
+  siret       String?
+  vatNumber   String?
+  logo        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("company")
+}
