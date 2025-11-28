@@ -29,6 +29,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  smtpConfig    SmtpConfig?
 
   @@unique([email])
   @@map("user")
@@ -99,4 +100,21 @@ model Company {
   updatedAt   DateTime @updatedAt
 
   @@map("company")
+}
+
+model SmtpConfig {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  host      String
+  port      Int
+  secure    Boolean  @default(false)
+  username  String
+  password  String
+  fromEmail String
+  fromName  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("smtp_config")
 }

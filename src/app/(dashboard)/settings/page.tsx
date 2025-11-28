@@ -46,6 +46,27 @@ export default function SettingsPage() {
   const [companyError, setCompanyError] = useState("");
   const [companySuccess, setCompanySuccess] = useState("");
 
+  // État pour la configuration SMTP
+  const [smtpData, setSmtpData] = useState({
+    host: "",
+    port: "587",
+    secure: false,
+    username: "",
+    password: "",
+    fromEmail: "",
+    fromName: "",
+  });
+  const [smtpLoading, setSmtpLoading] = useState(true);
+  const [smtpSaving, setSmtpSaving] = useState(false);
+  const [smtpError, setSmtpError] = useState("");
+  const [smtpSuccess, setSmtpSuccess] = useState("");
+  const [smtpTesting, setSmtpTesting] = useState(false);
+  const [smtpTestResult, setSmtpTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
+  const [smtpConfigured, setSmtpConfigured] = useState(false);
+
   // Mettre à jour le nom quand la session change
   useEffect(() => {
     if (session?.user?.name) {
@@ -85,6 +106,39 @@ export default function SettingsPage() {
       fetchCompanyData();
     }
   }, [isAdmin]);
+
+  // Charger la configuration SMTP au montage
+  useEffect(() => {
+    const fetchSmtpData = async () => {
+      try {
+        setSmtpLoading(true);
+        const response = await fetch("/api/settings/smtp");
+        if (response.ok) {
+          const data = await response.json();
+          if (data) {
+            setSmtpData({
+              host: data.host || "",
+              port: data.port?.toString() || "587",
+              secure: data.secure || false,
+              username: data.username || "",
+              password: "", // Ne pas charger le mot de passe
+              fromEmail: data.fromEmail || "",
+              fromName: data.fromName || "",
+            });
+            setSmtpConfigured(true);
+          } else {
+            setSmtpConfigured(false);
+          }
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement de la config SMTP:", error);
+        setSmtpConfigured(false);
+      } finally {
+        setSmtpLoading(false);
+      }
+    };
+    fetchSmtpData();
+  }, []);
 
   const handleCompanySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,6 +209,77 @@ export default function SettingsPage() {
       setNameError(err.message);
     } finally {
       setNameLoading(false);
+    }
+  };
+
+  const handleSmtpTest = async () => {
+    setSmtpTestResult(null);
+    setSmtpError("");
+    setSmtpTesting(true);
+
+    try {
+      const response = await fetch("/api/settings/smtp/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(smtpData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSmtpTestResult({
+          success: true,
+          message: data.message || "Connexion SMTP réussie !",
+        });
+        setSmtpConfigured(true);
+      } else {
+        setSmtpTestResult({
+          success: false,
+          message: data.message || "Échec de la connexion SMTP",
+        });
+        setSmtpConfigured(false);
+      }
+    } catch (err: any) {
+      setSmtpTestResult({
+        success: false,
+        message: err.message || "Erreur lors du test de connexion",
+      });
+    } finally {
+      setSmtpTesting(false);
+    }
+  };
+
+  const handleSmtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSmtpError("");
+    setSmtpSuccess("");
+    setSmtpSaving(true);
+
+    try {
+      const response = await fetch("/api/settings/smtp", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(smtpData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Erreur lors de la sauvegarde");
+      }
+
+      setSmtpSuccess("✅ Configuration SMTP sauvegardée avec succès !");
+      // Si le test a réussi précédemment, garder l'indicateur de configuration
+      if (smtpTestResult?.success) {
+        setSmtpConfigured(true);
+      }
+      setTimeout(() => {
+        setSmtpSuccess("");
+      }, 5000);
+    } catch (err: any) {
+      setSmtpError(err.message);
+    } finally {
+      setSmtpSaving(false);
     }
   };
 
@@ -682,6 +807,264 @@ export default function SettingsPage() {
                 </form>
               )}
             </div>
+          </div>
+
+          {/* Section Configuration SMTP */}
+          <div className="rounded-lg bg-white p-4 shadow sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Configuration SMTP</h2>
+                <p className="mt-1 text-sm text-gray-600">
+                  Configurez votre serveur SMTP pour envoyer des emails avec votre email de société
+                </p>
+              </div>
+              {smtpConfigured && (
+                <div className="flex items-center gap-2 rounded-full bg-green-100 px-3 py-1.5">
+                  <svg
+                    className="h-4 w-4 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <span className="text-xs font-medium text-green-800">Fonctionnel</span>
+                </div>
+              )}
+            </div>
+
+            {smtpSuccess && (
+              <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-4">
+                <div className="flex items-center">
+                  <svg
+                    className="mr-3 h-5 w-5 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <p className="text-sm font-medium text-green-800">{smtpSuccess}</p>
+                  <button
+                    onClick={() => setSmtpSuccess('')}
+                    className="ml-auto cursor-pointer text-green-600 hover:text-green-800"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {smtpError && (
+              <div className="mt-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">
+                {smtpError}
+              </div>
+            )}
+
+            {smtpTestResult && (
+              <div
+                className={`mt-4 rounded-lg p-4 ${
+                  smtpTestResult.success
+                    ? "border border-green-200 bg-green-50"
+                    : "border border-red-200 bg-red-50"
+                }`}
+              >
+                <div className="flex items-center">
+                  {smtpTestResult.success ? (
+                    <svg
+                      className="mr-3 h-5 w-5 text-green-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      className="mr-3 h-5 w-5 text-red-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  )}
+                  <p
+                    className={`text-sm font-medium ${
+                      smtpTestResult.success ? "text-green-800" : "text-red-800"
+                    }`}
+                  >
+                    {smtpTestResult.message}
+                  </p>
+                  <button
+                    onClick={() => setSmtpTestResult(null)}
+                    className="ml-auto cursor-pointer text-gray-600 hover:text-gray-800"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {smtpLoading ? (
+              <div className="mt-6 text-center text-gray-500">Chargement...</div>
+            ) : (
+              <form onSubmit={handleSmtpSubmit} className="mt-6 space-y-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Serveur SMTP (Host) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={smtpData.host}
+                      onChange={(e) => setSmtpData({ ...smtpData, host: e.target.value })}
+                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      placeholder="smtp.gmail.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Port *</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      max="65535"
+                      value={smtpData.port}
+                      onChange={(e) => setSmtpData({ ...smtpData, port: e.target.value })}
+                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      placeholder="587"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Ports courants : 587 (TLS), 465 (SSL), 25 (non sécurisé)
+                    </p>
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="smtp-secure"
+                      checked={smtpData.secure}
+                      onChange={(e) => setSmtpData({ ...smtpData, secure: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <label htmlFor="smtp-secure" className="ml-2 text-sm font-medium text-gray-700">
+                      Connexion sécurisée (SSL/TLS)
+                    </label>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Nom d'utilisateur *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={smtpData.username}
+                      onChange={(e) => setSmtpData({ ...smtpData, username: e.target.value })}
+                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      placeholder="votre.email@exemple.com"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700">Mot de passe *</label>
+                    <input
+                      type="password"
+                      required
+                      value={smtpData.password}
+                      onChange={(e) => setSmtpData({ ...smtpData, password: e.target.value })}
+                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      placeholder="••••••••"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Pour Gmail, utilisez un mot de passe d'application
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Email expéditeur (From) *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={smtpData.fromEmail}
+                      onChange={(e) => setSmtpData({ ...smtpData, fromEmail: e.target.value })}
+                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      placeholder="votre.email@exemple.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Nom expéditeur (optionnel)
+                    </label>
+                    <input
+                      type="text"
+                      value={smtpData.fromName}
+                      onChange={(e) => setSmtpData({ ...smtpData, fromName: e.target.value })}
+                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      placeholder="Votre Nom"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={handleSmtpTest}
+                    disabled={smtpTesting || smtpSaving}
+                    className="cursor-pointer w-full rounded-lg border border-indigo-600 px-6 py-2 text-sm font-medium text-indigo-600 transition-colors hover:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                  >
+                    {smtpTesting ? "Test en cours..." : "Tester la connexion"}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={smtpSaving || smtpTesting}
+                    className="cursor-pointer w-full rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                  >
+                    {smtpSaving ? "Enregistrement..." : "Enregistrer"}
+            </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </div>
