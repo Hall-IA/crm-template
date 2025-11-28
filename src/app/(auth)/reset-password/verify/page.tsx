@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function VerifyResetCodePage() {
+function VerifyResetCodeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
@@ -167,6 +167,22 @@ export default function VerifyResetCodePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function VerifyResetCodePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl text-center">
+            <p className="text-gray-600">Chargement...</p>
+          </div>
+        </div>
+      }
+    >
+      <VerifyResetCodeContent />
+    </Suspense>
   );
 }
 

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function ResetPasswordCompletePage() {
+function ResetPasswordCompleteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
@@ -166,6 +166,22 @@ export default function ResetPasswordCompletePage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordCompletePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl text-center">
+            <p className="text-gray-600">Chargement...</p>
+          </div>
+        </div>
+      }
+    >
+      <ResetPasswordCompleteContent />
+    </Suspense>
   );
 }
 
