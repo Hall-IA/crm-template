@@ -314,7 +314,7 @@ export default function ContactsPage() {
               </select>
             </div>
 
-            <div>
+          <div>
               <label className="block text-sm font-medium text-gray-700">
                 Assigné à
               </label>
@@ -470,8 +470,8 @@ export default function ContactsPage() {
                           title="Supprimer"
                         >
                           <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+          </button>
+        </div>
                     </td>
                   </tr>
                 ))}
@@ -483,12 +483,12 @@ export default function ContactsPage() {
 
       {/* Modal de création/édition */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl sm:p-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 backdrop-blur-sm p-4">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl sm:p-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
                 {editingContact ? "Modifier le contact" : "Nouveau contact"}
-              </h2>
+          </h2>
               <button
                 onClick={() => {
                   setShowModal(false);
@@ -746,7 +746,7 @@ export default function ContactsPage() {
                   className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
                 >
                   {editingContact ? "Modifier" : "Créer"}
-                </button>
+          </button>
               </div>
             </form>
           </div>

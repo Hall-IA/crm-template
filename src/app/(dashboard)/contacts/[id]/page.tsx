@@ -722,8 +722,8 @@ export default function ContactDetailPage() {
 
       {/* Modal d'édition */}
       {showEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl sm:p-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 backdrop-blur-sm p-4">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl sm:p-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
                 Modifier le contact
@@ -968,7 +968,7 @@ export default function ContactDetailPage() {
 
       {/* Modal d'interaction */}
       {showInteractionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 backdrop-blur-sm p-4">
           <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl sm:p-8">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
@@ -1085,7 +1085,7 @@ export default function ContactDetailPage() {
 
       {/* Modal d'envoi d'email */}
       {showEmailModal && contact && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 backdrop-blur-sm p-4">
           <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl sm:p-8">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">

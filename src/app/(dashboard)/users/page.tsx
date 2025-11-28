@@ -239,7 +239,7 @@ export default function UsersPage() {
 
       {/* Modal d'ajout */}
       {showAddModal && (
-        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl sm:p-8">
             <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Ajouter un utilisateur</h2>
 
