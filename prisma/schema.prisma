@@ -19,17 +19,20 @@ enum Role {
 }
 
 model User {
-  id            String    @id
-  name          String
-  email         String
-  emailVerified Boolean   @default(false)
-  image         String?
-  role          Role      @default(USER)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
-  smtpConfig    SmtpConfig?
+  id                String        @id
+  name              String
+  email             String
+  emailVerified     Boolean       @default(false)
+  image             String?
+  role              Role          @default(USER)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  sessions          Session[]
+  accounts          Account[]
+  smtpConfig        SmtpConfig?
+  contactsCreated   Contact[]     @relation("ContactCreatedBy")
+  contactsAssigned   Contact[]     @relation("ContactAssignedTo")
+  interactions      Interaction[]
 
   @@unique([email])
   @@map("user")
@@ -120,13 +123,74 @@ model SmtpConfig {
 }
 
 model Status {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
-  color     String   // Couleur au format hexadécimal (ex: #3B82F6)
-  order     Int      @default(0) // Ordre d'affichage
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  color     String    // Couleur au format hexadécimal (ex: #3B82F6)
+  order     Int       @default(0) // Ordre d'affichage
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  contacts  Contact[]
 
   @@unique([name])
   @@map("status")
+}
+
+enum Civility {
+  M
+  MME
+  MLLE
+}
+
+enum InteractionType {
+  CALL
+  SMS
+  EMAIL
+  MEETING
+  NOTE
+}
+
+model Contact {
+  id                String         @id @default(cuid())
+  civility          Civility?
+  firstName         String?
+  lastName          String?
+  phone             String         // Obligatoire
+  secondaryPhone    String?
+  email             String?
+  address           String?
+  city              String?
+  postalCode        String?
+  origin            String?       // Origine du contact
+  statusId          String?
+  status            Status?       @relation(fields: [statusId], references: [id], onDelete: SetNull)
+  assignedUserId    String?       // Utilisateur assigné
+  assignedUser      User?         @relation("ContactAssignedTo", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  createdById       String        // Utilisateur qui a créé le contact
+  createdBy         User          @relation("ContactCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  interactions      Interaction[]
+
+  @@index([statusId])
+  @@index([assignedUserId])
+  @@index([createdById])
+  @@map("contact")
+}
+
+model Interaction {
+  id          String          @id @default(cuid())
+  contactId   String
+  contact     Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  type        InteractionType
+  title       String?
+  content     String          // Contenu de l'interaction
+  userId      String          // Utilisateur qui a créé l'interaction
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime?       // Date de l'interaction (pour RDV, appels, etc.)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([contactId])
+  @@index([userId])
+  @@map("interaction")
 }
