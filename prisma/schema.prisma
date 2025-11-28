@@ -118,3 +118,15 @@ model SmtpConfig {
 
   @@map("smtp_config")
 }
+
+model Status {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   // Couleur au format hexadécimal (ex: #3B82F6)
+  order     Int      @default(0) // Ordre d'affichage
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name])
+  @@map("status")
+}
