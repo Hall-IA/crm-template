@@ -10,6 +10,7 @@ interface User {
   email: string;
   role: "USER" | "ADMIN";
   emailVerified: boolean;
+  active: boolean;
   createdAt: string;
 }
 
@@ -77,23 +78,25 @@ export default function UsersPage() {
     }
   };
 
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer ${userName} ?`)) {
-      return;
-    }
-
+  const handleToggleActive = async (userId: string, currentActive: boolean, userName: string) => {
     try {
       const response = await fetch(`/api/users/${userId}`, {
-        method: 'DELETE',
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: !currentActive }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erreur lors de la suppression');
+        throw new Error(data.error || 'Erreur lors de la mise à jour du statut');
       }
 
-      setSuccessMessage('Utilisateur supprimé avec succès');
+      setSuccessMessage(
+        !currentActive
+          ? `Compte de ${userName} activé`
+          : `Compte de ${userName} désactivé`
+      );
       fetchUsers();
     } catch (error: any) {
       setError(error.message);
@@ -161,10 +164,10 @@ export default function UsersPage() {
                   Rôle
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                  Statut
+                  Email vérifié
                 </th>
-                <th className="px-3 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                  Actions
+                <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                  Compte
                 </th>
               </tr>
             </thead>
@@ -219,15 +222,27 @@ export default function UsersPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-4 text-right text-xs font-medium whitespace-nowrap sm:px-6 sm:text-sm">
-                      {user.id !== session?.user?.id && (
+                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                      <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleDeleteUser(user.id, user.name)}
-                          className="cursor-pointer text-red-600 hover:text-red-900"
+                          type="button"
+                          disabled={user.id === session?.user?.id}
+                          onClick={() => handleToggleActive(user.id, user.active, user.name)}
+                          className={`cursor-pointer relative inline-flex h-5 w-9 items-center rounded-full transition ${
+                            user.active ? 'bg-green-500' : 'bg-gray-300'
+                          } disabled:cursor-not-allowed disabled:opacity-60`}
+                          aria-label={user.active ? 'Désactiver le compte' : 'Activer le compte'}
                         >
-                          Supprimer
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition ${
+                              user.active ? 'translate-x-4.5' : 'translate-x-0.5'
+                            }`}
+                          />
                         </button>
-                      )}
+                        <span className="text-xs font-medium text-gray-700">
+                          {user.active ? 'Actif' : 'Inactif'}
+                        </span>
+                      </div>
                     </td>
                   </tr>
                 ))

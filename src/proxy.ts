@@ -21,21 +21,21 @@ export async function proxy(request: NextRequest) {
     headers: request.headers,
   });
 
-  const isAuthenticated = !!session;
+  let isAuthenticated = !!session;
+  let isActiveUser = true;
   
   // Récupérer le rôle depuis la session ou depuis la base de données
   let userRole: string | null = null;
-  if (session) {
-    // Essayer d'obtenir le rôle depuis la session
-    userRole = (session.user as any).role;
-    
-    // Si le rôle n'est pas dans la session, le récupérer depuis la base de données
-    if (!userRole && session.user?.id) {
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true },
-      });
-      userRole = user?.role || null;
+  if (session && session.user?.id) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true, active: true },
+    });
+
+    userRole = (session.user as any).role || dbUser?.role || null;
+    isActiveUser = dbUser?.active ?? true;
+    if (!isActiveUser) {
+      isAuthenticated = false;
     }
   }
 

@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
       email: user.email,
       role: user.role || "USER",
       emailVerified: user.emailVerified,
+      active: user.active,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       image: user.image,
@@ -88,7 +89,8 @@ export async function POST(request: NextRequest) {
         where: { id: existingUser.id },
         data: {
           name,
-          role: role as any,
+          role: role,
+          active: true,
         },
       });
     } else {
@@ -98,8 +100,9 @@ export async function POST(request: NextRequest) {
           id: crypto.randomUUID(),
           name,
           email,
-          role: role as any,
+          role: role,
           emailVerified: false, // Pas encore vérifié
+          active: true,
         },
       });
     }
@@ -151,8 +154,9 @@ export async function POST(request: NextRequest) {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: (user as any).role || "USER",
+      role: user.role || "USER",
       emailVerified: user.emailVerified,
+      active: user.active,
       createdAt: user.createdAt,
       message: 'Utilisateur créé, email d\'invitation envoyé',
     }, { status: 201 });

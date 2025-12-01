@@ -27,8 +27,9 @@ export async function GET(
       id: user.id,
       name: user.name,
       email: user.email,
-      role: (user as any).role || "USER",
+      role: user.role || "USER",
       emailVerified: user.emailVerified,
+      active: user.active,
       image: user.image,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
@@ -57,7 +58,7 @@ export async function PUT(
     const session = await requireAdmin(request.headers);
     const { id } = await params;
     const body = await request.json();
-    const { name, role } = body;
+    const { name, role, active } = body;
 
     // Empêcher un admin de se retirer ses propres droits
     if (id === session.user.id && role === Role.USER) {
@@ -85,6 +86,7 @@ export async function PUT(
       data: {
         ...(name && { name }),
         ...(role && { role: role as any }), // Type assertion pour le champ role
+        ...(typeof active === "boolean" && { active }),
       },
     });
 
@@ -93,8 +95,9 @@ export async function PUT(
       id: updatedUser.id,
       name: updatedUser.name,
       email: updatedUser.email,
-      role: (updatedUser as any).role || "USER",
+      role: updatedUser.role || "USER",
       emailVerified: updatedUser.emailVerified,
+      active: updatedUser.active,
       updatedAt: updatedUser.updatedAt,
     });
   } catch (error: any) {
@@ -112,53 +115,5 @@ export async function PUT(
   }
 }
 
-// DELETE /api/users/[id] - Supprimer un utilisateur
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await requireAdmin(request.headers);
-    const { id } = await params;
-
-    // Empêcher un admin de se supprimer lui-même
-    if (id === session.user.id) {
-      return NextResponse.json(
-        { error: "Vous ne pouvez pas supprimer votre propre compte" },
-        { status: 400 }
-      );
-    }
-
-    // Vérifier que l'utilisateur existe
-    const user = await prisma.user.findUnique({
-      where: { id },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "Utilisateur non trouvé" },
-        { status: 404 }
-      );
-    }
-
-    // Supprimer l'utilisateur (cascade supprimera aussi les sessions et accounts)
-    await prisma.user.delete({
-      where: { id },
-    });
-
-    return NextResponse.json({ success: true, message: "Utilisateur supprimé" });
-  } catch (error: any) {
-    console.error("Erreur:", error);
-    
-    if (error.message === "Non authentifié") {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-    
-    if (error.message === "Permissions insuffisantes") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
-    
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
-  }
-}
+// NOTE: L'API DELETE n'est plus utilisée : les comptes sont désormais désactivés via le booléen `active`.
 

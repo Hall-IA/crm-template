@@ -23,6 +23,7 @@ model User {
   name              String
   email             String
   emailVerified     Boolean       @default(false)
+  active            Boolean       @default(true)
   image             String?
   role              Role          @default(USER)
   createdAt         DateTime      @default(now())
