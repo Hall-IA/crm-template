@@ -3,6 +3,7 @@
 import { useSession } from "@/lib/auth-client";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/page-header";
+import { cn } from "@/lib/utils";
 
 interface User {
   id: string;
@@ -228,19 +229,21 @@ export default function UsersPage() {
                           type="button"
                           disabled={user.id === session?.user?.id}
                           onClick={() => handleToggleActive(user.id, user.active, user.name)}
-                          className={`cursor-pointer relative inline-flex h-5 w-9 items-center rounded-full transition ${
-                            user.active ? 'bg-green-500' : 'bg-gray-300'
-                          } disabled:cursor-not-allowed disabled:opacity-60`}
-                          aria-label={user.active ? 'Désactiver le compte' : 'Activer le compte'}
+                          className={cn(
+                            "cursor-pointer relative inline-flex h-5 w-9 items-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-60",
+                            user.active ? "bg-green-500" : "bg-gray-300",
+                          )}
+                          aria-label={user.active ? "Désactiver le compte" : "Activer le compte"}
                         >
                           <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition ${
-                              user.active ? 'translate-x-4.5' : 'translate-x-0.5'
-                            }`}
+                            className={cn(
+                              "inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition",
+                              user.active ? "translate-x-4.5" : "translate-x-0.5",
+                            )}
                           />
                         </button>
                         <span className="text-xs font-medium text-gray-700">
-                          {user.active ? 'Actif' : 'Inactif'}
+                          {user.active ? "Actif" : "Inactif"}
                         </span>
                       </div>
                     </td>

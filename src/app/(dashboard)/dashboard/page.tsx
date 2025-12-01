@@ -2,6 +2,7 @@
 
 import { useSession } from "@/lib/auth-client";
 import { PageHeader } from "@/components/page-header";
+import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
   const { data: session } = useSession();
@@ -40,7 +41,10 @@ export default function DashboardPage() {
               <div className="p-4 sm:p-6">
                 <div className="flex items-center">
                   <div
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg sm:h-12 sm:w-12 ${stat.color}`}
+                    className={cn(
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg sm:h-12 sm:w-12",
+                      stat.color,
+                    )}
                   >
                     <span className="text-xl sm:text-2xl">{stat.icon}</span>
                   </div>

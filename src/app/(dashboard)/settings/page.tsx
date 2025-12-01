@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useSession } from '@/lib/auth-client';
 import { useUserRole } from '@/hooks/use-user-role';
 import { PageHeader } from '@/components/page-header';
+import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -1005,11 +1007,12 @@ export default function SettingsPage() {
 
             {smtpTestResult && (
               <div
-                className={`mt-4 rounded-lg p-4 ${
+                className={cn(
+                  'mt-4 rounded-lg p-4',
                   smtpTestResult.success
                     ? 'border border-green-200 bg-green-50'
-                    : 'border border-red-200 bg-red-50'
-                }`}
+                    : 'border border-red-200 bg-red-50',
+                )}
               >
                 <div className="flex items-center">
                   {smtpTestResult.success ? (
@@ -1042,9 +1045,10 @@ export default function SettingsPage() {
                     </svg>
                   )}
                   <p
-                    className={`text-sm font-medium ${
-                      smtpTestResult.success ? 'text-green-800' : 'text-red-800'
-                    }`}
+                    className={cn(
+                      'text-sm font-medium',
+                      smtpTestResult.success ? 'text-green-800' : 'text-red-800',
+                    )}
                   >
                     {smtpTestResult.message}
                   </p>
@@ -1179,14 +1183,14 @@ export default function SettingsPage() {
                     Si vous utilisez une adresse Gmail, vous devez créer un{' '}
                     <span className="font-semibold">mot de passe d&apos;application</span> dédié et le
                     renseigner dans le champ &quot;Mot de passe&quot; ci-dessus. Rendez-vous sur{' '}
-                    <a
+                    <Link
                       href="https://myaccount.google.com/apppasswords"
                       target="_blank"
                       rel="noreferrer"
                       className="font-semibold underline"
                     >
                       la page des mots de passe d&apos;application Google
-                    </a>{' '}
+                    </Link>{' '}
                     pour en générer un (compte Google protégé par la validation en deux étapes requis).
                   </p>
                 </div>
