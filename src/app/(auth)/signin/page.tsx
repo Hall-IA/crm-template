@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { signIn } from "@/lib/auth-client";
+import { signIn, signOut } from "@/lib/auth-client";
 
 function SignInContent() {
   const router = useRouter();
@@ -33,7 +33,26 @@ function SignInContent() {
         email,
         password,
       });
-      
+
+      // Vérifier si le compte est actif
+      try {
+        const res = await fetch("/api/auth/check-active", { method: "GET" });
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.active) {
+            // Déconnecter immédiatement et afficher un message clair
+            await signOut();
+            setError(
+              "Votre compte a été désactivé. Merci de contacter un administrateur pour le réactiver."
+            );
+            return;
+          }
+        }
+      } catch (checkError) {
+        console.error("Erreur lors de la vérification du statut du compte:", checkError);
+        // On ne bloque pas la connexion dans ce cas, mais on logue l'erreur
+      }
+
       router.push("/dashboard");
     } catch (err) {
       setError("Email ou mot de passe incorrect");
