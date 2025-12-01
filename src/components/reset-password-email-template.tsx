@@ -1,8 +1,9 @@
 interface ResetPasswordEmailProps {
   code: string;
+  signature?: string | null;
 }
 
-export function ResetPasswordEmailTemplate({ code }: ResetPasswordEmailProps) {
+export function ResetPasswordEmailTemplate({ code, signature }: ResetPasswordEmailProps) {
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
       <h1 style={{ color: '#1F2937', fontSize: '24px', marginBottom: '16px' }}>
@@ -40,9 +41,33 @@ export function ResetPasswordEmailTemplate({ code }: ResetPasswordEmailProps) {
       <p style={{ color: '#6B7280', fontSize: '14px', lineHeight: '1.6', marginBottom: '8px' }}>
         Ce code est valide pendant 15 minutes.
       </p>
-      <p style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '32px', paddingTop: '16px', borderTop: '1px solid #E5E7EB' }}>
+      <p
+        style={{
+          color: '#9CA3AF',
+          fontSize: '12px',
+          marginTop: '32px',
+          paddingTop: '16px',
+          borderTop: '1px solid #E5E7EB',
+        }}
+      >
         Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email. Votre mot de passe ne sera pas modifié.
       </p>
+
+      {signature && (
+        <div
+          style={{
+            marginTop: '24px',
+            paddingTop: '16px',
+            borderTop: '1px solid #E5E7EB',
+            color: '#4B5563',
+            fontSize: '14px',
+            lineHeight: '1.6',
+            whiteSpace: 'pre-line',
+          }}
+        >
+          {signature}
+        </div>
+      )}
     </div>
   );
 }

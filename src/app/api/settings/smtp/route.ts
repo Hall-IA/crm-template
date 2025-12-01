@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
         username: true,
         fromEmail: true,
         fromName: true,
+        signature: true,
         // Ne pas retourner le mot de passe
       },
     });
@@ -50,7 +51,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { host, port, secure, username, password, fromEmail, fromName } = body;
+    const { host, port, secure, username, password, fromEmail, fromName, signature } = body;
 
     // Validation
     if (!host || !port || !username || !password || !fromEmail) {
@@ -83,26 +84,28 @@ export async function PUT(request: NextRequest) {
     let smtpConfig;
     try {
       smtpConfig = await prisma.smtpConfig.upsert({
-      where: { userId: session.user.id },
-      update: {
-        host,
-        port: parseInt(port),
-        secure: secure === true || secure === "true",
-        username,
-        password: encryptedPassword, // Mot de passe chiffré
-        fromEmail,
-        fromName: fromName || null,
-      },
-      create: {
-        userId: session.user.id,
-        host,
-        port: parseInt(port),
-        secure: secure === true || secure === "true",
-        username,
-        password: encryptedPassword, // Mot de passe chiffré
-        fromEmail,
-        fromName: fromName || null,
-      },
+        where: { userId: session.user.id },
+        update: {
+          host,
+          port: parseInt(port),
+          secure: secure === true || secure === "true",
+          username,
+          password: encryptedPassword, // Mot de passe chiffré
+          fromEmail,
+          fromName: fromName || null,
+          signature: signature || null,
+        },
+        create: {
+          userId: session.user.id,
+          host,
+          port: parseInt(port),
+          secure: secure === true || secure === "true",
+          username,
+          password: encryptedPassword, // Mot de passe chiffré
+          fromEmail,
+          fromName: fromName || null,
+          signature: signature || null,
+        },
       });
     } catch (dbError: any) {
       console.error("Erreur lors de la sauvegarde en base de données:", dbError);
@@ -122,6 +125,7 @@ export async function PUT(request: NextRequest) {
         username: smtpConfig.username,
         fromEmail: smtpConfig.fromEmail,
         fromName: smtpConfig.fromName,
+        signature: smtpConfig.signature,
       },
       message: "Configuration SMTP sauvegardée avec succès",
     });

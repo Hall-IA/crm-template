@@ -1,9 +1,10 @@
 interface InvitationEmailProps {
   name: string;
   invitationUrl: string;
+  signature?: string | null;
 }
 
-export function InvitationEmailTemplate({ name, invitationUrl }: InvitationEmailProps) {
+export function InvitationEmailTemplate({ name, invitationUrl, signature }: InvitationEmailProps) {
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
       <h1 style={{ color: '#1F2937', fontSize: '24px', marginBottom: '16px' }}>
@@ -38,9 +39,33 @@ export function InvitationEmailTemplate({ name, invitationUrl }: InvitationEmail
       <p style={{ color: '#4F46E5', fontSize: '12px', wordBreak: 'break-all', marginBottom: '24px' }}>
         {invitationUrl}
       </p>
-      <p style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '32px', paddingTop: '16px', borderTop: '1px solid #E5E7EB' }}>
+      <p
+        style={{
+          color: '#9CA3AF',
+          fontSize: '12px',
+          marginTop: '32px',
+          paddingTop: '16px',
+          borderTop: '1px solid #E5E7EB',
+        }}
+      >
         Ce lien est valide pendant 7 jours. Si vous n'avez pas demandé cette invitation, vous pouvez ignorer cet email.
       </p>
+
+      {signature && (
+        <div
+          style={{
+            marginTop: '24px',
+            paddingTop: '16px',
+            borderTop: '1px solid #E5E7EB',
+            color: '#4B5563',
+            fontSize: '14px',
+            lineHeight: '1.6',
+            whiteSpace: 'pre-line',
+          }}
+        >
+          {signature}
+        </div>
+      )}
     </div>
   );
 }

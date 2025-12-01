@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       // Si la vérification réussit, essayer d'envoyer un email de test
       try {
         const testEmail = await transporter.sendMail({
-          from: `"${fromName} – CRM" <${fromEmail}>`,
+          from: `"${fromName}" <${fromEmail}>`,
           to: session.user.email, // Envoyer à l'utilisateur connecté
           subject: 'Test de configuration SMTP - CRM',
           text: 'Ceci est un email de test pour vérifier que votre configuration SMTP fonctionne correctement.',

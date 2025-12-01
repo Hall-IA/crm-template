@@ -57,6 +57,7 @@ export default function SettingsPage() {
     password: '',
     fromEmail: '',
     fromName: '',
+    signature: '',
   });
   const [smtpLoading, setSmtpLoading] = useState(true);
   const [smtpSaving, setSmtpSaving] = useState(false);
@@ -145,6 +146,7 @@ export default function SettingsPage() {
               password: '', // Ne pas charger le mot de passe
               fromEmail: data.fromEmail || '',
               fromName: data.fromName || '',
+              signature: data.signature || '',
             });
             setSmtpConfigured(true);
           } else {
@@ -274,6 +276,29 @@ export default function SettingsPage() {
           message: data.message || 'Connexion SMTP réussie !',
         });
         setSmtpConfigured(true);
+
+        // Si le test est concluant, on enregistre automatiquement la configuration
+        try {
+          setSmtpSaving(true);
+          const saveResponse = await fetch('/api/settings/smtp', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(smtpData),
+          });
+
+          const saveData = await saveResponse.json();
+
+          if (!saveResponse.ok) {
+            throw new Error(saveData.error || 'Erreur lors de la sauvegarde de la configuration');
+          }
+
+          setSmtpSuccess('✅ Configuration SMTP testée et sauvegardée avec succès !');
+        } catch (saveErr: any) {
+          // On affiche l’erreur de sauvegarde mais on garde le succès du test
+          setSmtpError(saveErr.message || 'La connexion fonctionne mais la sauvegarde a échoué.');
+        } finally {
+          setSmtpSaving(false);
+        }
       } else {
         setSmtpTestResult({
           success: false,
@@ -1175,6 +1200,23 @@ export default function SettingsPage() {
                       placeholder="Votre Nom"
                     />
                   </div>
+                </div>
+
+                <div className="mt-6 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Votre signature
+                  </label>
+                  <p className="mb-2 text-xs text-gray-500">
+                    Cette signature sera ajoutée à la fin de tous les emails envoyés avec cette
+                    configuration SMTP (par exemple&nbsp;: nom, fonction, coordonnées, mentions légales…).
+                  </p>
+                  <textarea
+                    rows={4}
+                    value={smtpData.signature}
+                    onChange={(e) => setSmtpData({ ...smtpData, signature: e.target.value })}
+                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    placeholder="Saisissez votre signature email ici..."
+                  />
                 </div>
 
                 <div className="mt-4 rounded-lg bg-indigo-50 p-3 text-xs text-indigo-900">

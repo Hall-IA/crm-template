@@ -2,15 +2,29 @@ import { EmailTemplate } from '@/components/email-template';
 import { InvitationEmailTemplate } from '@/components/invitation-email-template';
 import { ResetPasswordEmailTemplate } from '@/components/reset-password-email-template';
 import { Resend } from 'resend';
+import { prisma } from '@/lib/prisma';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const isDevelopment = process.env.NODE_ENV === 'development';
 const DEV_EMAIL = process.env.DEV_EMAIL || 'dev@example.com'; // Votre email de test
 
+async function getGlobalSmtpSignature() {
+  try {
+    const config = await prisma.smtpConfig.findFirst({
+      select: { signature: true },
+    });
+    return config?.signature || null;
+  } catch (error) {
+    console.error('Erreur lors de la récupération de la signature SMTP:', error);
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { to, subject, template, ...emailData } = body;
+    const signature = await getGlobalSmtpSignature();
 
     // En développement : logger l'email au lieu de l'envoyer
     if (isDevelopment) {
@@ -20,7 +34,7 @@ export async function POST(request: Request) {
         to: isDevelopment ? DEV_EMAIL : to,
         subject,
         template,
-        data: emailData,
+        data: { ...emailData, signature },
       });
       
       // Afficher le lien d'invitation dans la console si c'est une invitation
@@ -46,13 +60,18 @@ export async function POST(request: Request) {
       emailComponent = InvitationEmailTemplate({
         name: emailData.name || 'Utilisateur',
         invitationUrl: emailData.invitationUrl || '',
+        signature,
       });
     } else if (template === 'reset-password') {
       emailComponent = ResetPasswordEmailTemplate({
         code: emailData.code || '',
+        signature,
       });
     } else {
-      emailComponent = EmailTemplate(emailData);
+      emailComponent = EmailTemplate({
+        ...emailData,
+        signature,
+      });
     }
 
     // En production : envoyer réellement l'email

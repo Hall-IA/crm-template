@@ -117,6 +117,7 @@ model SmtpConfig {
   password  String
   fromEmail String
   fromName  String?
+  signature String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

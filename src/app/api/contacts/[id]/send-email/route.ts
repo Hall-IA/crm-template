@@ -81,6 +81,12 @@ export async function POST(
       },
     });
 
+    // Construire le contenu avec la signature (si définie)
+    const signatureText = smtpConfig.signature ? `\n\n${smtpConfig.signature}` : '';
+    const signatureHtml = smtpConfig.signature
+      ? `<br><br>${smtpConfig.signature.replace(/\n/g, '<br>')}`
+      : '';
+
     // Envoyer l'email
     const mailOptions = {
       from: smtpConfig.fromName
@@ -88,8 +94,8 @@ export async function POST(
         : smtpConfig.fromEmail,
       to: contact.email,
       subject: subject,
-      text: content,
-      html: content.replace(/\n/g, "<br>"), // Convertir les retours à la ligne en <br>
+      text: `${content}${signatureText}`,
+      html: `${content.replace(/\n/g, "<br>")}${signatureHtml}`, // Convertir les retours à la ligne et ajouter la signature
     };
 
     await transporter.sendMail(mailOptions);
