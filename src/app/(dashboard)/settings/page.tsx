@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/lib/auth-client';
 import { useUserRole } from '@/hooks/use-user-role';
 import { PageHeader } from '@/components/page-header';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { Editor, type DefaultTemplateRef } from '@/components/editor';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -69,6 +70,7 @@ export default function SettingsPage() {
     message: string;
   } | null>(null);
   const [smtpConfigured, setSmtpConfigured] = useState(false);
+  const smtpSignatureEditorRef = useRef<DefaultTemplateRef | null>(null);
 
   // État pour la gestion des statuts
   interface Status {
@@ -149,6 +151,10 @@ export default function SettingsPage() {
               signature: data.signature || '',
             });
             setSmtpConfigured(true);
+            // Injecter la signature existante dans l'éditeur si disponible
+            if (smtpSignatureEditorRef.current && data.signature) {
+              smtpSignatureEditorRef.current.injectHTML(data.signature);
+            }
           } else {
             setSmtpConfigured(false);
           }
@@ -162,6 +168,13 @@ export default function SettingsPage() {
     };
     fetchSmtpData();
   }, []);
+
+  // Synchroniser l'éditeur de signature quand la signature change dans le state
+  useEffect(() => {
+    if (smtpSignatureEditorRef.current && smtpData.signature) {
+      smtpSignatureEditorRef.current.injectHTML(smtpData.signature);
+    }
+  }, [smtpData.signature]);
 
   // Charger les statuts au montage (si admin)
   useEffect(() => {
@@ -262,10 +275,22 @@ export default function SettingsPage() {
     setSmtpTesting(true);
 
     try {
+      // Récupérer la signature actuelle depuis l'éditeur (HTML)
+      let signatureHtml = smtpData.signature;
+      if (smtpSignatureEditorRef.current) {
+        try {
+          signatureHtml = await smtpSignatureEditorRef.current.getHTML();
+        } catch {
+          // on ignore l'erreur, on garde la valeur du state
+        }
+      }
+
+      const payload = { ...smtpData, signature: signatureHtml };
+
       const response = await fetch('/api/settings/smtp/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(smtpData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -283,7 +308,7 @@ export default function SettingsPage() {
           const saveResponse = await fetch('/api/settings/smtp', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(smtpData),
+            body: JSON.stringify(payload),
           });
 
           const saveData = await saveResponse.json();
@@ -323,10 +348,22 @@ export default function SettingsPage() {
     setSmtpSaving(true);
 
     try {
+      // Récupérer la signature actuelle depuis l'éditeur (HTML)
+      let signatureHtml = smtpData.signature;
+      if (smtpSignatureEditorRef.current) {
+        try {
+          signatureHtml = await smtpSignatureEditorRef.current.getHTML();
+        } catch {
+          // on ignore l'erreur, on garde la valeur du state
+        }
+      }
+
+      const payload = { ...smtpData, signature: signatureHtml };
+
       const response = await fetch('/api/settings/smtp', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(smtpData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -1203,28 +1240,35 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="mt-6 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
                     Votre signature
                   </label>
                   <p className="mb-2 text-xs text-gray-500">
                     Cette signature sera ajoutée à la fin de tous les emails envoyés avec cette
-                    configuration SMTP (par exemple&nbsp;: nom, fonction, coordonnées, mentions légales…).
+                    configuration SMTP (par exemple&nbsp;: nom, fonction, coordonnées, mentions
+                    légales…).
                   </p>
-                  <textarea
-                    rows={4}
-                    value={smtpData.signature}
-                    onChange={(e) => setSmtpData({ ...smtpData, signature: e.target.value })}
-                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    placeholder="Saisissez votre signature email ici..."
-                  />
+                  <div className="mt-1">
+                    <Editor
+                      ref={smtpSignatureEditorRef}
+                      onReady={(methods) => {
+                        // garder la ref synchronisée
+                        smtpSignatureEditorRef.current = methods;
+                        // injecter la signature existante dès que l’éditeur est prêt
+                        if (smtpData.signature) {
+                          methods.injectHTML(smtpData.signature);
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
 
                 <div className="mt-4 rounded-lg bg-indigo-50 p-3 text-xs text-indigo-900">
                   <p className="font-medium">Utiliser Gmail avec SMTP</p>
                   <p className="mt-1">
                     Si vous utilisez une adresse Gmail, vous devez créer un{' '}
-                    <span className="font-semibold">mot de passe d&apos;application</span> dédié et le
-                    renseigner dans le champ &quot;Mot de passe&quot; ci-dessus. Rendez-vous sur{' '}
+                    <span className="font-semibold">mot de passe d&apos;application</span> dédié et
+                    le renseigner dans le champ &quot;Mot de passe&quot; ci-dessus. Rendez-vous sur{' '}
                     <Link
                       href="https://myaccount.google.com/apppasswords"
                       target="_blank"
@@ -1233,7 +1277,8 @@ export default function SettingsPage() {
                     >
                       la page des mots de passe d&apos;application Google
                     </Link>{' '}
-                    pour en générer un (compte Google protégé par la validation en deux étapes requis).
+                    pour en générer un (compte Google protégé par la validation en deux étapes
+                    requis).
                   </p>
                 </div>
 

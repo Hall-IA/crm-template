@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { useSession } from "@/lib/auth-client";
-import { PageHeader } from "@/components/page-header";
+import { useState, useEffect, useRef } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { useSession } from '@/lib/auth-client';
+import { PageHeader } from '@/components/page-header';
 import {
   Phone,
   Mail,
@@ -19,8 +19,9 @@ import {
   Mail as MailIcon,
   Calendar as CalendarIcon,
   FileText,
-} from "lucide-react";
-import Link from "next/link";
+} from 'lucide-react';
+import Link from 'next/link';
+import { Editor, type DefaultTemplateRef } from '@/components/editor';
 
 interface Status {
   id: string;
@@ -36,7 +37,7 @@ interface User {
 
 interface Interaction {
   id: string;
-  type: "CALL" | "SMS" | "EMAIL" | "MEETING" | "NOTE";
+  type: 'CALL' | 'SMS' | 'EMAIL' | 'MEETING' | 'NOTE';
   title: string | null;
   content: string;
   date: string | null;
@@ -77,8 +78,8 @@ export default function ContactDetailPage() {
 
   const [contact, setContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showInteractionModal, setShowInteractionModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -86,35 +87,36 @@ export default function ContactDetailPage() {
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const emailEditorRef = useRef<DefaultTemplateRef | null>(null);
 
   // Formulaire d'édition
   const [formData, setFormData] = useState({
-    civility: "",
-    firstName: "",
-    lastName: "",
-    phone: "",
-    secondaryPhone: "",
-    email: "",
-    address: "",
-    city: "",
-    postalCode: "",
-    origin: "",
-    statusId: "",
-    assignedUserId: "",
+    civility: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    secondaryPhone: '',
+    email: '',
+    address: '',
+    city: '',
+    postalCode: '',
+    origin: '',
+    statusId: '',
+    assignedUserId: '',
   });
 
   // Formulaire d'interaction
   const [interactionData, setInteractionData] = useState({
-    type: "NOTE" as "CALL" | "SMS" | "EMAIL" | "MEETING" | "NOTE",
-    title: "",
-    content: "",
-    date: "",
+    type: 'NOTE' as 'CALL' | 'SMS' | 'EMAIL' | 'MEETING' | 'NOTE',
+    title: '',
+    content: '',
+    date: '',
   });
 
   // Formulaire d'email
   const [emailData, setEmailData] = useState({
-    subject: "",
-    content: "",
+    subject: '',
+    content: '',
   });
 
   // Charger les données
@@ -134,25 +136,25 @@ export default function ContactDetailPage() {
         const data = await response.json();
         setContact(data);
         setFormData({
-          civility: data.civility || "",
-          firstName: data.firstName || "",
-          lastName: data.lastName || "",
+          civility: data.civility || '',
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
           phone: data.phone,
-          secondaryPhone: data.secondaryPhone || "",
-          email: data.email || "",
-          address: data.address || "",
-          city: data.city || "",
-          postalCode: data.postalCode || "",
-          origin: data.origin || "",
-          statusId: data.statusId || "",
-          assignedUserId: data.assignedUserId || "",
+          secondaryPhone: data.secondaryPhone || '',
+          email: data.email || '',
+          address: data.address || '',
+          city: data.city || '',
+          postalCode: data.postalCode || '',
+          origin: data.origin || '',
+          statusId: data.statusId || '',
+          assignedUserId: data.assignedUserId || '',
         });
       } else {
-        setError("Contact non trouvé");
+        setError('Contact non trouvé');
       }
     } catch (error) {
-      console.error("Erreur:", error);
-      setError("Erreur lors du chargement du contact");
+      console.error('Erreur:', error);
+      setError('Erreur lors du chargement du contact');
     } finally {
       setLoading(false);
     }
@@ -160,41 +162,41 @@ export default function ContactDetailPage() {
 
   const fetchStatuses = async () => {
     try {
-      const response = await fetch("/api/statuses");
+      const response = await fetch('/api/statuses');
       if (response.ok) {
         const data = await response.json();
         setStatuses(data);
       }
     } catch (error) {
-      console.error("Erreur lors du chargement des statuts:", error);
+      console.error('Erreur lors du chargement des statuts:', error);
     }
   };
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch("/api/users/list");
+      const response = await fetch('/api/users/list');
       if (response.ok) {
         const data = await response.json();
         setUsers(data);
       }
     } catch (error) {
-      console.error("Erreur lors du chargement des utilisateurs:", error);
+      console.error('Erreur lors du chargement des utilisateurs:', error);
     }
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
 
     if (!formData.phone) {
-      setError("Le téléphone est obligatoire");
+      setError('Le téléphone est obligatoire');
       return;
     }
 
     try {
       const response = await fetch(`/api/contacts/${contactId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
           civility: formData.civility || null,
@@ -204,7 +206,7 @@ export default function ContactDetailPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de la mise à jour");
+        throw new Error(data.error || 'Erreur lors de la mise à jour');
       }
 
       setShowEditModal(false);
@@ -215,20 +217,20 @@ export default function ContactDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer ce contact ?")) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce contact ?')) {
       return;
     }
 
     try {
       const response = await fetch(`/api/contacts/${contactId}`, {
-        method: "DELETE",
+        method: 'DELETE',
       });
 
       if (!response.ok) {
-        throw new Error("Erreur lors de la suppression");
+        throw new Error('Erreur lors de la suppression');
       }
 
-      router.push("/contacts");
+      router.push('/contacts');
     } catch (err: any) {
       setError(err.message);
     }
@@ -236,10 +238,10 @@ export default function ContactDetailPage() {
 
   const handleInteractionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
 
     if (!interactionData.content) {
-      setError("Le contenu est requis");
+      setError('Le contenu est requis');
       return;
     }
 
@@ -247,11 +249,11 @@ export default function ContactDetailPage() {
       const url = editingInteraction
         ? `/api/contacts/${contactId}/interactions/${editingInteraction.id}`
         : `/api/contacts/${contactId}/interactions`;
-      const method = editingInteraction ? "PUT" : "POST";
+      const method = editingInteraction ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...interactionData,
           date: interactionData.date || null,
@@ -261,16 +263,16 @@ export default function ContactDetailPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de la sauvegarde");
+        throw new Error(data.error || 'Erreur lors de la sauvegarde');
       }
 
       setShowInteractionModal(false);
       setEditingInteraction(null);
       setInteractionData({
-        type: "NOTE",
-        title: "",
-        content: "",
-        date: "",
+        type: 'NOTE',
+        title: '',
+        content: '',
+        date: '',
       });
       fetchContact();
     } catch (err: any) {
@@ -279,20 +281,17 @@ export default function ContactDetailPage() {
   };
 
   const handleInteractionDelete = async (interactionId: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer cette interaction ?")) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette interaction ?')) {
       return;
     }
 
     try {
-      const response = await fetch(
-        `/api/contacts/${contactId}/interactions/${interactionId}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`/api/contacts/${contactId}/interactions/${interactionId}`, {
+        method: 'DELETE',
+      });
 
       if (!response.ok) {
-        throw new Error("Erreur lors de la suppression");
+        throw new Error('Erreur lors de la suppression');
       }
 
       fetchContact();
@@ -304,8 +303,8 @@ export default function ContactDetailPage() {
   const handleStatusChange = async (newStatusId: string) => {
     try {
       const response = await fetch(`/api/contacts/${contactId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
           statusId: newStatusId || null,
@@ -315,11 +314,11 @@ export default function ContactDetailPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de la mise à jour du statut");
+        throw new Error(data.error || 'Erreur lors de la mise à jour du statut');
       }
 
       // Mettre à jour le formulaire et recharger le contact
-      setFormData({ ...formData, statusId: newStatusId || "" });
+      setFormData({ ...formData, statusId: newStatusId || '' });
       fetchContact();
     } catch (err: any) {
       setError(err.message);
@@ -328,20 +327,32 @@ export default function ContactDetailPage() {
 
   const handleSendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setSendingEmail(true);
 
-    if (!emailData.subject || !emailData.content) {
-      setError("Le sujet et le contenu sont requis");
-      setSendingEmail(false);
-      return;
-    }
-
     try {
+      const htmlContent = await emailEditorRef.current?.getHTML();
+      console.log(htmlContent);
+      const plainText = (htmlContent || '')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (!emailData.subject || !plainText) {
+        setError('Le sujet et le contenu sont requis');
+        setSendingEmail(false);
+        return;
+      }
+
       const response = await fetch(`/api/contacts/${contactId}/send-email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(emailData),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: emailData.subject,
+          content: htmlContent || '',
+        }),
       });
 
       const data = await response.json();
@@ -351,11 +362,11 @@ export default function ContactDetailPage() {
       }
 
       setShowEmailModal(false);
-      setEmailData({ subject: "", content: "" });
-      setSuccess("Email envoyé avec succès !");
+      setEmailData({ subject: '', content: '' });
+      setSuccess('Email envoyé avec succès !');
       fetchContact(); // Recharger pour afficher la nouvelle interaction
 
-      setTimeout(() => setSuccess(""), 5000);
+      setTimeout(() => setSuccess(''), 5000);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -365,15 +376,15 @@ export default function ContactDetailPage() {
 
   const getInteractionIcon = (type: string) => {
     switch (type) {
-      case "CALL":
+      case 'CALL':
         return <PhoneCall className="h-5 w-5" />;
-      case "SMS":
+      case 'SMS':
         return <MessageSquare className="h-5 w-5" />;
-      case "EMAIL":
+      case 'EMAIL':
         return <MailIcon className="h-5 w-5" />;
-      case "MEETING":
+      case 'MEETING':
         return <CalendarIcon className="h-5 w-5" />;
-      case "NOTE":
+      case 'NOTE':
         return <FileText className="h-5 w-5" />;
       default:
         return <FileText className="h-5 w-5" />;
@@ -382,18 +393,18 @@ export default function ContactDetailPage() {
 
   const getInteractionLabel = (type: string) => {
     switch (type) {
-      case "CALL":
-        return "Appel";
-      case "SMS":
-        return "SMS";
-      case "EMAIL":
-        return "Email";
-      case "MEETING":
-        return "RDV";
-      case "NOTE":
-        return "Note";
+      case 'CALL':
+        return 'Appel';
+      case 'SMS':
+        return 'SMS';
+      case 'EMAIL':
+        return 'Email';
+      case 'MEETING':
+        return 'RDV';
+      case 'NOTE':
+        return 'Note';
       default:
-        return "Note";
+        return 'Note';
     }
   };
 
@@ -412,7 +423,7 @@ export default function ContactDetailPage() {
           <div className="text-red-600">{error}</div>
           <Link
             href="/contacts"
-            className="cursor-pointer mt-4 inline-block text-indigo-600 hover:text-indigo-700"
+            className="mt-4 inline-block cursor-pointer text-indigo-600 hover:text-indigo-700"
           >
             Retour à la liste
           </Link>
@@ -428,14 +439,17 @@ export default function ContactDetailPage() {
   return (
     <div className="h-full">
       <PageHeader
-        title={`${contact.civility ? `${contact.civility}. ` : ""}${contact.firstName || ""} ${contact.lastName || ""}`.trim() || "Contact"}
+        title={
+          `${contact.civility ? `${contact.civility}. ` : ''}${contact.firstName || ''} ${contact.lastName || ''}`.trim() ||
+          'Contact'
+        }
         description="Détails du contact"
         action={
           <div className="flex gap-2">
             <button
               onClick={() => {
                 setShowEditModal(true);
-                setError("");
+                setError('');
               }}
               className="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
@@ -462,26 +476,18 @@ export default function ContactDetailPage() {
           Retour à la liste
         </Link>
 
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">
-            {error}
-          </div>
-        )}
+        {error && <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>}
 
         {success && (
-          <div className="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-600">
-            {success}
-          </div>
+          <div className="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-600">{success}</div>
         )}
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Informations principales */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6 lg:col-span-2">
             {/* Informations de contact */}
             <div className="rounded-lg bg-white p-6 shadow">
-              <h2 className="mb-4 text-lg font-semibold text-gray-900">
-                Informations de contact
-              </h2>
+              <h2 className="mb-4 text-lg font-semibold text-gray-900">Informations de contact</h2>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="flex items-start gap-3">
                   <Phone className="mt-1 h-5 w-5 text-gray-400" />
@@ -505,11 +511,11 @@ export default function ContactDetailPage() {
                       <button
                         onClick={() => {
                           setShowEmailModal(true);
-                          setEmailData({ subject: "", content: "" });
-                          setError("");
-                          setSuccess("");
+                          setEmailData({ subject: '', content: '' });
+                          setError('');
+                          setSuccess('');
                         }}
-                        className="cursor-pointer mt-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700"
+                        className="mt-2 cursor-pointer rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700"
                       >
                         <MailIcon className="mr-1 inline h-3 w-3" />
                         Envoyer un email
@@ -547,20 +553,18 @@ export default function ContactDetailPage() {
             {/* Historique des interactions */}
             <div className="rounded-lg bg-white p-6 shadow">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Historique des interactions
-                </h2>
+                <h2 className="text-lg font-semibold text-gray-900">Historique des interactions</h2>
                 <button
                   onClick={() => {
                     setShowInteractionModal(true);
                     setEditingInteraction(null);
                     setInteractionData({
-                      type: "NOTE",
-                      title: "",
-                      content: "",
-                      date: "",
+                      type: 'NOTE',
+                      title: '',
+                      content: '',
+                      date: '',
                     });
-                    setError("");
+                    setError('');
                   }}
                   className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
                 >
@@ -570,33 +574,26 @@ export default function ContactDetailPage() {
               </div>
 
               {contact.interactions.length === 0 ? (
-                <div className="py-8 text-center text-gray-500">
-                  Aucune interaction enregistrée
-                </div>
+                <div className="py-8 text-center text-gray-500">Aucune interaction enregistrée</div>
               ) : (
                 <div className="space-y-4">
                   {contact.interactions.map((interaction) => (
-                    <div
-                      key={interaction.id}
-                      className="rounded-lg border border-gray-200 p-4"
-                    >
+                    <div key={interaction.id} className="rounded-lg border border-gray-200 p-4">
                       <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3 flex-1">
+                        <div className="flex flex-1 items-start gap-3">
                           <div className="mt-1 text-indigo-600">
                             {getInteractionIcon(interaction.type)}
                           </div>
-                          <div className="flex-1 min-w-0">
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium text-gray-900">
                                 {getInteractionLabel(interaction.type)}
                               </span>
                               {interaction.title && (
-                                <span className="text-sm text-gray-600">
-                                  - {interaction.title}
-                                </span>
+                                <span className="text-sm text-gray-600">- {interaction.title}</span>
                               )}
                             </div>
-                            <p className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">
+                            <p className="mt-1 text-sm whitespace-pre-wrap text-gray-700">
                               {interaction.content}
                             </p>
                             <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
@@ -604,35 +601,35 @@ export default function ContactDetailPage() {
                               {interaction.date && (
                                 <span>
                                   <Calendar className="mr-1 inline h-3 w-3" />
-                                  {new Date(interaction.date).toLocaleDateString("fr-FR")}
+                                  {new Date(interaction.date).toLocaleDateString('fr-FR')}
                                 </span>
                               )}
                               <span>
-                                {new Date(interaction.createdAt).toLocaleDateString("fr-FR", {
-                                  day: "numeric",
-                                  month: "short",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
+                                {new Date(interaction.createdAt).toLocaleDateString('fr-FR', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
                                 })}
                               </span>
                             </div>
                           </div>
                         </div>
-                        <div className="flex gap-2 ml-4">
+                        <div className="ml-4 flex gap-2">
                           <button
                             onClick={() => {
                               setEditingInteraction(interaction);
                               setInteractionData({
                                 type: interaction.type,
-                                title: interaction.title || "",
+                                title: interaction.title || '',
                                 content: interaction.content,
                                 date: interaction.date
-                                  ? new Date(interaction.date).toISOString().split("T")[0]
-                                  : "",
+                                  ? new Date(interaction.date).toISOString().split('T')[0]
+                                  : '',
                               });
                               setShowInteractionModal(true);
-                              setError("");
+                              setError('');
                             }}
                             className="cursor-pointer rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100"
                             title="Modifier"
@@ -661,7 +658,7 @@ export default function ContactDetailPage() {
             <div className="rounded-lg bg-white p-6 shadow">
               <h2 className="mb-4 text-lg font-semibold text-gray-900">Statut</h2>
               <select
-                value={contact.statusId || ""}
+                value={contact.statusId || ''}
                 onChange={(e) => handleStatusChange(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               >
@@ -678,22 +675,18 @@ export default function ContactDetailPage() {
                     className="h-3 w-3 rounded-full"
                     style={{ backgroundColor: contact.status.color }}
                   />
-                  <span className="text-xs text-gray-500">
-                    {contact.status.name}
-                  </span>
+                  <span className="text-xs text-gray-500">{contact.status.name}</span>
                 </div>
               )}
 
-              <h2 className="mb-4 mt-6 text-lg font-semibold text-gray-900">Assignation</h2>
+              <h2 className="mt-6 mb-4 text-lg font-semibold text-gray-900">Assignation</h2>
               {contact.assignedUser ? (
                 <div className="flex items-center gap-2">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
                     {contact.assignedUser.name[0].toUpperCase()}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {contact.assignedUser.name}
-                    </p>
+                    <p className="text-sm font-medium text-gray-900">{contact.assignedUser.name}</p>
                     <p className="text-xs text-gray-500">{contact.assignedUser.email}</p>
                   </div>
                 </div>
@@ -701,17 +694,15 @@ export default function ContactDetailPage() {
                 <p className="text-sm text-gray-500">Non assigné</p>
               )}
 
-              <h2 className="mb-4 mt-6 text-lg font-semibold text-gray-900">Créé par</h2>
+              <h2 className="mt-6 mb-4 text-lg font-semibold text-gray-900">Créé par</h2>
               <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-600">
                   {contact.createdBy.name[0].toUpperCase()}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {contact.createdBy.name}
-                  </p>
+                  <p className="text-sm font-medium text-gray-900">{contact.createdBy.name}</p>
                   <p className="text-xs text-gray-500">
-                    {new Date(contact.createdAt).toLocaleDateString("fr-FR")}
+                    {new Date(contact.createdAt).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
               </div>
@@ -722,16 +713,14 @@ export default function ContactDetailPage() {
 
       {/* Modal d'édition */}
       {showEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 backdrop-blur-sm p-4">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl sm:p-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl [-ms-overflow-style:none] [scrollbar-width:none] sm:p-8 [&::-webkit-scrollbar]:hidden">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
-                Modifier le contact
-              </h2>
+              <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Modifier le contact</h2>
               <button
                 onClick={() => {
                   setShowEditModal(false);
-                  setError("");
+                  setError('');
                 }}
                 className="cursor-pointer rounded-lg p-2 text-gray-400 hover:bg-gray-100"
               >
@@ -753,14 +742,10 @@ export default function ContactDetailPage() {
                 </h3>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Civilité
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700">Civilité</label>
                     <select
                       value={formData.civility}
-                      onChange={(e) =>
-                        setFormData({ ...formData, civility: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, civility: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     >
                       <option value="">-</option>
@@ -774,9 +759,7 @@ export default function ContactDetailPage() {
                     <input
                       type="text"
                       value={formData.firstName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, firstName: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
@@ -786,9 +769,7 @@ export default function ContactDetailPage() {
                       type="text"
                       required
                       value={formData.lastName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, lastName: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
@@ -799,16 +780,12 @@ export default function ContactDetailPage() {
                 <h3 className="mb-4 text-lg font-semibold text-gray-900">Coordonnées</h3>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Téléphone *
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700">Téléphone *</label>
                     <input
                       type="tel"
                       required
                       value={formData.phone}
-                      onChange={(e) =>
-                        setFormData({ ...formData, phone: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
@@ -819,9 +796,7 @@ export default function ContactDetailPage() {
                     <input
                       type="tel"
                       value={formData.secondaryPhone}
-                      onChange={(e) =>
-                        setFormData({ ...formData, secondaryPhone: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, secondaryPhone: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
@@ -830,9 +805,7 @@ export default function ContactDetailPage() {
                     <input
                       type="email"
                       value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
@@ -849,9 +822,7 @@ export default function ContactDetailPage() {
                     <input
                       type="text"
                       value={formData.address}
-                      onChange={(e) =>
-                        setFormData({ ...formData, address: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
@@ -860,22 +831,16 @@ export default function ContactDetailPage() {
                     <input
                       type="text"
                       value={formData.city}
-                      onChange={(e) =>
-                        setFormData({ ...formData, city: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Code postal
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700">Code postal</label>
                     <input
                       type="text"
                       value={formData.postalCode}
-                      onChange={(e) =>
-                        setFormData({ ...formData, postalCode: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
@@ -883,9 +848,7 @@ export default function ContactDetailPage() {
               </div>
 
               <div>
-                <h3 className="mb-4 text-lg font-semibold text-gray-900">
-                  Autres informations
-                </h3>
+                <h3 className="mb-4 text-lg font-semibold text-gray-900">Autres informations</h3>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
@@ -894,9 +857,7 @@ export default function ContactDetailPage() {
                     <input
                       type="text"
                       value={formData.origin}
-                      onChange={(e) =>
-                        setFormData({ ...formData, origin: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
@@ -904,9 +865,7 @@ export default function ContactDetailPage() {
                     <label className="block text-sm font-medium text-gray-700">Statut</label>
                     <select
                       value={formData.statusId}
-                      onChange={(e) =>
-                        setFormData({ ...formData, statusId: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, statusId: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     >
                       <option value="">Aucun statut</option>
@@ -918,14 +877,10 @@ export default function ContactDetailPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Assigné à
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700">Assigné à</label>
                     <select
                       value={formData.assignedUserId}
-                      onChange={(e) =>
-                        setFormData({ ...formData, assignedUserId: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, assignedUserId: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     >
                       <option value="">Non assigné</option>
@@ -948,15 +903,15 @@ export default function ContactDetailPage() {
                   type="button"
                   onClick={() => {
                     setShowEditModal(false);
-                    setError("");
+                    setError('');
                   }}
-                  className="cursor-pointer w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                  className="w-full cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
+                  className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
                 >
                   Enregistrer
                 </button>
@@ -968,17 +923,17 @@ export default function ContactDetailPage() {
 
       {/* Modal d'interaction */}
       {showInteractionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm">
           <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl sm:p-8">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
-                {editingInteraction ? "Modifier l'interaction" : "Nouvelle interaction"}
+                {editingInteraction ? "Modifier l'interaction" : 'Nouvelle interaction'}
               </h2>
               <button
                 onClick={() => {
                   setShowInteractionModal(false);
                   setEditingInteraction(null);
-                  setError("");
+                  setError('');
                 }}
                 className="cursor-pointer rounded-lg p-2 text-gray-400 hover:bg-gray-100"
               >
@@ -1027,7 +982,7 @@ export default function ContactDetailPage() {
                 />
               </div>
 
-              {(interactionData.type === "MEETING" || interactionData.type === "CALL") && (
+              {(interactionData.type === 'MEETING' || interactionData.type === 'CALL') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Date</label>
                   <input
@@ -1065,17 +1020,17 @@ export default function ContactDetailPage() {
                   onClick={() => {
                     setShowInteractionModal(false);
                     setEditingInteraction(null);
-                    setError("");
+                    setError('');
                   }}
-                  className="cursor-pointer w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                  className="w-full cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
+                  className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
                 >
-                  {editingInteraction ? "Modifier" : "Ajouter"}
+                  {editingInteraction ? 'Modifier' : 'Ajouter'}
                 </button>
               </div>
             </form>
@@ -1085,17 +1040,15 @@ export default function ContactDetailPage() {
 
       {/* Modal d'envoi d'email */}
       {showEmailModal && contact && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm">
           <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl sm:p-8">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
-                Envoyer un email
-              </h2>
+              <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Envoyer un email</h2>
               <button
                 onClick={() => {
                   setShowEmailModal(false);
-                  setEmailData({ subject: "", content: "" });
-                  setError("");
+                  setEmailData({ subject: '', content: '' });
+                  setError('');
                 }}
                 className="cursor-pointer rounded-lg p-2 text-gray-400 hover:bg-gray-100"
               >
@@ -1118,41 +1071,29 @@ export default function ContactDetailPage() {
 
             <form onSubmit={handleSendEmail} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Sujet *
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Sujet *</label>
                 <input
                   type="text"
                   required
                   value={emailData.subject}
-                  onChange={(e) =>
-                    setEmailData({ ...emailData, subject: e.target.value })
-                  }
+                  onChange={(e) => setEmailData({ ...emailData, subject: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                    }
+                  }}
                   className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   placeholder="Sujet de l'email"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Message *
-                </label>
-                <textarea
-                  required
-                  rows={10}
-                  value={emailData.content}
-                  onChange={(e) =>
-                    setEmailData({ ...emailData, content: e.target.value })
-                  }
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  placeholder="Votre message..."
-                />
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">Message *</label>
+                <Editor ref={emailEditorRef} />
               </div>
 
               {error && (
-                <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">
-                  {error}
-                </div>
+                <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>
               )}
 
               <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
@@ -1160,19 +1101,19 @@ export default function ContactDetailPage() {
                   type="button"
                   onClick={() => {
                     setShowEmailModal(false);
-                    setEmailData({ subject: "", content: "" });
-                    setError("");
+                    setEmailData({ subject: '', content: '' });
+                    setError('');
                   }}
-                  className="cursor-pointer w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                  className="w-full cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={sendingEmail}
-                  className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                  className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
-                  {sendingEmail ? "Envoi en cours..." : "Envoyer l'email"}
+                  {sendingEmail ? 'Envoi en cours...' : "Envoyer l'email"}
                 </button>
               </div>
             </form>
@@ -1182,4 +1123,3 @@ export default function ContactDetailPage() {
     </div>
   );
 }
-

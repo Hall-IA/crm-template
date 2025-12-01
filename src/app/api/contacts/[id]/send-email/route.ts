@@ -1,21 +1,28 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import nodemailer from "nodemailer";
-import { decrypt } from "@/lib/encryption";
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import nodemailer from 'nodemailer';
+import { decrypt } from '@/lib/encryption';
 
 // POST /api/contacts/[id]/send-email - Envoyer un email au contact
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+function htmlToText(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
     });
 
     if (!session) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     const { id } = await params;
@@ -24,10 +31,7 @@ export async function POST(
 
     // Validation
     if (!subject || !content) {
-      return NextResponse.json(
-        { error: "Le sujet et le contenu sont requis" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Le sujet et le contenu sont requis' }, { status: 400 });
     }
 
     // Récupérer le contact
@@ -36,17 +40,11 @@ export async function POST(
     });
 
     if (!contact) {
-      return NextResponse.json(
-        { error: "Contact non trouvé" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Contact non trouvé' }, { status: 404 });
     }
 
     if (!contact.email) {
-      return NextResponse.json(
-        { error: "Le contact n'a pas d'email" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Le contact n'a pas d'email" }, { status: 400 });
     }
 
     // Récupérer la configuration SMTP de l'utilisateur
@@ -56,8 +54,11 @@ export async function POST(
 
     if (!smtpConfig) {
       return NextResponse.json(
-        { error: "Configuration SMTP non trouvée. Veuillez configurer votre SMTP dans les paramètres." },
-        { status: 400 }
+        {
+          error:
+            'Configuration SMTP non trouvée. Veuillez configurer votre SMTP dans les paramètres.',
+        },
+        { status: 400 },
       );
     }
 
@@ -81,11 +82,12 @@ export async function POST(
       },
     });
 
-    // Construire le contenu avec la signature (si définie)
-    const signatureText = smtpConfig.signature ? `\n\n${smtpConfig.signature}` : '';
-    const signatureHtml = smtpConfig.signature
-      ? `<br><br>${smtpConfig.signature.replace(/\n/g, '<br>')}`
-      : '';
+    // Construire les variantes texte / HTML avec la signature (si définie)
+    const baseHtml = content || '';
+    const baseText = htmlToText(baseHtml);
+
+    const signatureHtml = smtpConfig.signature ? `<br><br>${smtpConfig.signature}` : '';
+    const signatureText = smtpConfig.signature ? `${htmlToText(smtpConfig.signature)}` : '';
 
     // Envoyer l'email
     const mailOptions = {
@@ -94,19 +96,19 @@ export async function POST(
         : smtpConfig.fromEmail,
       to: contact.email,
       subject: subject,
-      text: `${content}${signatureText}`,
-      html: `${content.replace(/\n/g, "<br>")}${signatureHtml}`, // Convertir les retours à la ligne et ajouter la signature
+      text: `${baseText}${signatureText}`,
+      html: `${baseHtml}${signatureHtml}`,
     };
 
     await transporter.sendMail(mailOptions);
 
-    // Créer une interaction de type EMAIL
+    // Créer une interaction de type EMAIL (contenu en texte brut)
     const interaction = await prisma.interaction.create({
       data: {
         contactId: id,
-        type: "EMAIL",
+        type: 'EMAIL',
         title: subject,
-        content: content,
+        content: baseText,
         userId: session.user.id,
         date: new Date(),
       },
@@ -119,24 +121,23 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: "Email envoyé avec succès",
+      message: 'Email envoyé avec succès',
       interaction,
     });
   } catch (error: any) {
     console.error("Erreur lors de l'envoi de l'email:", error);
-    
+
     // Gérer les erreurs spécifiques de nodemailer
-    if (error.code === "EAUTH" || error.code === "ECONNECTION") {
+    if (error.code === 'EAUTH' || error.code === 'ECONNECTION') {
       return NextResponse.json(
         { error: "Erreur d'authentification SMTP. Vérifiez votre configuration." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     return NextResponse.json(
       { error: error.message || "Erreur lors de l'envoi de l'email" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

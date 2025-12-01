@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import nodemailer from 'nodemailer';
 
+function htmlToText(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 // POST /api/settings/smtp/test - Tester la connexion SMTP
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { host, port, secure, username, password, fromEmail, fromName } = body;
+    const { host, port, secure, username, password, fromEmail, fromName, signature } = body;
 
     // Validation
     if (!host || !port || !username || !password || !fromEmail) {
@@ -42,20 +52,32 @@ export async function POST(request: NextRequest) {
     try {
       await transporter.verify();
 
+      // Construire le contenu de test avec la signature éventuelle
+      const baseHtml = `
+        <div style="font-family: Arial, sans-serif;">
+          <h2 style="color: #4F46E5;">Test de configuration SMTP</h2>
+          <p>Ceci est un email de test pour vérifier que votre configuration SMTP fonctionne correctement.</p>
+          <p style="color: #10B981; font-weight: bold;">✅ Votre configuration SMTP est opérationnelle !</p>
+        </div>
+      `;
+
+      const baseText =
+        'Test de configuration SMTP\n\nCeci est un email de test pour vérifier que votre configuration SMTP fonctionne correctement.\n\n✅ Votre configuration SMTP est opérationnelle !';
+
+      const signatureHtml = signature ? `<br><br>${signature}` : '';
+      const signatureText = signature ? `\n\n${htmlToText(signature)}` : '';
+
+      const finalHtml = `${baseHtml}${signatureHtml}`;
+      const finalText = `${baseText}${signatureText}`;
+
       // Si la vérification réussit, essayer d'envoyer un email de test
       try {
         const testEmail = await transporter.sendMail({
           from: `"${fromName}" <${fromEmail}>`,
           to: session.user.email, // Envoyer à l'utilisateur connecté
           subject: 'Test de configuration SMTP - CRM',
-          text: 'Ceci est un email de test pour vérifier que votre configuration SMTP fonctionne correctement.',
-          html: `
-            <div style="font-family: Arial, sans-serif; padding: 20px;">
-              <h2 style="color: #4F46E5;">Test de configuration SMTP</h2>
-              <p>Ceci est un email de test pour vérifier que votre configuration SMTP fonctionne correctement.</p>
-              <p style="color: #10B981; font-weight: bold;">✅ Votre configuration SMTP est opérationnelle !</p>
-            </div>
-          `,
+          text: finalText,
+          html: finalHtml,
         });
 
         return NextResponse.json({
