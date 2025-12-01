@@ -1173,6 +1173,24 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
+                <div className="mt-4 rounded-lg bg-indigo-50 p-3 text-xs text-indigo-900">
+                  <p className="font-medium">Utiliser Gmail avec SMTP</p>
+                  <p className="mt-1">
+                    Si vous utilisez une adresse Gmail, vous devez créer un{' '}
+                    <span className="font-semibold">mot de passe d&apos;application</span> dédié et le
+                    renseigner dans le champ &quot;Mot de passe&quot; ci-dessus. Rendez-vous sur{' '}
+                    <a
+                      href="https://myaccount.google.com/apppasswords"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold underline"
+                    >
+                      la page des mots de passe d&apos;application Google
+                    </a>{' '}
+                    pour en générer un (compte Google protégé par la validation en deux étapes requis).
+                  </p>
+                </div>
+
                 <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
                   <button
                     type="button"
