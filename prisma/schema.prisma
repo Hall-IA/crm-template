@@ -34,6 +34,8 @@ model User {
   contactsCreated   Contact[]     @relation("ContactCreatedBy")
   contactsAssigned   Contact[]     @relation("ContactAssignedTo")
   interactions      Interaction[]
+  tasksAssigned     Task[]         @relation("TaskAssignedTo")
+  tasksCreated       Task[]         @relation("TaskCreatedBy")
 
   @@unique([email])
   @@map("user")
@@ -151,6 +153,20 @@ enum InteractionType {
   NOTE
 }
 
+enum TaskType {
+  CALL
+  MEETING
+  EMAIL
+  OTHER
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
 model Contact {
   id                String         @id @default(cuid())
   civility          Civility?
@@ -172,6 +188,7 @@ model Contact {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   interactions      Interaction[]
+  tasks              Task[]
 
   @@index([statusId])
   @@index([assignedUserId])
@@ -195,4 +212,29 @@ model Interaction {
   @@index([contactId])
   @@index([userId])
   @@map("interaction")
+}
+
+model Task {
+  id              String        @id @default(cuid())
+  contactId       String?       // Optionnel : peut être créée depuis un contact
+  contact         Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  type            TaskType
+  title           String?
+  description     String        // Description HTML (avec Editor)
+  priority        TaskPriority  @default(MEDIUM)
+  scheduledAt     DateTime      // Date et heure de la tâche
+  assignedUserId  String        // Utilisateur assigné
+  assignedUser    User          @relation("TaskAssignedTo", fields: [assignedUserId], references: [id], onDelete: Cascade)
+  createdById     String        // Utilisateur qui a créé la tâche
+  createdBy       User          @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  completed       Boolean       @default(false) // Tâche terminée ou non
+  completedAt     DateTime?     // Date de complétion
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([contactId])
+  @@index([assignedUserId])
+  @@index([createdById])
+  @@index([scheduledAt])
+  @@map("task")
 }

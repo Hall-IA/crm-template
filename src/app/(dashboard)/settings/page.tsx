@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/page-header';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Editor, type DefaultTemplateRef } from '@/components/editor';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -65,6 +66,7 @@ export default function SettingsPage() {
   const [smtpError, setSmtpError] = useState('');
   const [smtpSuccess, setSmtpSuccess] = useState('');
   const [smtpTesting, setSmtpTesting] = useState(false);
+  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
   const [smtpTestResult, setSmtpTestResult] = useState<{
     success: boolean;
     message: string;
@@ -1198,14 +1200,26 @@ export default function SettingsPage() {
                     <label className="block text-sm font-medium text-gray-700">
                       Mot de passe *
                     </label>
-                    <input
-                      type="password"
-                      required
-                      value={smtpData.password}
-                      onChange={(e) => setSmtpData({ ...smtpData, password: e.target.value })}
-                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                      placeholder="••••••••"
-                    />
+                    <div className="relative mt-1">
+                      <input
+                        type={showSmtpPassword ? 'text' : 'password'}
+                        required
+                        value={smtpData.password}
+                        onChange={(e) => setSmtpData({ ...smtpData, password: e.target.value })}
+                        className="block w-full rounded-lg border border-gray-300 px-4 py-2 pr-10 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="••••••••"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSmtpPassword((prev) => !prev)}
+                        className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3 text-gray-400 hover:text-gray-600"
+                        aria-label={
+                          showSmtpPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'
+                        }
+                      >
+                        {showSmtpPassword ? <EyeOff /> : <Eye />}
+                      </button>
+                    </div>
                     <p className="mt-1 text-xs text-gray-500">
                       Pour Gmail, utilisez un mot de passe d'application
                     </p>

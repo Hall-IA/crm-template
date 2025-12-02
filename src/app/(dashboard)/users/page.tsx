@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { useSession } from "@/lib/auth-client";
-import { useEffect, useState } from "react";
-import { PageHeader } from "@/components/page-header";
-import { cn } from "@/lib/utils";
+import { useSession } from '@/lib/auth-client';
+import { useEffect, useState } from 'react';
+import { PageHeader } from '@/components/page-header';
+import { cn } from '@/lib/utils';
 
 interface User {
   id: string;
   name: string;
   email: string;
-  role: "USER" | "ADMIN";
+  role: 'USER' | 'ADMIN';
   emailVerified: boolean;
   active: boolean;
   createdAt: string;
@@ -51,7 +51,7 @@ export default function UsersPage() {
   useEffect(() => {
     fetchUsers();
   }, []);
-  
+
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -70,7 +70,7 @@ export default function UsersPage() {
         throw new Error(data.error || 'Erreur lors de la création');
       }
 
-      setSuccessMessage(data.message || 'Utilisateur créé avec succès, email d\'invitation envoyé');
+      setSuccessMessage(data.message || "Utilisateur créé avec succès, email d'invitation envoyé");
       setShowAddModal(false);
       setFormData({ name: '', email: '', role: 'USER' });
       fetchUsers();
@@ -94,9 +94,7 @@ export default function UsersPage() {
       }
 
       setSuccessMessage(
-        !currentActive
-          ? `Compte de ${userName} activé`
-          : `Compte de ${userName} désactivé`
+        !currentActive ? `Compte de ${userName} activé` : `Compte de ${userName} désactivé`,
       );
       fetchUsers();
     } catch (error: any) {
@@ -134,7 +132,7 @@ export default function UsersPage() {
         action={
           <button
             onClick={() => setShowAddModal(true)}
-            className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
+            className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
           >
             + Ajouter un utilisateur
           </button>
@@ -147,7 +145,9 @@ export default function UsersPage() {
         {error && <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>}
 
         {successMessage && (
-          <div className="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-600">{successMessage}</div>
+          <div className="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-600">
+            {successMessage}
+          </div>
         )}
 
         {/* Table */}
@@ -193,13 +193,17 @@ export default function UsersPage() {
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 sm:h-10 sm:w-10">
                           {user.name[0].toUpperCase()}
                         </div>
-                        <div className="ml-2 sm:ml-4 min-w-0">
-                          <div className="truncate text-sm font-medium text-gray-900 sm:text-base">{user.name}</div>
+                        <div className="ml-2 min-w-0 sm:ml-4">
+                          <div className="truncate text-sm font-medium text-gray-900 sm:text-base">
+                            {user.name}
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-3 py-4 text-xs whitespace-nowrap text-gray-500 sm:px-6 sm:text-sm">
-                      <span className="truncate block max-w-[150px] sm:max-w-none">{user.email}</span>
+                      <span className="block max-w-[150px] truncate sm:max-w-none">
+                        {user.email}
+                      </span>
                     </td>
                     <td className="px-3 py-4 whitespace-nowrap sm:px-6">
                       <select
@@ -230,20 +234,20 @@ export default function UsersPage() {
                           disabled={user.id === session?.user?.id}
                           onClick={() => handleToggleActive(user.id, user.active, user.name)}
                           className={cn(
-                            "cursor-pointer relative inline-flex h-5 w-9 items-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-60",
-                            user.active ? "bg-green-500" : "bg-gray-300",
+                            'relative inline-flex h-5 w-9 cursor-pointer items-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-60',
+                            user.active ? 'bg-green-500' : 'bg-gray-300',
                           )}
-                          aria-label={user.active ? "Désactiver le compte" : "Activer le compte"}
+                          aria-label={user.active ? 'Désactiver le compte' : 'Activer le compte'}
                         >
                           <span
                             className={cn(
-                              "inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition",
-                              user.active ? "translate-x-4.5" : "translate-x-0.5",
+                              'inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition',
+                              user.active ? 'translate-x-4.5' : 'translate-x-0.5',
                             )}
                           />
                         </button>
                         <span className="text-xs font-medium text-gray-700">
-                          {user.active ? "Actif" : "Inactif"}
+                          {user.active ? 'Actif' : 'Inactif'}
                         </span>
                       </div>
                     </td>
@@ -257,11 +261,41 @@ export default function UsersPage() {
 
       {/* Modal d'ajout */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl sm:p-8">
-            <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Ajouter un utilisateur</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
+          <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
+            {/* En-tête fixe */}
+            <div className="shrink-0 border-b border-gray-100 pb-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                  Ajouter un utilisateur
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setFormData({ name: '', email: '', role: 'USER' });
+                    setError('');
+                  }}
+                  className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
 
-            <form onSubmit={handleAddUser} className="mt-6 space-y-4">
+            {/* Contenu scrollable */}
+            <form
+              id="add-user-form"
+              onSubmit={handleAddUser}
+              className="flex-1 space-y-4 overflow-y-auto pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
               <div>
                 <label className="block text-sm font-medium text-gray-700">Nom complet</label>
                 <input
@@ -283,7 +317,7 @@ export default function UsersPage() {
                   className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Un email d'invitation sera envoyé à cet utilisateur
+                  Un email d&apos;invitation sera envoyé à cet utilisateur
                 </p>
               </div>
 
@@ -298,8 +332,11 @@ export default function UsersPage() {
                   <option value="ADMIN">Admin</option>
                 </select>
               </div>
+            </form>
 
-              <div className="flex gap-4">
+            {/* Pied de modal fixe */}
+            <div className="shrink-0 border-t border-gray-100 pt-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={() => {
@@ -307,22 +344,22 @@ export default function UsersPage() {
                     setFormData({ name: '', email: '', role: 'USER' });
                     setError('');
                   }}
-                  className="cursor-pointer flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
+                  className="w-full cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="cursor-pointer flex-1 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
+                  form="add-user-form"
+                  className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
                 >
                   Créer
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 }
-

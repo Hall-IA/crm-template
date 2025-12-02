@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useSession, signOut } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
-import { useMemo } from "react";
-import { useUserRole } from "@/hooks/use-user-role";
-import { useMobileMenuContext } from "@/contexts/mobile-menu-context";
-import { LayoutDashboard, Users, UserCog, Settings } from "lucide-react";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useSession, signOut } from '@/lib/auth-client';
+import { useRouter } from 'next/navigation';
+import { useMemo } from 'react';
+import { useUserRole } from '@/hooks/use-user-role';
+import { useMobileMenuContext } from '@/contexts/mobile-menu-context';
+import { LayoutDashboard, Users, UserCog, Settings, Calendar as CalendarIcon } from 'lucide-react';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -21,15 +21,16 @@ export function Sidebar() {
   const navigation = useMemo(() => {
     const baseNav = [
       { name: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Agenda', href: '/agenda', icon: CalendarIcon },
       { name: 'Contacts', href: '/contacts', icon: Users },
       { name: 'Paramètres', href: '/settings', icon: Settings },
     ];
 
     // Ajouter la gestion des utilisateurs seulement pour les admins
     if (isAdmin) {
-      baseNav.splice(2, 0, {
+      baseNav.splice(baseNav.length - 1, 0, {
         name: "Gestions d'utilisateurs",
-        href: "/users",
+        href: '/users',
         icon: UserCog,
       });
     }
@@ -39,7 +40,7 @@ export function Sidebar() {
 
   const handleSignOut = async () => {
     await signOut();
-    router.push("/signin");
+    router.push('/signin');
   };
 
   const handleLinkClick = () => {
@@ -51,15 +52,15 @@ export function Sidebar() {
       {/* Overlay for mobile */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+          className="bg-opacity-50 fixed inset-0 z-40 bg-black lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <div
-        className={`fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-gray-200 bg-white transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        className={`fixed top-0 left-0 z-40 flex h-screen w-64 flex-col border-r border-gray-200 bg-white transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
         {/* Logo/Brand */}
@@ -98,8 +99,8 @@ export function Sidebar() {
                 onClick={handleLinkClick}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   isActive
-                    ? "bg-indigo-50 text-indigo-600"
-                    : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                    ? 'bg-indigo-50 text-indigo-600'
+                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
                 <Icon className="h-5 w-5 shrink-0" />
@@ -113,20 +114,18 @@ export function Sidebar() {
         <div className="border-t border-gray-200 p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
-              {session?.user?.name?.[0]?.toUpperCase() || "U"}
+              {session?.user?.name?.[0]?.toUpperCase() || 'U'}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-gray-900">
-                {session?.user?.name || "Utilisateur"}
+                {session?.user?.name || 'Utilisateur'}
               </p>
-              <p className="truncate text-xs text-gray-500">
-                {session?.user?.email}
-              </p>
+              <p className="truncate text-xs text-gray-500">{session?.user?.email}</p>
             </div>
           </div>
           <button
             onClick={handleSignOut}
-            className="cursor-pointer mt-3 w-full rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
+            className="mt-3 w-full cursor-pointer rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
           >
             Déconnexion
           </button>
@@ -135,4 +134,3 @@ export function Sidebar() {
     </>
   );
 }
-

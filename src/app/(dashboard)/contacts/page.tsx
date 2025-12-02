@@ -483,32 +483,41 @@ export default function ContactsPage() {
 
       {/* Modal de création/édition */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 backdrop-blur-sm p-4">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl sm:p-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
-                {editingContact ? "Modifier le contact" : "Nouveau contact"}
-          </h2>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setEditingContact(null);
-                  setError("");
-                }}
-                className="cursor-pointer rounded-lg p-2 text-gray-400 hover:bg-gray-100"
-              >
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 backdrop-blur-sm p-4 sm:p-6">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
+            {/* En-tête fixe */}
+            <div className="shrink-0 border-b border-gray-100 pb-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                  {editingContact ? "Modifier le contact" : "Nouveau contact"}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingContact(null);
+                    setError("");
+                  }}
+                  className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Contenu scrollable */}
+            <form
+              id="contact-form"
+              onSubmit={handleSubmit}
+              className="flex-1 space-y-6 overflow-y-auto pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
               {/* Informations personnelles */}
               <div>
                 <h3 className="mb-4 text-lg font-semibold text-gray-900">
@@ -728,8 +737,11 @@ export default function ContactsPage() {
               {error && (
                 <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>
               )}
+            </form>
 
-              <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
+            {/* Pied de modal fixe */}
+            <div className="shrink-0 border-t border-gray-100 pt-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={() => {
@@ -743,12 +755,13 @@ export default function ContactsPage() {
                 </button>
                 <button
                   type="submit"
+                  form="contact-form"
                   className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
                 >
                   {editingContact ? "Modifier" : "Créer"}
-          </button>
+                </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
