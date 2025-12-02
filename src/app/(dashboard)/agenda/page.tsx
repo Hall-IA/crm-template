@@ -4,7 +4,15 @@ import { useState, useEffect } from 'react';
 import { useSession } from '@/lib/auth-client';
 import { useUserRole } from '@/hooks/use-user-role';
 import { PageHeader } from '@/components/page-header';
-import { Calendar, Clock, User, CheckCircle2, Circle, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Calendar,
+  Clock,
+  User,
+  CheckCircle2,
+  Circle,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import Link from 'next/link';
 
 interface Task {
@@ -15,6 +23,7 @@ interface Task {
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   scheduledAt: string;
   completed: boolean;
+   reminderMinutesBefore?: number | null;
   contact: {
     id: string;
     firstName: string | null;
@@ -205,7 +214,7 @@ export default function AgendaPage() {
   }
 
   return (
-    <div className="h-full">
+    <div className="h-full relative">
       <PageHeader
         title="Agenda"
         description={`Vue ${view === 'month' ? 'mensuelle' : view === 'week' ? 'hebdomadaire' : 'quotidienne'} de vos tâches`}

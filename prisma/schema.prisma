@@ -223,6 +223,7 @@ model Task {
   description     String        // Description HTML (avec Editor)
   priority        TaskPriority  @default(MEDIUM)
   scheduledAt     DateTime      // Date et heure de la tâche
+  reminderMinutesBefore Int?    // Rappel en minutes avant l'heure prévue (ex: 15, 30, 60)
   assignedUserId  String        // Utilisateur assigné
   assignedUser    User          @relation("TaskAssignedTo", fields: [assignedUserId], references: [id], onDelete: Cascade)
   createdById     String        // Utilisateur qui a créé la tâche

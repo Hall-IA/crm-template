@@ -87,7 +87,16 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { type, title, description, priority, scheduledAt, assignedUserId, completed } = body;
+    const {
+      type,
+      title,
+      description,
+      priority,
+      scheduledAt,
+      assignedUserId,
+      completed,
+      reminderMinutesBefore,
+    } = body;
 
     // Vérifier que la tâche existe
     const existingTask = await prisma.task.findUnique({
@@ -115,6 +124,10 @@ export async function PUT(
     if (description !== undefined) updateData.description = description;
     if (priority !== undefined) updateData.priority = priority;
     if (scheduledAt !== undefined) updateData.scheduledAt = new Date(scheduledAt);
+    if (reminderMinutesBefore !== undefined) {
+      updateData.reminderMinutesBefore =
+        typeof reminderMinutesBefore === 'number' ? reminderMinutesBefore : null;
+    }
     if (completed !== undefined) {
       updateData.completed = completed;
       updateData.completedAt = completed ? new Date() : null;

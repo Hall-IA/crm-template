@@ -133,6 +133,7 @@ export default function ContactDetailPage() {
     priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
     scheduledAt: '',
     assignedUserId: '',
+    reminderMinutesBefore: null as number | null,
   });
 
   // Charger les données
@@ -410,16 +411,34 @@ export default function ContactDetailPage() {
     setCreatingTask(true);
 
     try {
-      const htmlContent = await taskEditorRef.current?.getHTML();
+      if (!taskEditorRef.current) {
+        setError('L\'éditeur n\'est pas prêt. Veuillez réessayer.');
+        setCreatingTask(false);
+        return;
+      }
+
+      const htmlContent = await taskEditorRef.current.getHTML();
+      
+      // Vérifier si l'éditeur contient vraiment du contenu
+      const hasContent = htmlContent && htmlContent.trim() !== '' && 
+        htmlContent.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim() !== '';
+      
       const plainText = (htmlContent || '')
         .replace(/<br\s*\/?>/gi, '\n')
         .replace(/<\/p>/gi, '\n\n')
         .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
 
-      if (!taskData.scheduledAt || !plainText) {
-        setError('La date/heure et la description sont requises');
+      if (!taskData.scheduledAt) {
+        setError('La date/heure est requise');
+        setCreatingTask(false);
+        return;
+      }
+
+      if (!hasContent || !plainText) {
+        setError('La description est requise');
         setCreatingTask(false);
         return;
       }
@@ -435,6 +454,7 @@ export default function ContactDetailPage() {
           scheduledAt: taskData.scheduledAt,
           contactId: contactId,
           assignedUserId: taskData.assignedUserId || undefined,
+          reminderMinutesBefore: taskData.reminderMinutesBefore ?? null,
         }),
       });
 
@@ -452,6 +472,7 @@ export default function ContactDetailPage() {
         priority: 'MEDIUM',
         scheduledAt: '',
         assignedUserId: '',
+        reminderMinutesBefore: null,
       });
       setSuccess('Tâche créée avec succès !');
       fetchContact(); // Recharger pour afficher la nouvelle interaction
@@ -1507,6 +1528,28 @@ export default function ContactDetailPage() {
                     })}
                   </div>
                 </div>
+              </div>
+
+              {/* Rappel */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-700">Rappel</p>
+                <select
+                  value={taskData.reminderMinutesBefore ?? ''}
+                  onChange={(e) =>
+                    setTaskData({
+                      ...taskData,
+                      reminderMinutesBefore: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Aucun rappel</option>
+                  <option value="5">5 minutes avant</option>
+                  <option value="15">15 minutes avant</option>
+                  <option value="30">30 minutes avant</option>
+                  <option value="60">1 heure avant</option>
+                  <option value="120">2 heures avant</option>
+                </select>
               </div>
 
               {/* Attribution */}

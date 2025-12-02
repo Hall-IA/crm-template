@@ -101,7 +101,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { type, title, description, priority, scheduledAt, contactId, assignedUserId } = body;
+    const {
+      type,
+      title,
+      description,
+      priority,
+      scheduledAt,
+      contactId,
+      assignedUserId,
+      reminderMinutesBefore,
+    } = body;
 
     // Validation
     if (!type || !description || !scheduledAt) {
@@ -151,6 +160,8 @@ export async function POST(request: NextRequest) {
         contactId: contactId || null,
         assignedUserId: finalAssignedUserId,
         createdById: session.user.id,
+        reminderMinutesBefore:
+          typeof reminderMinutesBefore === 'number' ? reminderMinutesBefore : null,
       },
       include: {
         contact: {
