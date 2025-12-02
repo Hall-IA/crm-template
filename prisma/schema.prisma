@@ -36,6 +36,7 @@ model User {
   interactions      Interaction[]
   tasksAssigned     Task[]         @relation("TaskAssignedTo")
   tasksCreated       Task[]         @relation("TaskCreatedBy")
+  googleAccount      UserGoogleAccount?
 
   @@unique([email])
   @@map("user")
@@ -230,6 +231,9 @@ model Task {
   createdBy       User          @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
   completed       Boolean       @default(false) // Tâche terminée ou non
   completedAt     DateTime?     // Date de complétion
+  googleEventId   String?       // ID de l'évènement Google Calendar
+  googleMeetLink  String?       // URL du Google Meet
+  durationMinutes Int?          // Durée de la réunion en minutes (pour Google Meet)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -237,5 +241,20 @@ model Task {
   @@index([assignedUserId])
   @@index([createdById])
   @@index([scheduledAt])
+  @@index([googleEventId])
   @@map("task")
+}
+
+model UserGoogleAccount {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken    String
+  refreshToken   String
+  tokenExpiresAt DateTime
+  email          String?  // Email du compte Google connecté
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("user_google_account")
 }

@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const assignedTo = searchParams.get('assignedTo'); // Pour les admins
+    const contactId = searchParams.get('contactId'); // Filtrer par contact
 
     // Construire les filtres
     const where: any = {
@@ -25,6 +26,11 @@ export async function GET(request: NextRequest) {
         lte: endDate ? new Date(endDate) : undefined,
       },
     };
+
+    // Filtrer par contact si fourni
+    if (contactId) {
+      where.contactId = contactId;
+    }
 
     // Si admin demande les tâches d'un autre utilisateur
     if (assignedTo && assignedTo !== session.user.id) {

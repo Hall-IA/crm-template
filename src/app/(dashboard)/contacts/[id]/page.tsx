@@ -19,6 +19,8 @@ import {
   Mail as MailIcon,
   Calendar as CalendarIcon,
   FileText,
+  Video,
+  ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Editor, type DefaultTemplateRef } from '@/components/editor';
@@ -89,6 +91,7 @@ export default function ContactDetailPage() {
   const [editingInteraction, setEditingInteraction] = useState<Interaction | null>(null);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
   const emailEditorRef = useRef<DefaultTemplateRef | null>(null);
@@ -136,14 +139,58 @@ export default function ContactDetailPage() {
     reminderMinutesBefore: null as number | null,
   });
 
+  // Modal Google Meet
+  const [showMeetModal, setShowMeetModal] = useState(false);
+  const [creatingMeet, setCreatingMeet] = useState(false);
+  const [meetData, setMeetData] = useState({
+    title: '',
+    description: '',
+    scheduledAt: '',
+    durationMinutes: 30,
+    attendees: [] as string[],
+    reminderMinutesBefore: null as number | null,
+  });
+  const meetEditorRef = useRef<DefaultTemplateRef | null>(null);
+  const [googleAccountConnected, setGoogleAccountConnected] = useState(false);
+
+  // Modal d'édition Google Meet
+  const [showEditMeetModal, setShowEditMeetModal] = useState(false);
+  const [editingMeetTask, setEditingMeetTask] = useState<any | null>(null);
+  const [editMeetData, setEditMeetData] = useState<{
+    scheduledAt: string;
+    durationMinutes: number;
+  }>({
+    scheduledAt: '',
+    durationMinutes: 30,
+  });
+  const [editMeetLoading, setEditMeetLoading] = useState(false);
+  const [editMeetError, setEditMeetError] = useState('');
+
   // Charger les données
   useEffect(() => {
     if (contactId) {
       fetchContact();
       fetchStatuses();
       fetchUsers();
+      fetchTasks();
     }
   }, [contactId]);
+
+  // Vérifier si Google est connecté
+  useEffect(() => {
+    const checkGoogleConnection = async () => {
+      try {
+        const response = await fetch('/api/auth/google/status');
+        if (response.ok) {
+          const data = await response.json();
+          setGoogleAccountConnected(data.connected);
+        }
+      } catch (error) {
+        console.error('Erreur lors de la vérification de Google:', error);
+      }
+    };
+    checkGoogleConnection();
+  }, []);
 
   const fetchContact = async () => {
     try {
@@ -198,6 +245,18 @@ export default function ContactDetailPage() {
       }
     } catch (error) {
       console.error('Erreur lors du chargement des utilisateurs:', error);
+    }
+  };
+
+  const fetchTasks = async () => {
+    try {
+      const response = await fetch(`/api/tasks?contactId=${contactId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setTasks(data);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des tâches:', error);
     }
   };
 
@@ -485,6 +544,126 @@ export default function ContactDetailPage() {
     }
   };
 
+  const handleCreateMeet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setCreatingMeet(true);
+
+    try {
+      if (!meetEditorRef.current) {
+        setError('L\'éditeur n\'est pas prêt. Veuillez réessayer.');
+        setCreatingMeet(false);
+        return;
+      }
+
+      const htmlContent = await meetEditorRef.current.getHTML();
+      
+      // Vérifier si l'éditeur contient vraiment du contenu
+      const hasContent = htmlContent && htmlContent.trim() !== '' && 
+        htmlContent.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim() !== '';
+      
+      const plainText = (htmlContent || '')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (!meetData.scheduledAt) {
+        setError('La date/heure est requise');
+        setCreatingMeet(false);
+        return;
+      }
+
+      if (!meetData.title) {
+        setError('Le titre est requis');
+        setCreatingMeet(false);
+        return;
+      }
+
+      const response = await fetch(`/api/contacts/${contactId}/meet`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: meetData.title,
+          description: htmlContent || '',
+          scheduledAt: meetData.scheduledAt,
+          durationMinutes: meetData.durationMinutes,
+          attendees: meetData.attendees.filter((email) => email.trim() !== ''),
+          reminderMinutesBefore: meetData.reminderMinutesBefore,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Erreur lors de la création du Google Meet");
+      }
+
+      setShowMeetModal(false);
+      setMeetData({
+        title: '',
+        description: '',
+        scheduledAt: '',
+        durationMinutes: 30,
+        attendees: [],
+        reminderMinutesBefore: null,
+      });
+      setSuccess('Google Meet créé avec succès !');
+      fetchContact(); // Recharger pour afficher la nouvelle tâche/interaction
+      fetchTasks(); // Recharger les tâches pour afficher le lien
+
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setCreatingMeet(false);
+    }
+  };
+
+  const handleUpdateMeet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMeetTask) return;
+
+    setEditMeetError('');
+    setEditMeetLoading(true);
+
+    try {
+      if (!editMeetData.scheduledAt) {
+        setEditMeetError('La date/heure est requise');
+        setEditMeetLoading(false);
+        return;
+      }
+
+      const response = await fetch(`/api/tasks/${editingMeetTask.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scheduledAt: editMeetData.scheduledAt,
+          durationMinutes: editMeetData.durationMinutes,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Erreur lors de la mise à jour du Google Meet");
+      }
+
+      setShowEditMeetModal(false);
+      setEditingMeetTask(null);
+      setSuccess('Google Meet modifié avec succès !');
+      fetchContact();
+      fetchTasks();
+
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err: any) {
+      setEditMeetError(err.message);
+    } finally {
+      setEditMeetLoading(false);
+    }
+  };
+
   const getInteractionIcon = (type: string) => {
     switch (type) {
       case 'CALL':
@@ -731,6 +910,85 @@ export default function ContactDetailPage() {
                               className="mt-1 text-sm text-gray-700"
                               dangerouslySetInnerHTML={{ __html: sanitizeHtml(interaction.content) }}
                             />
+                            {/* Afficher le lien Google Meet si disponible */}
+                            {(() => {
+                              // Chercher la tâche correspondante à cette interaction
+                              const relatedTask = tasks.find(
+                                (task) =>
+                                  task.contactId === contactId &&
+                                  task.type === 'MEETING' &&
+                                  task.googleMeetLink &&
+                                  interaction.type === 'MEETING' &&
+                                  interaction.title?.includes('Google Meet')
+                              );
+                              const meetLink = relatedTask?.googleMeetLink;
+                              return meetLink && relatedTask ? (
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                  <a
+                                    href={meetLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100"
+                                  >
+                                    <Video className="h-4 w-4" />
+                                    <span>Rejoindre Google Meet</span>
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const scheduled = new Date(relatedTask.scheduledAt);
+                                      setEditMeetData({
+                                        scheduledAt: scheduled.toISOString(),
+                                        durationMinutes: relatedTask.durationMinutes ?? 30,
+                                      });
+                                      setEditingMeetTask(relatedTask);
+                                      setEditMeetError('');
+                                      setShowEditMeetModal(true);
+                                    }}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                    Modifier le rendez-vous
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      if (
+                                        !confirm(
+                                          'Êtes-vous sûr de vouloir supprimer ce rendez-vous ? Le contact sera notifié de l\'annulation.'
+                                        )
+                                      ) {
+                                        return;
+                                      }
+
+                                      try {
+                                        const response = await fetch(`/api/tasks/${relatedTask.id}`, {
+                                          method: 'DELETE',
+                                        });
+
+                                        if (!response.ok) {
+                                          const data = await response.json();
+                                          throw new Error(data.error || 'Erreur lors de la suppression');
+                                        }
+
+                                        setSuccess('Rendez-vous supprimé avec succès !');
+                                        fetchContact();
+                                        fetchTasks();
+
+                                        setTimeout(() => setSuccess(''), 5000);
+                                      } catch (err: any) {
+                                        setError(err.message);
+                                      }
+                                    }}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    Supprimer le rendez-vous
+                                  </button>
+                                </div>
+                              ) : null;
+                            })()}
                             <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
                               <span>Par {interaction.user.name}</span>
                               {interaction.date && (
@@ -842,25 +1100,51 @@ export default function ContactDetailPage() {
                 </div>
               </div>
 
-              <button
-                onClick={() => {
-                  setShowTaskModal(true);
-                  setTaskData({
-                    type: 'CALL',
-                    title: '',
-                    description: '',
-                    priority: 'MEDIUM',
-                    scheduledAt: '',
-                    assignedUserId: '',
-                  });
-                  setError('');
-                  setSuccess('');
-                }}
-                className="mt-6 w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
-              >
-                <CalendarIcon className="mr-2 inline h-4 w-4" />
-                Créer une tâche
-              </button>
+              <div className="mt-6 space-y-2">
+                <button
+                  onClick={() => {
+                    setShowTaskModal(true);
+                    setTaskData({
+                      type: 'CALL',
+                      title: '',
+                      description: '',
+                      priority: 'MEDIUM',
+                      scheduledAt: '',
+                      assignedUserId: '',
+                      reminderMinutesBefore: null
+                    });
+                    setError('');
+                    setSuccess('');
+                  }}
+                  className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+                >
+                  <CalendarIcon className="mr-2 inline h-4 w-4" />
+                  Créer une tâche
+                </button>
+                {googleAccountConnected && (
+                  <button
+                    onClick={() => {
+                      setShowMeetModal(true);
+                      setMeetData({
+                        title: contact
+                          ? `RDV avec ${contact.firstName || ''} ${contact.lastName || ''}`.trim()
+                          : '',
+                        description: '',
+                        scheduledAt: '',
+                        durationMinutes: 30,
+                        attendees: contact?.email ? [contact.email] : [],
+                        reminderMinutesBefore: null,
+                      });
+                      setError('');
+                      setSuccess('');
+                    }}
+                    className="w-full cursor-pointer rounded-lg border border-indigo-600 bg-white px-4 py-2 text-sm font-medium text-indigo-600 transition-colors hover:bg-indigo-50"
+                  >
+                    <MailIcon className="mr-2 inline h-4 w-4" />
+                    Programmer un Google Meet
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1346,6 +1630,7 @@ export default function ContactDetailPage() {
                       priority: 'MEDIUM',
                       scheduledAt: '',
                       assignedUserId: '',
+                      reminderMinutesBefore: null
                     });
                     setError('');
                   }}
@@ -1601,6 +1886,7 @@ export default function ContactDetailPage() {
                       priority: 'MEDIUM',
                       scheduledAt: '',
                       assignedUserId: '',
+                      reminderMinutesBefore: null
                     });
                     setError('');
                   }}
@@ -1615,6 +1901,385 @@ export default function ContactDetailPage() {
                   className="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   {creatingTask ? 'Création...' : 'Créer la tâche'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Google Meet */}
+      {showMeetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg bg-white shadow-xl p-6 sm:p-8">
+            {/* En-tête fixe */}
+            <div className="shrink-0 border-b border-gray-100 pb-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                  Programmer un Google Meet
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowMeetModal(false);
+                    setMeetData({
+                      title: '',
+                      description: '',
+                      scheduledAt: '',
+                      durationMinutes: 30,
+                      attendees: [],
+                      reminderMinutesBefore: null,
+                    });
+                    setError('');
+                  }}
+                  className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
+                  type="button"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu scrollable */}
+            <form
+              id="meet-form"
+              onSubmit={handleCreateMeet}
+              className="flex-1 space-y-4 overflow-y-auto pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Titre de la réunion *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={meetData.title}
+                  onChange={(e) => setMeetData({ ...meetData, title: e.target.value })}
+                  className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Ex: RDV avec..."
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700">Date & heure *</p>
+                  <div className="grid grid-cols-[3fr,2fr] gap-2">
+                    <input
+                      type="date"
+                      required
+                      value={meetData.scheduledAt ? meetData.scheduledAt.split('T')[0] : ''}
+                      onChange={(e) => {
+                        const time =
+                          meetData.scheduledAt && meetData.scheduledAt.includes('T')
+                            ? meetData.scheduledAt.split('T')[1]
+                            : '';
+                        setMeetData({
+                          ...meetData,
+                          scheduledAt: time
+                            ? `${e.target.value}T${time}`
+                            : `${e.target.value}T09:00`,
+                        });
+                      }}
+                      className="block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                    <input
+                      type="time"
+                      value={
+                        meetData.scheduledAt && meetData.scheduledAt.includes('T')
+                          ? meetData.scheduledAt.split('T')[1].slice(0, 5)
+                          : ''
+                      }
+                      onChange={(e) => {
+                        const datePart =
+                          meetData.scheduledAt && meetData.scheduledAt.includes('T')
+                            ? meetData.scheduledAt.split('T')[0]
+                            : new Date().toISOString().split('T')[0];
+                        setMeetData({
+                          ...meetData,
+                          scheduledAt: `${datePart}T${e.target.value || '09:00'}`,
+                        });
+                      }}
+                      className="block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700">Durée (minutes)</p>
+                  <select
+                    value={meetData.durationMinutes}
+                    onChange={(e) =>
+                      setMeetData({
+                        ...meetData,
+                        durationMinutes: Number(e.target.value),
+                      })
+                    }
+                    className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  >
+                    <option value="15">15 minutes</option>
+                    <option value="30">30 minutes</option>
+                    <option value="45">45 minutes</option>
+                    <option value="60">1 heure</option>
+                    <option value="90">1h30</option>
+                    <option value="120">2 heures</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Rappel</label>
+                <select
+                  value={meetData.reminderMinutesBefore ?? ''}
+                  onChange={(e) =>
+                    setMeetData({
+                      ...meetData,
+                      reminderMinutesBefore: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Aucun rappel</option>
+                  <option value="5">5 minutes avant</option>
+                  <option value="15">15 minutes avant</option>
+                  <option value="30">30 minutes avant</option>
+                  <option value="60">1 heure avant</option>
+                  <option value="120">2 heures avant</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Invités (emails, un par ligne)
+                </label>
+                <textarea
+                  value={meetData.attendees.join('\n')}
+                  onChange={(e) =>
+                    setMeetData({
+                      ...meetData,
+                      attendees: e.target.value
+                        .split('\n')
+                        .map((email) => email.trim())
+                        .filter((email) => email !== ''),
+                    })
+                  }
+                  rows={4}
+                  className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="email1@example.com&#10;email2@example.com"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Le contact sera automatiquement invité si son email est renseigné
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <Editor ref={meetEditorRef} />
+                <p className="text-xs text-gray-500">
+                  Ajoutez des détails sur cette réunion (ordre du jour, points à aborder…).
+                </p>
+              </div>
+
+              {error && (
+                <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>
+              )}
+            </form>
+
+            {/* Pied de modal fixe */}
+            <div className="shrink-0 border-t border-gray-100 pt-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMeetModal(false);
+                    setMeetData({
+                      title: '',
+                      description: '',
+                      scheduledAt: '',
+                      durationMinutes: 30,
+                      attendees: [],
+                      reminderMinutesBefore: null,
+                    });
+                    setError('');
+                  }}
+                  className="w-full cursor-pointer rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  form="meet-form"
+                  disabled={creatingMeet}
+                  className="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                >
+                  {creatingMeet ? 'Création...' : 'Créer le Google Meet'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'édition de Google Meet */}
+      {showEditMeetModal && editingMeetTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
+          <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
+            {/* En-tête fixe */}
+            <div className="shrink-0 border-b border-gray-100 pb-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                  Modifier le Google Meet
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditMeetModal(false);
+                    setEditingMeetTask(null);
+                    setEditMeetError('');
+                  }}
+                  className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+              {editingMeetTask.contact && (
+                <p className="mt-1 text-sm text-gray-500">
+                  {editingMeetTask.contact.firstName} {editingMeetTask.contact.lastName}
+                </p>
+              )}
+            </div>
+
+            {/* Contenu scrollable */}
+            <form
+              id="edit-meet-form"
+              onSubmit={handleUpdateMeet}
+              className="flex-1 space-y-4 overflow-y-auto pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-700">Date & heure *</p>
+                <div className="grid grid-cols-[3fr,2fr] gap-2">
+                  <input
+                    type="date"
+                    required
+                    value={
+                      editMeetData.scheduledAt
+                        ? editMeetData.scheduledAt.split('T')[0]
+                        : new Date(editingMeetTask.scheduledAt).toISOString().split('T')[0]
+                    }
+                    onChange={(e) => {
+                      const time =
+                        editMeetData.scheduledAt && editMeetData.scheduledAt.includes('T')
+                          ? editMeetData.scheduledAt.split('T')[1]
+                          : new Date(editingMeetTask.scheduledAt).toISOString().split('T')[1].slice(0, 5);
+                      setEditMeetData({
+                        ...editMeetData,
+                        scheduledAt: `${e.target.value}T${time || '09:00'}`,
+                      });
+                    }}
+                    className="block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                  <input
+                    type="time"
+                    required
+                    value={
+                      editMeetData.scheduledAt && editMeetData.scheduledAt.includes('T')
+                        ? editMeetData.scheduledAt.split('T')[1].slice(0, 5)
+                        : new Date(editingMeetTask.scheduledAt).toISOString().split('T')[1].slice(0, 5)
+                    }
+                    onChange={(e) => {
+                      const datePart =
+                        editMeetData.scheduledAt && editMeetData.scheduledAt.includes('T')
+                          ? editMeetData.scheduledAt.split('T')[0]
+                          : new Date(editingMeetTask.scheduledAt).toISOString().split('T')[0];
+                      setEditMeetData({
+                        ...editMeetData,
+                        scheduledAt: `${datePart}T${e.target.value || '09:00'}`,
+                      });
+                    }}
+                    className="block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Durée (minutes)
+                </label>
+                <select
+                  value={editMeetData.durationMinutes}
+                  onChange={(e) =>
+                    setEditMeetData({
+                      ...editMeetData,
+                      durationMinutes: Number(e.target.value),
+                    })
+                  }
+                  className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value={15}>15 minutes</option>
+                  <option value={30}>30 minutes</option>
+                  <option value={45}>45 minutes</option>
+                  <option value={60}>1 heure</option>
+                  <option value={90}>1h30</option>
+                  <option value={120}>2 heures</option>
+                </select>
+              </div>
+
+              {editingMeetTask.googleMeetLink && (
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-gray-700">Lien Google Meet</p>
+                  <a
+                    href={editingMeetTask.googleMeetLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700"
+                  >
+                    <Video className="h-4 w-4" />
+                    <span className="truncate">{editingMeetTask.googleMeetLink}</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
+
+              {editMeetError && (
+                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                  {editMeetError}
+                </div>
+              )}
+            </form>
+
+            {/* Pied de modal fixe */}
+            <div className="shrink-0 border-t border-gray-100 pt-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditMeetModal(false);
+                    setEditingMeetTask(null);
+                    setEditMeetError('');
+                  }}
+                  className="w-full cursor-pointer rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  form="edit-meet-form"
+                  disabled={editMeetLoading}
+                  className="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                >
+                  {editMeetLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
                 </button>
               </div>
             </div>

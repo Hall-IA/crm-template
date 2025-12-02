@@ -93,6 +93,14 @@ export default function SettingsPage() {
   const [statusSuccess, setStatusSuccess] = useState('');
   const [statusSaving, setStatusSaving] = useState(false);
 
+  // État pour Google Calendar
+  const [googleAccount, setGoogleAccount] = useState<{
+    email: string | null;
+    connected: boolean;
+  } | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(true);
+  const [googleDisconnecting, setGoogleDisconnecting] = useState(false);
+
   // Mettre à jour le nom quand la session change
   useEffect(() => {
     if (session?.user?.name) {
@@ -198,6 +206,80 @@ export default function SettingsPage() {
       fetchStatuses();
     }
   }, [isAdmin]);
+
+  // Charger le statut de connexion Google
+  useEffect(() => {
+    const fetchGoogleAccount = async () => {
+      try {
+        setGoogleLoading(true);
+        const response = await fetch('/api/auth/google/status');
+        if (response.ok) {
+          const data = await response.json();
+          setGoogleAccount(data);
+        } else {
+          setGoogleAccount({ email: null, connected: false });
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement du compte Google:', error);
+        setGoogleAccount({ email: null, connected: false });
+      } finally {
+        setGoogleLoading(false);
+      }
+    };
+    fetchGoogleAccount();
+  }, []);
+
+  // Gérer les messages de succès/erreur depuis l'URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const success = params.get('success');
+    const error = params.get('error');
+
+    if (success === 'google_connected') {
+      setGoogleAccount({ email: null, connected: true });
+      // Recharger le statut
+      fetch('/api/auth/google/status')
+        .then((res) => res.json())
+        .then((data) => setGoogleAccount(data))
+        .catch(() => {});
+      // Nettoyer l'URL
+      window.history.replaceState({}, '', '/settings');
+    }
+
+    if (error) {
+      console.error('Erreur Google:', error);
+      // Nettoyer l'URL
+      window.history.replaceState({}, '', '/settings');
+    }
+  }, []);
+
+  const handleGoogleConnect = () => {
+    window.location.href = '/api/auth/google';
+  };
+
+  const handleGoogleDisconnect = async () => {
+    if (!confirm('Êtes-vous sûr de vouloir déconnecter votre compte Google ?')) {
+      return;
+    }
+
+    try {
+      setGoogleDisconnecting(true);
+      const response = await fetch('/api/auth/google/disconnect', {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        setGoogleAccount({ email: null, connected: false });
+      } else {
+        const data = await response.json();
+        console.error('Erreur lors de la déconnexion:', data.error);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la déconnexion Google:', error);
+    } finally {
+      setGoogleDisconnecting(false);
+    }
+  };
 
   const handleCompanySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1314,6 +1396,68 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </form>
+            )}
+          </div>
+
+          {/* Section Google Calendar */}
+          <div className="rounded-lg bg-white p-4 shadow sm:p-6">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900 sm:text-lg">
+                Intégration Google Calendar
+              </h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Connectez votre compte Google pour programmer des Google Meet depuis le CRM
+              </p>
+            </div>
+
+            {googleLoading ? (
+              <div className="mt-6 text-center text-gray-500">Chargement...</div>
+            ) : googleAccount?.connected ? (
+              <div className="mt-6">
+                <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <svg
+                        className="h-5 w-5 text-green-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-green-800">
+                          Compte Google connecté
+                        </p>
+                        {googleAccount.email && (
+                          <p className="text-xs text-green-700">{googleAccount.email}</p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleGoogleDisconnect}
+                      disabled={googleDisconnecting}
+                      className="cursor-pointer rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {googleDisconnecting ? 'Déconnexion...' : 'Déconnecter'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-6">
+                <button
+                  onClick={handleGoogleConnect}
+                  className="cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  Connecter mon compte Google
+                </button>
+              </div>
             )}
           </div>
 

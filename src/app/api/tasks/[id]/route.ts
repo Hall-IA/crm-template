@@ -1,12 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import {
+  getValidAccessToken,
+  updateGoogleCalendarEvent,
+  extractMeetLink,
+  deleteGoogleCalendarEvent,
+} from '@/lib/google-calendar';
+import nodemailer from 'nodemailer';
+import { decrypt } from '@/lib/encryption';
+
+function htmlToText(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 
 // GET /api/tasks/[id] - Récupérer une tâche spécifique
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
@@ -64,18 +79,12 @@ export async function GET(
     return NextResponse.json(task);
   } catch (error: any) {
     console.error('Erreur lors de la récupération de la tâche:', error);
-    return NextResponse.json(
-      { error: error.message || 'Erreur serveur' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
 
 // PUT /api/tasks/[id] - Mettre à jour une tâche
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
@@ -96,6 +105,7 @@ export async function PUT(
       assignedUserId,
       completed,
       reminderMinutesBefore,
+      durationMinutes,
     } = body;
 
     // Vérifier que la tâche existe
@@ -128,6 +138,9 @@ export async function PUT(
       updateData.reminderMinutesBefore =
         typeof reminderMinutesBefore === 'number' ? reminderMinutesBefore : null;
     }
+    if (durationMinutes !== undefined) {
+      updateData.durationMinutes = durationMinutes || null;
+    }
     if (completed !== undefined) {
       updateData.completed = completed;
       updateData.completedAt = completed ? new Date() : null;
@@ -137,6 +150,82 @@ export async function PUT(
     if (assignedUserId !== undefined && user?.role === 'ADMIN') {
       updateData.assignedUserId = assignedUserId;
     }
+
+    // Si la tâche a un googleEventId, synchroniser avec Google Calendar
+    if (existingTask.googleEventId) {
+      try {
+        const googleAccount = await prisma.userGoogleAccount.findUnique({
+          where: { userId: session.user.id },
+        });
+
+        if (googleAccount) {
+          const accessToken = await getValidAccessToken(
+            googleAccount.accessToken,
+            googleAccount.refreshToken,
+            googleAccount.tokenExpiresAt,
+          );
+
+          // Mettre à jour le token si nécessaire
+          if (accessToken !== googleAccount.accessToken) {
+            const tokenExpiresAt = new Date();
+            tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + 3600);
+            await prisma.userGoogleAccount.update({
+              where: { userId: session.user.id },
+              data: {
+                accessToken,
+                tokenExpiresAt,
+              },
+            });
+          }
+
+          // Préparer les données de mise à jour pour Google Calendar
+          const googleUpdate: any = {};
+          if (title !== undefined) googleUpdate.summary = title;
+          if (description !== undefined) googleUpdate.description = description;
+
+          if (scheduledAt !== undefined) {
+            const startDate = new Date(scheduledAt);
+            const duration = durationMinutes || existingTask.durationMinutes || 30;
+            const endDate = new Date(startDate.getTime() + duration * 60 * 1000);
+
+            googleUpdate.start = {
+              dateTime: startDate.toISOString(),
+              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            };
+            googleUpdate.end = {
+              dateTime: endDate.toISOString(),
+              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            };
+          }
+
+          // Mettre à jour l'évènement Google Calendar
+          const updatedGoogleEvent = await updateGoogleCalendarEvent(
+            accessToken,
+            existingTask.googleEventId,
+            googleUpdate,
+          );
+
+          // Mettre à jour le lien Meet si nécessaire
+          const meetLink = extractMeetLink(updatedGoogleEvent);
+          if (meetLink) {
+            updateData.googleMeetLink = meetLink;
+          }
+        }
+      } catch (googleError: any) {
+        console.error('Erreur lors de la synchronisation avec Google Calendar:', googleError);
+        // On continue quand même la mise à jour de la tâche locale
+      }
+    }
+
+    // Vérifier si la date/heure ou la durée a changé pour un Google Meet
+    const hasDateChanged =
+      existingTask.googleEventId &&
+      scheduledAt !== undefined &&
+      new Date(scheduledAt).getTime() !== existingTask.scheduledAt.getTime();
+    const hasDurationChanged =
+      existingTask.googleEventId &&
+      durationMinutes !== undefined &&
+      durationMinutes !== existingTask.durationMinutes;
 
     const task = await prisma.task.update({
       where: { id },
@@ -168,20 +257,250 @@ export async function PUT(
       },
     });
 
+    // Envoyer un email de modification si c'est un Google Meet et que la date/heure ou la durée a changé
+    if (
+      existingTask.googleEventId &&
+      task.contact?.email &&
+      (hasDateChanged || hasDurationChanged)
+    ) {
+      try {
+        // Récupérer la configuration SMTP
+        const smtpConfig = await prisma.smtpConfig.findUnique({
+          where: { userId: session.user.id },
+        });
+
+        if (smtpConfig && task.googleMeetLink) {
+          // Déchiffrer le mot de passe SMTP
+          let password: string;
+          try {
+            password = decrypt(smtpConfig.password);
+          } catch (error) {
+            password = smtpConfig.password;
+          }
+
+          // Créer le transporteur SMTP
+          const transporter = nodemailer.createTransport({
+            host: smtpConfig.host,
+            port: smtpConfig.port,
+            secure: smtpConfig.secure,
+            auth: {
+              user: smtpConfig.username,
+              pass: password,
+            },
+          });
+
+          // Récupérer le nom de l'organisateur
+          const organizer = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { name: true },
+          });
+
+          const contactName =
+            `${task.contact.firstName || ''} ${task.contact.lastName || ''}`.trim() ||
+            'Cher client';
+          const organizerName = organizer?.name || session.user.name || 'Organisateur';
+
+          const formatDate = (date: Date) => {
+            return date.toLocaleDateString('fr-FR', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            });
+          };
+
+          const formatTime = (date: Date) => {
+            return date.toLocaleTimeString('fr-FR', {
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+          };
+
+          const formatDuration = (minutes: number) => {
+            if (minutes < 60) {
+              return `${minutes} minutes`;
+            }
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            if (mins === 0) {
+              return `${hours} heure${hours > 1 ? 's' : ''}`;
+            }
+            return `${hours} heure${hours > 1 ? 's' : ''} ${mins} minute${mins > 1 ? 's' : ''}`;
+          };
+
+          const oldScheduledAt = existingTask.scheduledAt.toISOString();
+          const newScheduledAt = task.scheduledAt.toISOString();
+          const oldDuration = existingTask.durationMinutes ?? 30;
+          const newDuration = task.durationMinutes ?? 30;
+
+          // Générer le contenu HTML de l'email
+          const emailHtml = `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+              <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 20px;">
+                  Modification de rendez-vous
+                </h1>
+                <p style="font-size: 16px; margin-bottom: 20px;">Bonjour ${contactName},</p>
+                <p style="font-size: 16px; margin-bottom: 20px;">
+                  Les informations de votre rendez-vous ont été modifiées.
+                </p>
+                <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                  <h2 style="color: #1a1a1a; font-size: 20px; margin-bottom: 15px;">${task.title || 'Rendez-vous'}</h2>
+                  ${
+                    hasDateChanged
+                      ? `
+                    <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ddd;">
+                      <div style="margin-bottom: 10px;">
+                        <strong>Ancienne date :</strong>
+                        <span style="text-decoration: line-through; color: #999;">
+                          ${formatDate(new Date(oldScheduledAt))} à ${formatTime(new Date(oldScheduledAt))}
+                        </span>
+                      </div>
+                      <div style="margin-bottom: 10px;">
+                        <strong>Nouvelle date :</strong>
+                        <span style="color: #10B981; font-weight: bold;">
+                          ${formatDate(new Date(newScheduledAt))} à ${formatTime(new Date(newScheduledAt))}
+                        </span>
+                      </div>
+                    </div>
+                  `
+                      : `
+                    <div style="margin-bottom: 10px;"><strong>Date :</strong> ${formatDate(new Date(newScheduledAt))}</div>
+                    <div style="margin-bottom: 10px;"><strong>Heure :</strong> ${formatTime(new Date(newScheduledAt))}</div>
+                  `
+                  }
+                  ${
+                    hasDurationChanged
+                      ? `
+                    <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ddd;">
+                      <div style="margin-bottom: 10px;">
+                        <strong>Ancienne durée :</strong>
+                        <span style="text-decoration: line-through; color: #999;">
+                          ${formatDuration(oldDuration)}
+                        </span>
+                      </div>
+                      <div style="margin-bottom: 10px;">
+                        <strong>Nouvelle durée :</strong>
+                        <span style="color: #10B981; font-weight: bold;">
+                          ${formatDuration(newDuration)}
+                        </span>
+                      </div>
+                    </div>
+                  `
+                      : `
+                    <div style="margin-bottom: 10px;"><strong>Durée :</strong> ${formatDuration(newDuration)}</div>
+                  `
+                  }
+                  <div style="margin-bottom: 10px;"><strong>Organisateur :</strong> ${organizerName}</div>
+                  ${
+                    task.description
+                      ? `
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                      <strong>Description :</strong>
+                      <div style="margin-top: 10px;">${task.description}</div>
+                    </div>
+                  `
+                      : ''
+                  }
+                </div>
+                <div style="margin-bottom: 30px; text-align: center;">
+                  <a href="${task.googleMeetLink}" style="display: inline-block; background-color: #4285f4; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-size: 16px; font-weight: bold;">
+                    Rejoindre la réunion Google Meet
+                  </a>
+                </div>
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+                  <p style="font-size: 14px; color: #666;">
+                    <strong>Lien de la réunion :</strong><br>
+                    <a href="${task.googleMeetLink}" style="color: #4285f4; word-break: break-all;">${task.googleMeetLink}</a>
+                  </p>
+                </div>
+                ${
+                  smtpConfig.signature
+                    ? `
+                  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 14px;">
+                    ${smtpConfig.signature}
+                  </div>
+                `
+                    : ''
+                }
+                <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                  Cordialement,<br>
+                  ${organizerName}
+                </p>
+              </div>
+            </div>
+          `;
+
+          // Générer le contenu texte de l'email
+          const emailText = `
+            Modification de rendez-vous
+
+            Bonjour ${contactName},
+
+            Les informations de votre rendez-vous ont été modifiées.
+
+            ${task.title || 'Rendez-vous'}
+
+            ${
+              hasDateChanged
+                ? `
+            Ancienne date : ${formatDate(new Date(oldScheduledAt))} à ${formatTime(new Date(oldScheduledAt))}
+            Nouvelle date : ${formatDate(new Date(newScheduledAt))} à ${formatTime(new Date(newScheduledAt))}
+            `
+                : `
+            Date : ${formatDate(new Date(newScheduledAt))}
+            Heure : ${formatTime(new Date(newScheduledAt))}
+            `
+            }
+            ${
+              hasDurationChanged
+                ? `
+            Ancienne durée : ${formatDuration(oldDuration)}
+            Nouvelle durée : ${formatDuration(newDuration)}
+            `
+                : `
+            Durée : ${formatDuration(newDuration)}
+            `
+            }
+            Organisateur : ${organizerName}
+
+            ${task.description ? `Description :\n${htmlToText(task.description)}\n` : ''}
+
+            Lien de la réunion : ${task.googleMeetLink}
+
+            Cordialement,
+            ${organizerName}
+            ${smtpConfig.signature ? `\n\n${htmlToText(smtpConfig.signature)}` : ''}
+          `.trim();
+
+          // Envoyer l'email
+          await transporter.sendMail({
+            from: smtpConfig.fromName
+              ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
+              : smtpConfig.fromEmail,
+            to: task.contact.email,
+            subject: `Modification de rendez-vous : ${task.title || 'Rendez-vous'}`,
+            text: emailText,
+            html: emailHtml,
+          });
+        }
+      } catch (emailError: any) {
+        // Ne pas faire échouer la mise à jour si l'email échoue
+        console.error("Erreur lors de l'envoi de l'email de modification:", emailError);
+      }
+    }
+
     return NextResponse.json(task);
   } catch (error: any) {
     console.error('Erreur lors de la mise à jour de la tâche:', error);
-    return NextResponse.json(
-      { error: error.message || 'Erreur serveur' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
 
 // DELETE /api/tasks/[id] - Supprimer une tâche
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth.api.getSession({
@@ -213,17 +532,233 @@ export async function DELETE(
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
     }
 
+    // Récupérer les informations du contact avant suppression pour l'email
+    const taskWithContact = await prisma.task.findUnique({
+      where: { id },
+      include: {
+        contact: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        assignedUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    // Supprimer l'événement Google Calendar si c'est un Google Meet
+    if (task.googleEventId) {
+      try {
+        const googleAccount = await prisma.userGoogleAccount.findUnique({
+          where: { userId: session.user.id },
+        });
+
+        if (googleAccount) {
+          const accessToken = await getValidAccessToken(
+            googleAccount.accessToken,
+            googleAccount.refreshToken,
+            googleAccount.tokenExpiresAt,
+          );
+
+          // Mettre à jour le token si nécessaire
+          if (accessToken !== googleAccount.accessToken) {
+            const tokenExpiresAt = new Date();
+            tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + 3600);
+            await prisma.userGoogleAccount.update({
+              where: { userId: session.user.id },
+              data: {
+                accessToken,
+                tokenExpiresAt,
+              },
+            });
+          }
+
+          // Supprimer l'événement Google Calendar
+          await deleteGoogleCalendarEvent(accessToken, task.googleEventId);
+        }
+      } catch (googleError: any) {
+        console.error('Erreur lors de la suppression de l\'événement Google Calendar:', googleError);
+        // On continue quand même la suppression de la tâche
+      }
+    }
+
+    // Supprimer la tâche
     await prisma.task.delete({
       where: { id },
     });
 
+    // Envoyer un email d'annulation au contact si c'est un Google Meet
+    if (task.googleEventId && taskWithContact?.contact?.email && task.googleMeetLink) {
+      try {
+        // Récupérer la configuration SMTP
+        const smtpConfig = await prisma.smtpConfig.findUnique({
+          where: { userId: session.user.id },
+        });
+
+        if (smtpConfig) {
+          // Déchiffrer le mot de passe SMTP
+          let password: string;
+          try {
+            password = decrypt(smtpConfig.password);
+          } catch (error) {
+            password = smtpConfig.password;
+          }
+
+          // Créer le transporteur SMTP
+          const transporter = nodemailer.createTransport({
+            host: smtpConfig.host,
+            port: smtpConfig.port,
+            secure: smtpConfig.secure,
+            auth: {
+              user: smtpConfig.username,
+              pass: password,
+            },
+          });
+
+          // Récupérer le nom de l'organisateur
+          const organizer = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { name: true },
+          });
+
+          const contactName =
+            `${taskWithContact.contact.firstName || ''} ${taskWithContact.contact.lastName || ''}`.trim() ||
+            'Cher client';
+          const organizerName = organizer?.name || session.user.name || 'Organisateur';
+
+          const formatDate = (date: Date) => {
+            return date.toLocaleDateString('fr-FR', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            });
+          };
+
+          const formatTime = (date: Date) => {
+            return date.toLocaleTimeString('fr-FR', {
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+          };
+
+          const formatDuration = (minutes: number) => {
+            if (minutes < 60) {
+              return `${minutes} minutes`;
+            }
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            if (mins === 0) {
+              return `${hours} heure${hours > 1 ? 's' : ''}`;
+            }
+            return `${hours} heure${hours > 1 ? 's' : ''} ${mins} minute${mins > 1 ? 's' : ''}`;
+          };
+
+          const scheduledDate = task.scheduledAt;
+
+          // Générer le contenu HTML de l'email
+          const emailHtml = `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+              <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #EF4444; font-size: 24px; margin-bottom: 20px;">
+                  Annulation de rendez-vous
+                </h1>
+                <p style="font-size: 16px; margin-bottom: 20px;">Bonjour ${contactName},</p>
+                <p style="font-size: 16px; margin-bottom: 20px;">
+                  Nous vous informons que votre rendez-vous a été annulé.
+                </p>
+                <div style="background-color: #FEF2F2; border-left: 4px solid #EF4444; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                  <h2 style="color: #1a1a1a; font-size: 20px; margin-bottom: 15px;">${task.title || 'Rendez-vous'}</h2>
+                  <div style="margin-bottom: 10px;"><strong>Date :</strong> ${formatDate(new Date(scheduledDate))}</div>
+                  <div style="margin-bottom: 10px;"><strong>Heure :</strong> ${formatTime(new Date(scheduledDate))}</div>
+                  <div style="margin-bottom: 10px;"><strong>Durée :</strong> ${formatDuration(task.durationMinutes ?? 30)}</div>
+                  <div style="margin-bottom: 10px;"><strong>Organisateur :</strong> ${organizerName}</div>
+                  ${task.description ? `
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                      <strong>Description :</strong>
+                      <div style="margin-top: 10px;">${task.description}</div>
+                    </div>
+                  ` : ''}
+                </div>
+                <p style="font-size: 16px; margin-bottom: 20px; color: #666;">
+                  Si vous souhaitez reprogrammer ce rendez-vous, n'hésitez pas à nous contacter.
+                </p>
+                ${
+                  smtpConfig.signature
+                    ? `
+                  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 14px;">
+                    ${smtpConfig.signature}
+                  </div>
+                `
+                    : ''
+                }
+                <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                  Cordialement,<br>
+                  ${organizerName}
+                </p>
+              </div>
+            </div>
+          `;
+
+          // Générer le contenu texte de l'email
+          const emailText = `
+Annulation de rendez-vous
+
+Bonjour ${contactName},
+
+Nous vous informons que votre rendez-vous a été annulé.
+
+${task.title || 'Rendez-vous'}
+
+Date : ${formatDate(new Date(scheduledDate))}
+Heure : ${formatTime(new Date(scheduledDate))}
+Durée : ${formatDuration(task.durationMinutes ?? 30)}
+Organisateur : ${organizerName}
+
+${task.description ? `Description :\n${htmlToText(task.description)}\n` : ''}
+
+Si vous souhaitez reprogrammer ce rendez-vous, n'hésitez pas à nous contacter.
+
+Cordialement,
+${organizerName}
+${smtpConfig.signature ? `\n\n${htmlToText(smtpConfig.signature)}` : ''}
+          `.trim();
+
+          // Envoyer l'email
+          await transporter.sendMail({
+            from: smtpConfig.fromName
+              ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
+              : smtpConfig.fromEmail,
+            to: taskWithContact.contact.email,
+            subject: `Annulation de rendez-vous : ${task.title || 'Rendez-vous'}`,
+            text: emailText,
+            html: emailHtml,
+          });
+        }
+      } catch (emailError: any) {
+        // Ne pas faire échouer la suppression si l'email échoue
+        console.error("Erreur lors de l'envoi de l'email d'annulation:", emailError);
+      }
+    }
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Erreur lors de la suppression de la tâche:', error);
-    return NextResponse.json(
-      { error: error.message || 'Erreur serveur' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-
