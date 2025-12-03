@@ -62,11 +62,9 @@ export function ResetPasswordEmailTemplate({ code, signature }: ResetPasswordEma
             color: '#4B5563',
             fontSize: '14px',
             lineHeight: '1.6',
-            whiteSpace: 'pre-line',
           }}
-        >
-          {signature}
-        </div>
+          dangerouslySetInnerHTML={{ __html: signature }}
+        />
       )}
     </div>
   );

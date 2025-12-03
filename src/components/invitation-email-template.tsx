@@ -48,7 +48,7 @@ export function InvitationEmailTemplate({ name, invitationUrl, signature }: Invi
           borderTop: '1px solid #E5E7EB',
         }}
       >
-        Ce lien est valide pendant 7 jours. Si vous n'avez pas demandé cette invitation, vous pouvez ignorer cet email.
+        Ce lien est valide pendant 24 heures. Si vous n'avez pas demandé cette invitation, vous pouvez ignorer cet email.
       </p>
 
       {signature && (
@@ -60,11 +60,9 @@ export function InvitationEmailTemplate({ name, invitationUrl, signature }: Invi
             color: '#4B5563',
             fontSize: '14px',
             lineHeight: '1.6',
-            whiteSpace: 'pre-line',
           }}
-        >
-          {signature}
-        </div>
+          dangerouslySetInnerHTML={{ __html: signature }}
+        />
       )}
     </div>
   );

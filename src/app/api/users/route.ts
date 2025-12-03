@@ -134,9 +134,14 @@ export async function POST(request: NextRequest) {
     const invitationUrl = `${baseUrl}/invite/${token}`;
     
     try {
-      await fetch(`${baseUrl}/api/send`, {
+      // Transmettre les cookies de session pour que /api/send puisse identifier l'utilisateur connecté
+      const cookieHeader = request.headers.get('cookie') || '';
+      const emailResponse = await fetch(`${baseUrl}/api/send`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': cookieHeader,
+        },
         body: JSON.stringify({
           to: email,
           subject: 'Invitation à rejoindre le CRM',
@@ -145,8 +150,24 @@ export async function POST(request: NextRequest) {
           name,
         }),
       });
-    } catch (emailError) {
-      console.error("Erreur lors de l'envoi de l'email:", emailError);
+
+      if (!emailResponse.ok) {
+        const errorData = await emailResponse.json().catch(() => ({}));
+        console.error("❌ Erreur lors de l'envoi de l'email:", {
+          status: emailResponse.status,
+          statusText: emailResponse.statusText,
+          error: errorData,
+        });
+      } else {
+        const successData = await emailResponse.json().catch(() => ({}));
+        console.log("✅ Email d'invitation envoyé avec succès:", successData);
+      }
+    } catch (emailError: any) {
+      console.error("❌ Erreur lors de l'envoi de l'email:", emailError);
+      console.error("Détails:", {
+        message: emailError.message,
+        stack: emailError.stack,
+      });
       // On continue même si l'email échoue, l'utilisateur est créé
     }
 
