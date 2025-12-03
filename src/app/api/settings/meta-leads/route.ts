@@ -3,43 +3,44 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/roles';
 import { encrypt } from '@/lib/encryption';
 
-// GET /api/settings/meta-leads - Récupérer la configuration Meta Lead Ads (admin uniquement)
+// GET /api/settings/meta-leads - Récupérer toutes les configurations Meta Lead Ads (admin uniquement)
 export async function GET(request: NextRequest) {
   try {
     await requireAdmin(request.headers);
 
-    const config = await prisma.metaLeadConfig.findFirst({
+    const configs = await prisma.metaLeadConfig.findMany({
       include: {
         defaultStatus: true,
         defaultAssignedUser: {
           select: { id: true, name: true, email: true },
         },
       },
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
 
-    if (!config) {
-      return NextResponse.json(null);
-    }
-
-    // Ne jamais renvoyer le jeton d'accès Meta en clair
-    return NextResponse.json({
-      id: config.id,
-      pageId: config.pageId,
-      verifyToken: config.verifyToken,
-      active: config.active,
-      defaultStatusId: config.defaultStatusId,
-      defaultAssignedUserId: config.defaultAssignedUserId,
-      defaultStatus: config.defaultStatus
-        ? {
-            id: config.defaultStatus.id,
-            name: config.defaultStatus.name,
-            color: config.defaultStatus.color,
-          }
-        : null,
-      defaultAssignedUser: config.defaultAssignedUser || null,
-    });
+    return NextResponse.json(
+      configs.map((config) => ({
+        id: config.id,
+        name: config.name,
+        pageId: config.pageId,
+        verifyToken: config.verifyToken,
+        active: config.active,
+        defaultStatusId: config.defaultStatusId,
+        defaultAssignedUserId: config.defaultAssignedUserId,
+        defaultStatus: config.defaultStatus
+          ? {
+              id: config.defaultStatus.id,
+              name: config.defaultStatus.name,
+              color: config.defaultStatus.color,
+            }
+          : null,
+        defaultAssignedUser: config.defaultAssignedUser || null,
+      })),
+    );
   } catch (error: any) {
-    console.error('Erreur lors de la récupération de la configuration Meta Lead Ads:', error);
+    console.error('Erreur lors de la récupération des configurations Meta Lead Ads:', error);
 
     if (error.message === 'Non authentifié') {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
@@ -53,13 +54,14 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PUT /api/settings/meta-leads - Créer / mettre à jour la configuration (admin uniquement)
-export async function PUT(request: NextRequest) {
+// POST /api/settings/meta-leads - Créer une nouvelle configuration (admin uniquement)
+export async function POST(request: NextRequest) {
   try {
     await requireAdmin(request.headers);
 
     const body = await request.json();
     const {
+      name,
       pageId,
       accessToken,
       verifyToken,
@@ -68,11 +70,11 @@ export async function PUT(request: NextRequest) {
       defaultAssignedUserId,
     } = body;
 
-    if (!pageId || !accessToken || !verifyToken) {
+    if (!name || !pageId || !accessToken || !verifyToken) {
       return NextResponse.json(
         {
           error:
-            'Les champs pageId, accessToken et verifyToken sont obligatoires pour activer Meta Lead Ads.',
+            'Les champs nom, pageId, accessToken et verifyToken sont obligatoires pour activer Meta Lead Ads.',
         },
         { status: 400 },
       );
@@ -89,18 +91,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const config = await prisma.metaLeadConfig.upsert({
-      where: { id: 'meta_lead_config_singleton' },
-      update: {
-        pageId,
-        accessToken: encryptedAccessToken,
-        verifyToken,
-        active: !!active,
-        defaultStatusId: defaultStatusId || null,
-        defaultAssignedUserId: defaultAssignedUserId || null,
-      },
-      create: {
-        id: 'meta_lead_config_singleton',
+    const config = await prisma.metaLeadConfig.create({
+      data: {
+        name,
         pageId,
         accessToken: encryptedAccessToken,
         verifyToken,
@@ -114,16 +107,17 @@ export async function PUT(request: NextRequest) {
       success: true,
       config: {
         id: config.id,
+        name: config.name,
         pageId: config.pageId,
         verifyToken: config.verifyToken,
         active: config.active,
         defaultStatusId: config.defaultStatusId,
         defaultAssignedUserId: config.defaultAssignedUserId,
       },
-      message: 'Configuration Meta Lead Ads sauvegardée avec succès.',
+      message: 'Configuration Meta Lead Ads créée avec succès.',
     });
   } catch (error: any) {
-    console.error('Erreur lors de la sauvegarde de la configuration Meta Lead Ads:', error);
+    console.error('Erreur lors de la création de la configuration Meta Lead Ads:', error);
 
     if (error.message === 'Non authentifié') {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
@@ -136,5 +130,3 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-
-

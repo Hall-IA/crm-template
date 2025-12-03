@@ -24,9 +24,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Requête invalide' }, { status: 400 });
     }
 
-    const config = await prisma.metaLeadConfig.findFirst();
+    // Vérifier toutes les configurations actives pour trouver celle qui correspond au verifyToken
+    const configs = await prisma.metaLeadConfig.findMany({
+      where: { active: true },
+    });
 
-    if (!config || verifyToken !== config.verifyToken) {
+    const config = configs.find((c) => c.verifyToken === verifyToken);
+
+    if (!config) {
       return NextResponse.json({ error: 'Token de vérification invalide' }, { status: 403 });
     }
 
@@ -49,16 +54,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    const config = await prisma.metaLeadConfig.findFirst({
+    // Récupérer toutes les configurations actives
+    const configs = await prisma.metaLeadConfig.findMany({
       where: { active: true },
     });
 
-    if (!config) {
+    if (!configs || configs.length === 0) {
       console.warn('Webhook Meta Lead Ads reçu mais aucune configuration active trouvée.');
       return NextResponse.json({ received: true });
     }
-
-    const accessToken = decrypt(config.accessToken);
 
     for (const entry of body.entry) {
       if (!Array.isArray(entry.changes)) continue;
@@ -66,9 +70,21 @@ export async function POST(request: NextRequest) {
       for (const change of entry.changes as MetaLeadChange[]) {
         if (change.field !== 'leadgen') continue;
 
-        const { leadgen_id: leadId } = change.value;
+        const { leadgen_id: leadId, page_id: pageId } = change.value;
+
+        // Trouver la configuration correspondante à la page
+        const config = configs.find((c) => c.pageId === pageId);
+
+        if (!config) {
+          console.warn(
+            `Lead Meta reçu pour la page ${pageId} mais aucune configuration active trouvée pour cette page.`,
+          );
+          continue;
+        }
 
         try {
+          const accessToken = decrypt(config.accessToken);
+
           // Récupérer les données du lead depuis l'API Graph
           const leadResponse = await fetch(
             `https://graph.facebook.com/v18.0/${leadId}?access_token=${encodeURIComponent(
@@ -150,7 +166,7 @@ export async function POST(request: NextRequest) {
                 lastName: lastName || null,
                 email: email ? email.toLowerCase() : null,
                 phone,
-                origin: 'Meta Lead Ads',
+                origin: `Meta Lead Ads - ${config.name}`,
                 statusId: config.defaultStatusId || null,
                 assignedUserId,
                 createdById: assignedUserId,
@@ -164,7 +180,7 @@ export async function POST(request: NextRequest) {
                 firstName: contact.firstName || firstName || null,
                 lastName: contact.lastName || lastName || null,
                 email: contact.email || (email ? email.toLowerCase() : null),
-                origin: contact.origin || 'Meta Lead Ads',
+                origin: contact.origin || `Meta Lead Ads - ${config.name}`,
                 statusId: contact.statusId || config.defaultStatusId || null,
                 assignedUserId: contact.assignedUserId || assignedUserId,
               },
@@ -176,8 +192,8 @@ export async function POST(request: NextRequest) {
             data: {
               contactId: contact.id,
               type: 'NOTE',
-              title: 'Lead Meta Lead Ads',
-              content: `Lead importé automatiquement depuis Meta Lead Ads (formulaire: ${
+              title: `Lead Meta Lead Ads - ${config.name}`,
+              content: `Lead importé automatiquement depuis Meta Lead Ads (${config.name}, formulaire: ${
                 change.value.form_id
               }).`,
               userId: assignedUserId,

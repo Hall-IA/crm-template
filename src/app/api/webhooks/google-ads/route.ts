@@ -27,19 +27,22 @@ export async function POST(request: NextRequest) {
 
     const client = prisma as any;
 
-    const config = await client.googleAdsLeadConfig.findFirst({
+    // Récupérer toutes les configurations actives
+    const configs = await client.googleAdsLeadConfig.findMany({
       where: { active: true },
     });
 
-    if (!config) {
+    if (!configs || configs.length === 0) {
       console.warn(
         'Webhook Google Ads reçu mais aucune configuration active GoogleAdsLeadConfig trouvée.',
       );
       return NextResponse.json({ received: true });
     }
 
-    // Vérifier la clé partagée
-    if (notification.googleKey !== config.webhookKey) {
+    // Trouver la configuration correspondante à la clé
+    const config = configs.find((c: any) => c.webhookKey === notification.googleKey);
+
+    if (!config) {
       console.warn('Clé Google Ads invalide reçue sur le webhook.');
       return NextResponse.json({ error: 'Clé invalide' }, { status: 403 });
     }
@@ -113,7 +116,7 @@ export async function POST(request: NextRequest) {
           lastName: lastName || null,
           email: email ? email.toLowerCase() : null,
           phone: phone || '',
-          origin: 'Google Ads',
+          origin: `Google Ads - ${config.name}`,
           statusId: config.defaultStatusId || null,
           assignedUserId,
           createdById: assignedUserId,
@@ -126,7 +129,7 @@ export async function POST(request: NextRequest) {
           firstName: contact.firstName || firstName || null,
           lastName: contact.lastName || lastName || null,
           email: contact.email || (email ? email.toLowerCase() : null),
-          origin: contact.origin || 'Google Ads',
+          origin: contact.origin || `Google Ads - ${config.name}`,
           statusId: contact.statusId || config.defaultStatusId || null,
           assignedUserId: contact.assignedUserId || assignedUserId,
         },
@@ -138,8 +141,8 @@ export async function POST(request: NextRequest) {
       data: {
         contactId: contact.id,
         type: 'NOTE',
-        title: 'Lead Google Ads',
-        content: `Lead importé automatiquement depuis Google Ads (client: ${
+        title: `Lead Google Ads - ${config.name}`,
+        content: `Lead importé automatiquement depuis Google Ads (${config.name}, client: ${
           notification.customerId || 'inconnu'
         }).`,
         userId: assignedUserId,

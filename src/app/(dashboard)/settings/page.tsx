@@ -109,7 +109,21 @@ export default function SettingsPage() {
   const [metaLeadUsers, setMetaLeadUsers] = useState<
     { id: string; name: string; email: string }[]
   >([]);
-  const [metaLeadConfig, setMetaLeadConfig] = useState<{
+  const [metaLeadConfigs, setMetaLeadConfigs] = useState<
+    Array<{
+      id: string;
+      name: string;
+      active: boolean;
+      pageId: string;
+      verifyToken: string;
+      defaultStatusId: string | null;
+      defaultAssignedUserId: string | null;
+    }>
+  >([]);
+  const [showMetaLeadModal, setShowMetaLeadModal] = useState(false);
+  const [editingMetaLeadConfig, setEditingMetaLeadConfig] = useState<string | null>(null);
+  const [metaLeadFormData, setMetaLeadFormData] = useState<{
+    name: string;
     active: boolean;
     pageId: string;
     accessToken: string;
@@ -117,6 +131,7 @@ export default function SettingsPage() {
     defaultStatusId: string | null;
     defaultAssignedUserId: string | null;
   }>({
+    name: '',
     active: true,
     pageId: '',
     accessToken: '',
@@ -130,12 +145,26 @@ export default function SettingsPage() {
   const [googleAdsSaving, setGoogleAdsSaving] = useState(false);
   const [googleAdsError, setGoogleAdsError] = useState('');
   const [googleAdsSuccess, setGoogleAdsSuccess] = useState('');
-  const [googleAdsConfig, setGoogleAdsConfig] = useState<{
+  const [googleAdsConfigs, setGoogleAdsConfigs] = useState<
+    Array<{
+      id: string;
+      name: string;
+      active: boolean;
+      webhookKey: string;
+      defaultStatusId: string | null;
+      defaultAssignedUserId: string | null;
+    }>
+  >([]);
+  const [showGoogleAdsModal, setShowGoogleAdsModal] = useState(false);
+  const [editingGoogleAdsConfig, setEditingGoogleAdsConfig] = useState<string | null>(null);
+  const [googleAdsFormData, setGoogleAdsFormData] = useState<{
+    name: string;
     active: boolean;
     webhookKey: string;
     defaultStatusId: string | null;
     defaultAssignedUserId: string | null;
   }>({
+    name: '',
     active: true,
     webhookKey: '',
     defaultStatusId: null,
@@ -148,7 +177,29 @@ export default function SettingsPage() {
   const [googleSheetSyncing, setGoogleSheetSyncing] = useState(false);
   const [googleSheetError, setGoogleSheetError] = useState('');
   const [googleSheetSuccess, setGoogleSheetSuccess] = useState('');
-  const [googleSheetConfig, setGoogleSheetConfig] = useState<{
+  const [googleSheetConfigs, setGoogleSheetConfigs] = useState<
+    Array<{
+      id: string;
+      name: string;
+      active: boolean;
+      spreadsheetId: string;
+      sheetName: string;
+      headerRow: number;
+      phoneColumn: string;
+      firstNameColumn: string | null;
+      lastNameColumn: string | null;
+      emailColumn: string | null;
+      cityColumn: string | null;
+      postalCodeColumn: string | null;
+      originColumn: string | null;
+      defaultStatusId: string | null;
+      defaultAssignedUserId: string | null;
+    }>
+  >([]);
+  const [showGoogleSheetModal, setShowGoogleSheetModal] = useState(false);
+  const [editingGoogleSheetConfig, setEditingGoogleSheetConfig] = useState<string | null>(null);
+  const [googleSheetFormData, setGoogleSheetFormData] = useState<{
+    name: string;
     active: boolean;
     sheetUrl: string;
     sheetName: string;
@@ -163,6 +214,7 @@ export default function SettingsPage() {
     defaultStatusId: string | null;
     defaultAssignedUserId: string | null;
   }>({
+    name: '',
     active: true,
     sheetUrl: '',
     sheetName: '',
@@ -328,55 +380,18 @@ export default function SettingsPage() {
           ]);
 
         if (metaConfigRes.ok) {
-          const configData = await metaConfigRes.json();
-          if (configData) {
-            setMetaLeadConfig((prev) => ({
-              ...prev,
-              active: configData.active ?? true,
-              pageId: configData.pageId || '',
-              verifyToken: configData.verifyToken || '',
-              accessToken: '',
-              defaultStatusId: configData.defaultStatusId || null,
-              defaultAssignedUserId: configData.defaultAssignedUserId || null,
-            }));
-          }
+          const configsData = await metaConfigRes.json();
+          setMetaLeadConfigs(Array.isArray(configsData) ? configsData : []);
         }
 
         if (googleAdsConfigRes.ok) {
-          const googleConfigData = await googleAdsConfigRes.json();
-          if (googleConfigData) {
-            setGoogleAdsConfig((prev) => ({
-              ...prev,
-              active: googleConfigData.active ?? true,
-              webhookKey: googleConfigData.webhookKey || '',
-              defaultStatusId: googleConfigData.defaultStatusId || null,
-              defaultAssignedUserId: googleConfigData.defaultAssignedUserId || null,
-            }));
-          }
+          const configsData = await googleAdsConfigRes.json();
+          setGoogleAdsConfigs(Array.isArray(configsData) ? configsData : []);
         }
 
         if (googleSheetConfigRes.ok) {
-          const sheetConfigData = await googleSheetConfigRes.json();
-          if (sheetConfigData) {
-            setGoogleSheetConfig((prev) => ({
-              ...prev,
-              active: sheetConfigData.active ?? true,
-              sheetUrl: sheetConfigData.spreadsheetId
-                ? `https://docs.google.com/spreadsheets/d/${sheetConfigData.spreadsheetId}/edit`
-                : '',
-              sheetName: sheetConfigData.sheetName || '',
-              headerRow: sheetConfigData.headerRow?.toString() || '1',
-              phoneColumn: sheetConfigData.phoneColumn || '',
-              firstNameColumn: sheetConfigData.firstNameColumn || '',
-              lastNameColumn: sheetConfigData.lastNameColumn || '',
-              emailColumn: sheetConfigData.emailColumn || '',
-              cityColumn: sheetConfigData.cityColumn || '',
-              postalCodeColumn: sheetConfigData.postalCodeColumn || '',
-              originColumn: sheetConfigData.originColumn || '',
-              defaultStatusId: sheetConfigData.defaultStatusId || null,
-              defaultAssignedUserId: sheetConfigData.defaultAssignedUserId || null,
-            }));
-          }
+          const configsData = await googleSheetConfigRes.json();
+          setGoogleSheetConfigs(Array.isArray(configsData) ? configsData : []);
         }
 
         if (usersRes.ok) {
@@ -785,10 +800,15 @@ export default function SettingsPage() {
     setMetaLeadSaving(true);
 
     try {
-      const response = await fetch('/api/settings/meta-leads', {
-        method: 'PUT',
+      const url = editingMetaLeadConfig
+        ? `/api/settings/meta-leads/${editingMetaLeadConfig}`
+        : '/api/settings/meta-leads';
+      const method = editingMetaLeadConfig ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(metaLeadConfig),
+        body: JSON.stringify(metaLeadFormData),
       });
 
       const data = await response.json();
@@ -797,11 +817,29 @@ export default function SettingsPage() {
         throw new Error(data.error || 'Erreur lors de la sauvegarde de la configuration Meta');
       }
 
-      setMetaLeadSuccess('✅ Intégration Meta Lead Ads sauvegardée avec succès !');
-      setMetaLeadConfig((prev) => ({
-        ...prev,
+      setMetaLeadSuccess(
+        editingMetaLeadConfig
+          ? '✅ Configuration Meta Lead Ads mise à jour avec succès !'
+          : '✅ Configuration Meta Lead Ads créée avec succès !',
+      );
+      setShowMetaLeadModal(false);
+      setEditingMetaLeadConfig(null);
+      setMetaLeadFormData({
+        name: '',
+        active: true,
+        pageId: '',
         accessToken: '',
-      }));
+        verifyToken: '',
+        defaultStatusId: null,
+        defaultAssignedUserId: null,
+      });
+
+      // Recharger les configurations
+      const configsRes = await fetch('/api/settings/meta-leads');
+      if (configsRes.ok) {
+        const configsData = await configsRes.json();
+        setMetaLeadConfigs(Array.isArray(configsData) ? configsData : []);
+      }
 
       setTimeout(() => setMetaLeadSuccess(''), 5000);
     } catch (error: any) {
@@ -818,10 +856,15 @@ export default function SettingsPage() {
     setGoogleAdsSaving(true);
 
     try {
-      const response = await fetch('/api/settings/google-ads', {
-        method: 'PUT',
+      const url = editingGoogleAdsConfig
+        ? `/api/settings/google-ads/${editingGoogleAdsConfig}`
+        : '/api/settings/google-ads';
+      const method = editingGoogleAdsConfig ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(googleAdsConfig),
+        body: JSON.stringify(googleAdsFormData),
       });
 
       const data = await response.json();
@@ -832,7 +875,28 @@ export default function SettingsPage() {
         );
       }
 
-      setGoogleAdsSuccess('✅ Intégration Google Ads Lead Forms sauvegardée avec succès !');
+      setGoogleAdsSuccess(
+        editingGoogleAdsConfig
+          ? '✅ Configuration Google Ads mise à jour avec succès !'
+          : '✅ Configuration Google Ads créée avec succès !',
+      );
+      setShowGoogleAdsModal(false);
+      setEditingGoogleAdsConfig(null);
+      setGoogleAdsFormData({
+        name: '',
+        active: true,
+        webhookKey: '',
+        defaultStatusId: null,
+        defaultAssignedUserId: null,
+      });
+
+      // Recharger les configurations
+      const configsRes = await fetch('/api/settings/google-ads');
+      if (configsRes.ok) {
+        const configsData = await configsRes.json();
+        setGoogleAdsConfigs(Array.isArray(configsData) ? configsData : []);
+      }
+
       setTimeout(() => setGoogleAdsSuccess(''), 5000);
     } catch (error: any) {
       setGoogleAdsError(error.message || 'Erreur lors de la sauvegarde de la configuration Google');
@@ -848,10 +912,15 @@ export default function SettingsPage() {
     setGoogleSheetSaving(true);
 
     try {
-      const response = await fetch('/api/settings/google-sheet', {
-        method: 'PUT',
+      const url = editingGoogleSheetConfig
+        ? `/api/settings/google-sheet/${editingGoogleSheetConfig}`
+        : '/api/settings/google-sheet';
+      const method = editingGoogleSheetConfig ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(googleSheetConfig),
+        body: JSON.stringify(googleSheetFormData),
       });
 
       const data = await response.json();
@@ -862,7 +931,37 @@ export default function SettingsPage() {
         );
       }
 
-      setGoogleSheetSuccess('✅ Intégration Google Sheets sauvegardée avec succès !');
+      setGoogleSheetSuccess(
+        editingGoogleSheetConfig
+          ? '✅ Configuration Google Sheets mise à jour avec succès !'
+          : '✅ Configuration Google Sheets créée avec succès !',
+      );
+      setShowGoogleSheetModal(false);
+      setEditingGoogleSheetConfig(null);
+      setGoogleSheetFormData({
+        name: '',
+        active: true,
+        sheetUrl: '',
+        sheetName: '',
+        headerRow: '1',
+        phoneColumn: '',
+        firstNameColumn: '',
+        lastNameColumn: '',
+        emailColumn: '',
+        cityColumn: '',
+        postalCodeColumn: '',
+        originColumn: '',
+        defaultStatusId: null,
+        defaultAssignedUserId: null,
+      });
+
+      // Recharger les configurations
+      const configsRes = await fetch('/api/settings/google-sheet');
+      if (configsRes.ok) {
+        const configsData = await configsRes.json();
+        setGoogleSheetConfigs(Array.isArray(configsData) ? configsData : []);
+      }
+
       setTimeout(() => setGoogleSheetSuccess(''), 5000);
     } catch (error: any) {
       setGoogleSheetError(
@@ -889,8 +988,11 @@ export default function SettingsPage() {
         throw new Error(data.error || 'Erreur lors de la synchronisation Google Sheets');
       }
 
+      const totalImported = data.totalImported || data.imported || 0;
+      const totalUpdated = data.totalUpdated || data.updated || 0;
+      const totalSkipped = data.totalSkipped || data.skipped || 0;
       setGoogleSheetSuccess(
-        `✅ Synchronisation terminée : ${data.imported} nouveau(x) contact(s), ${data.updated} mis à jour, ${data.skipped} ignoré(s).`,
+        `✅ Synchronisation terminée : ${totalImported} nouveau(x) contact(s), ${totalUpdated} mis à jour, ${totalSkipped} ignoré(s).`,
       );
       setTimeout(() => setGoogleSheetSuccess(''), 8000);
     } catch (error: any) {
@@ -899,6 +1001,151 @@ export default function SettingsPage() {
       );
     } finally {
       setGoogleSheetSyncing(false);
+    }
+  };
+
+  // Fonctions pour gérer les configurations Meta Lead Ads
+  const handleEditMetaLead = (config: typeof metaLeadConfigs[0]) => {
+    setEditingMetaLeadConfig(config.id);
+    setMetaLeadFormData({
+      name: config.name,
+      active: config.active,
+      pageId: config.pageId,
+      accessToken: '', // Ne pas charger le token
+      verifyToken: config.verifyToken,
+      defaultStatusId: config.defaultStatusId,
+      defaultAssignedUserId: config.defaultAssignedUserId,
+    });
+    setShowMetaLeadModal(true);
+    setMetaLeadError('');
+    setMetaLeadSuccess('');
+  };
+
+  const handleDeleteMetaLead = async (id: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette configuration ?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/settings/meta-leads/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Erreur lors de la suppression');
+      }
+
+      setMetaLeadSuccess('✅ Configuration supprimée avec succès !');
+      setTimeout(() => setMetaLeadSuccess(''), 5000);
+
+      // Recharger les configurations
+      const configsRes = await fetch('/api/settings/meta-leads');
+      if (configsRes.ok) {
+        const configsData = await configsRes.json();
+        setMetaLeadConfigs(Array.isArray(configsData) ? configsData : []);
+      }
+    } catch (error: any) {
+      setMetaLeadError(error.message || 'Erreur lors de la suppression');
+    }
+  };
+
+  // Fonctions pour gérer les configurations Google Ads
+  const handleEditGoogleAds = (config: typeof googleAdsConfigs[0]) => {
+    setEditingGoogleAdsConfig(config.id);
+    setGoogleAdsFormData({
+      name: config.name,
+      active: config.active,
+      webhookKey: config.webhookKey,
+      defaultStatusId: config.defaultStatusId,
+      defaultAssignedUserId: config.defaultAssignedUserId,
+    });
+    setShowGoogleAdsModal(true);
+    setGoogleAdsError('');
+    setGoogleAdsSuccess('');
+  };
+
+  const handleDeleteGoogleAds = async (id: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette configuration ?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/settings/google-ads/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Erreur lors de la suppression');
+      }
+
+      setGoogleAdsSuccess('✅ Configuration supprimée avec succès !');
+      setTimeout(() => setGoogleAdsSuccess(''), 5000);
+
+      // Recharger les configurations
+      const configsRes = await fetch('/api/settings/google-ads');
+      if (configsRes.ok) {
+        const configsData = await configsRes.json();
+        setGoogleAdsConfigs(Array.isArray(configsData) ? configsData : []);
+      }
+    } catch (error: any) {
+      setGoogleAdsError(error.message || 'Erreur lors de la suppression');
+    }
+  };
+
+  // Fonctions pour gérer les configurations Google Sheets
+  const handleEditGoogleSheet = (config: typeof googleSheetConfigs[0]) => {
+    setEditingGoogleSheetConfig(config.id);
+    setGoogleSheetFormData({
+      name: config.name,
+      active: config.active,
+      sheetUrl: config.spreadsheetId
+        ? `https://docs.google.com/spreadsheets/d/${config.spreadsheetId}/edit`
+        : '',
+      sheetName: config.sheetName,
+      headerRow: config.headerRow.toString(),
+      phoneColumn: config.phoneColumn,
+      firstNameColumn: config.firstNameColumn || '',
+      lastNameColumn: config.lastNameColumn || '',
+      emailColumn: config.emailColumn || '',
+      cityColumn: config.cityColumn || '',
+      postalCodeColumn: config.postalCodeColumn || '',
+      originColumn: config.originColumn || '',
+      defaultStatusId: config.defaultStatusId,
+      defaultAssignedUserId: config.defaultAssignedUserId,
+    });
+    setShowGoogleSheetModal(true);
+    setGoogleSheetError('');
+    setGoogleSheetSuccess('');
+  };
+
+  const handleDeleteGoogleSheet = async (id: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette configuration ?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/settings/google-sheet/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Erreur lors de la suppression');
+      }
+
+      setGoogleSheetSuccess('✅ Configuration supprimée avec succès !');
+      setTimeout(() => setGoogleSheetSuccess(''), 5000);
+
+      // Recharger les configurations
+      const configsRes = await fetch('/api/settings/google-sheet');
+      if (configsRes.ok) {
+        const configsData = await configsRes.json();
+        setGoogleSheetConfigs(Array.isArray(configsData) ? configsData : []);
+      }
+    } catch (error: any) {
+      setGoogleSheetError(error.message || 'Erreur lors de la suppression');
     }
   };
 
@@ -1765,6 +2012,26 @@ export default function SettingsPage() {
                     en nouveaux contacts dans le CRM.
                   </p>
                 </div>
+                <button
+                  onClick={() => {
+                    setEditingMetaLeadConfig(null);
+                    setMetaLeadFormData({
+                      name: '',
+                      active: true,
+                      pageId: '',
+                      accessToken: '',
+                      verifyToken: '',
+                      defaultStatusId: null,
+                      defaultAssignedUserId: null,
+                    });
+                    setShowMetaLeadModal(true);
+                    setMetaLeadError('');
+                    setMetaLeadSuccess('');
+                  }}
+                  className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+                >
+                  + Ajouter
+                </button>
               </div>
 
               {metaLeadSuccess && (
@@ -1809,159 +2076,293 @@ export default function SettingsPage() {
 
               {metaLeadLoading ? (
                 <div className="mt-6 text-center text-gray-500">Chargement...</div>
+              ) : metaLeadConfigs.length === 0 ? (
+                <div className="mt-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
+                  <p className="text-sm text-gray-600">Aucune configuration Meta Lead Ads</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Cliquez sur &quot;+ Ajouter&quot; pour créer votre première configuration
+                  </p>
+                </div>
               ) : (
-                <form onSubmit={handleMetaLeadSubmit} className="mt-6 space-y-4">
-                  <div className="flex items-center">
-                    <input
-                      id="meta-active"
-                      type="checkbox"
-                      checked={metaLeadConfig.active}
-                      onChange={(e) =>
-                        setMetaLeadConfig((prev) => ({ ...prev, active: e.target.checked }))
-                      }
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <label
-                      htmlFor="meta-active"
-                      className="ml-2 text-sm font-medium text-gray-700"
+                <div className="mt-6 space-y-3">
+                  {metaLeadConfigs.map((config) => (
+                    <div
+                      key={config.id}
+                      className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-4"
                     >
-                      Activer l&apos;import automatique des leads Meta
-                    </label>
-                  </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium text-gray-900">{config.name}</h3>
+                          {config.active ? (
+                            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                              Actif
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800">
+                              Inactif
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500">Page ID: {config.pageId}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEditMetaLead(config)}
+                          className="cursor-pointer rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-100"
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMetaLead(config.id)}
+                          className="cursor-pointer rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        ID de la page Meta *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={metaLeadConfig.pageId}
-                        onChange={(e) =>
-                          setMetaLeadConfig((prev) => ({ ...prev, pageId: e.target.value }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        placeholder="123456789012345"
-                      />
+              {/* Modal Meta Lead Ads */}
+              {showMetaLeadModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
+                  <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
+                    {/* En-tête fixe */}
+                    <div className="shrink-0 border-b border-gray-100 pb-4">
+                      <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                          {editingMetaLeadConfig ? 'Modifier' : 'Ajouter'} une configuration Meta
+                          Lead Ads
+                        </h2>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMetaLeadModal(false);
+                            setEditingMetaLeadConfig(null);
+                            setMetaLeadFormData({
+                              name: '',
+                              active: true,
+                              pageId: '',
+                              accessToken: '',
+                              verifyToken: '',
+                              defaultStatusId: null,
+                              defaultAssignedUserId: null,
+                            });
+                            setMetaLeadError('');
+                          }}
+                          className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
+                        >
+                          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Token de vérification (Webhook) *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={metaLeadConfig.verifyToken}
-                        onChange={(e) =>
-                          setMetaLeadConfig((prev) => ({ ...prev, verifyToken: e.target.value }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        placeholder="Choisissez un token secret à reporter dans Meta"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Jeton d&apos;accès Meta (Page ou système) *
-                      </label>
-                      <input
-                        type="password"
-                        required
-                        value={metaLeadConfig.accessToken}
-                        onChange={(e) =>
-                          setMetaLeadConfig((prev) => ({ ...prev, accessToken: e.target.value }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        placeholder="EAAB..."
-                      />
-                      <p className="mt-1 text-xs text-gray-500">
-                        Ce jeton est chiffré et utilisé uniquement côté serveur pour récupérer les
-                        informations des leads via l&apos;API Graph.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Utilisateur assigné par défaut *
-                      </label>
-                      <select
-                        required
-                        value={metaLeadConfig.defaultAssignedUserId || ''}
-                        onChange={(e) =>
-                          setMetaLeadConfig((prev) => ({
-                            ...prev,
-                            defaultAssignedUserId: e.target.value || null,
-                          }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                      >
-                        <option value="">Sélectionnez un utilisateur</option>
-                        {metaLeadUsers.map((user) => (
-                          <option key={user.id} value={user.id}>
-                            {user.name} ({user.email})
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Les contacts créés automatiquement seront assignés à cet utilisateur.
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Statut par défaut
-                      </label>
-                      <select
-                        value={metaLeadConfig.defaultStatusId || ''}
-                        onChange={(e) =>
-                          setMetaLeadConfig((prev) => ({
-                            ...prev,
-                            defaultStatusId: e.target.value || null,
-                          }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                      >
-                        <option value="">Aucun statut par défaut</option>
-                        {statuses.map((status) => (
-                          <option key={status.id} value={status.id}>
-                            {status.name}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Optionnel : le statut appliqué automatiquement aux contacts provenant de
-                        Meta.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
-                    <p className="font-semibold">URL du webhook à renseigner dans Meta :</p>
-                    <p className="mt-1 break-all text-gray-800">
-                      {typeof window !== 'undefined'
-                        ? `${window.location.origin}/api/webhooks/meta-leads`
-                        : '/api/webhooks/meta-leads'}
-                    </p>
-                    <p className="mt-2">
-                      Dans Meta, abonnez-vous au champ <code>leadgen</code> pour votre page et
-                      utilisez le token de vérification défini ci-dessus.
-                    </p>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4">
-                    <button
-                      type="submit"
-                      disabled={metaLeadSaving}
-                      className="cursor-pointer rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                    {/* Contenu scrollable */}
+                    <form
+                      id="meta-lead-form"
+                      onSubmit={handleMetaLeadSubmit}
+                      className="flex-1 space-y-4 overflow-y-auto pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     >
-                      {metaLeadSaving ? 'Enregistrement...' : 'Enregistrer'}
-                    </button>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Nom de la configuration *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={metaLeadFormData.name}
+                          onChange={(e) =>
+                            setMetaLeadFormData((prev) => ({ ...prev, name: e.target.value }))
+                          }
+                          className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          placeholder="Ex: Campagne Facebook Q4"
+                        />
+                      </div>
+
+                      <div className="flex items-center">
+                        <input
+                          id="meta-active"
+                          type="checkbox"
+                          checked={metaLeadFormData.active}
+                          onChange={(e) =>
+                            setMetaLeadFormData((prev) => ({ ...prev, active: e.target.checked }))
+                          }
+                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <label
+                          htmlFor="meta-active"
+                          className="ml-2 text-sm font-medium text-gray-700"
+                        >
+                          Activer l&apos;import automatique des leads Meta
+                        </label>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            ID de la page Meta *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={metaLeadFormData.pageId}
+                            onChange={(e) =>
+                              setMetaLeadFormData((prev) => ({ ...prev, pageId: e.target.value }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            placeholder="123456789012345"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Token de vérification (Webhook) *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={metaLeadFormData.verifyToken}
+                            onChange={(e) =>
+                              setMetaLeadFormData((prev) => ({
+                                ...prev,
+                                verifyToken: e.target.value,
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            placeholder="Choisissez un token secret"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Jeton d&apos;accès Meta (Page ou système) *
+                            {editingMetaLeadConfig && (
+                              <span className="ml-2 text-xs text-gray-500">
+                                (Laissez vide pour ne pas modifier)
+                              </span>
+                            )}
+                          </label>
+                          <input
+                            type="password"
+                            required={!editingMetaLeadConfig}
+                            value={metaLeadFormData.accessToken}
+                            onChange={(e) =>
+                              setMetaLeadFormData((prev) => ({
+                                ...prev,
+                                accessToken: e.target.value,
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            placeholder="EAAB..."
+                          />
+                          <p className="mt-1 text-xs text-gray-500">
+                            Ce jeton est chiffré et utilisé uniquement côté serveur.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Utilisateur assigné par défaut *
+                          </label>
+                          <select
+                            required
+                            value={metaLeadFormData.defaultAssignedUserId || ''}
+                            onChange={(e) =>
+                              setMetaLeadFormData((prev) => ({
+                                ...prev,
+                                defaultAssignedUserId: e.target.value || null,
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          >
+                            <option value="">Sélectionnez un utilisateur</option>
+                            {metaLeadUsers.map((user) => (
+                              <option key={user.id} value={user.id}>
+                                {user.name} ({user.email})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Statut par défaut
+                          </label>
+                          <select
+                            value={metaLeadFormData.defaultStatusId || ''}
+                            onChange={(e) =>
+                              setMetaLeadFormData((prev) => ({
+                                ...prev,
+                                defaultStatusId: e.target.value || null,
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          >
+                            <option value="">Aucun statut par défaut</option>
+                            {statuses.map((status) => (
+                              <option key={status.id} value={status.id}>
+                                {status.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
+                        <p className="font-semibold">URL du webhook à renseigner dans Meta :</p>
+                        <p className="mt-1 break-all text-gray-800">
+                          {typeof window !== 'undefined'
+                            ? `${window.location.origin}/api/webhooks/meta-leads`
+                            : '/api/webhooks/meta-leads'}
+                        </p>
+                      </div>
+                    </form>
+
+                    {/* Pied de modal fixe */}
+                    <div className="shrink-0 border-t border-gray-100 pt-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMetaLeadModal(false);
+                            setEditingMetaLeadConfig(null);
+                            setMetaLeadFormData({
+                              name: '',
+                              active: true,
+                              pageId: '',
+                              accessToken: '',
+                              verifyToken: '',
+                              defaultStatusId: null,
+                              defaultAssignedUserId: null,
+                            });
+                            setMetaLeadError('');
+                          }}
+                          className="w-full cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          type="submit"
+                          form="meta-lead-form"
+                          disabled={metaLeadSaving}
+                          className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                        >
+                          {metaLeadSaving ? 'Enregistrement...' : 'Enregistrer'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </form>
+                </div>
               )}
             </div>
           )}
@@ -1979,6 +2380,24 @@ export default function SettingsPage() {
                     Google Ads.
                   </p>
                 </div>
+                <button
+                  onClick={() => {
+                    setEditingGoogleAdsConfig(null);
+                    setGoogleAdsFormData({
+                      name: '',
+                      active: true,
+                      webhookKey: '',
+                      defaultStatusId: null,
+                      defaultAssignedUserId: null,
+                    });
+                    setShowGoogleAdsModal(true);
+                    setGoogleAdsError('');
+                    setGoogleAdsSuccess('');
+                  }}
+                  className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+                >
+                  + Ajouter
+                </button>
               </div>
 
               {googleAdsSuccess && (
@@ -2023,130 +2442,249 @@ export default function SettingsPage() {
 
               {googleAdsLoading ? (
                 <div className="mt-6 text-center text-gray-500">Chargement...</div>
+              ) : googleAdsConfigs.length === 0 ? (
+                <div className="mt-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
+                  <p className="text-sm text-gray-600">Aucune configuration Google Ads</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Cliquez sur &quot;+ Ajouter&quot; pour créer votre première configuration
+                  </p>
+                </div>
               ) : (
-                <form onSubmit={handleGoogleAdsSubmit} className="mt-6 space-y-4">
-                  <div className="flex items-center">
-                    <input
-                      id="google-ads-active"
-                      type="checkbox"
-                      checked={googleAdsConfig.active}
-                      onChange={(e) =>
-                        setGoogleAdsConfig((prev) => ({ ...prev, active: e.target.checked }))
-                      }
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <label
-                      htmlFor="google-ads-active"
-                      className="ml-2 text-sm font-medium text-gray-700"
+                <div className="mt-6 space-y-3">
+                  {googleAdsConfigs.map((config) => (
+                    <div
+                      key={config.id}
+                      className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-4"
                     >
-                      Activer l&apos;import automatique des leads Google Ads
-                    </label>
-                  </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium text-gray-900">{config.name}</h3>
+                          {config.active ? (
+                            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                              Actif
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800">
+                              Inactif
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Webhook Key: {config.webhookKey.substring(0, 20)}...
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEditGoogleAds(config)}
+                          className="cursor-pointer rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-100"
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          onClick={() => handleDeleteGoogleAds(config.id)}
+                          className="cursor-pointer rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Clé secrète (webhook key) *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={googleAdsConfig.webhookKey}
-                        onChange={(e) =>
-                          setGoogleAdsConfig((prev) => ({
-                            ...prev,
-                            webhookKey: e.target.value,
-                          }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        placeholder="Clé secrète à reporter dans Google Ads"
-                      />
-                      <p className="mt-1 text-xs text-gray-500">
-                        Cette clé doit être identique à la valeur configurée dans votre extension de
-                        formulaire Google Ads.
-                      </p>
+              {/* Modal Google Ads */}
+              {showGoogleAdsModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
+                  <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
+                    {/* En-tête fixe */}
+                    <div className="shrink-0 border-b border-gray-100 pb-4">
+                      <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                          {editingGoogleAdsConfig ? 'Modifier' : 'Ajouter'} une configuration Google
+                          Ads
+                        </h2>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowGoogleAdsModal(false);
+                            setEditingGoogleAdsConfig(null);
+                            setGoogleAdsFormData({
+                              name: '',
+                              active: true,
+                              webhookKey: '',
+                              defaultStatusId: null,
+                              defaultAssignedUserId: null,
+                            });
+                            setGoogleAdsError('');
+                          }}
+                          className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
+                        >
+                          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Utilisateur assigné par défaut *
-                      </label>
-                      <select
-                        required
-                        value={googleAdsConfig.defaultAssignedUserId || ''}
-                        onChange={(e) =>
-                          setGoogleAdsConfig((prev) => ({
-                            ...prev,
-                            defaultAssignedUserId: e.target.value || null,
-                          }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                      >
-                        <option value="">Sélectionnez un utilisateur</option>
-                        {metaLeadUsers.map((user) => (
-                          <option key={user.id} value={user.id}>
-                            {user.name} ({user.email})
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Les contacts créés automatiquement seront assignés à cet utilisateur.
-                      </p>
+                    {/* Contenu scrollable */}
+                    <form
+                      id="google-ads-form"
+                      onSubmit={handleGoogleAdsSubmit}
+                      className="flex-1 space-y-4 overflow-y-auto pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    >
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Nom de la configuration *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={googleAdsFormData.name}
+                          onChange={(e) =>
+                            setGoogleAdsFormData((prev) => ({ ...prev, name: e.target.value }))
+                          }
+                          className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          placeholder="Ex: Campagne Google Ads Produits"
+                        />
+                      </div>
+
+                      <div className="flex items-center">
+                        <input
+                          id="google-ads-active"
+                          type="checkbox"
+                          checked={googleAdsFormData.active}
+                          onChange={(e) =>
+                            setGoogleAdsFormData((prev) => ({
+                              ...prev,
+                              active: e.target.checked,
+                            }))
+                          }
+                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <label
+                          htmlFor="google-ads-active"
+                          className="ml-2 text-sm font-medium text-gray-700"
+                        >
+                          Activer l&apos;import automatique des leads Google Ads
+                        </label>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Clé secrète (webhook key) *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={googleAdsFormData.webhookKey}
+                            onChange={(e) =>
+                              setGoogleAdsFormData((prev) => ({
+                                ...prev,
+                                webhookKey: e.target.value,
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            placeholder="Clé secrète à reporter dans Google Ads"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Utilisateur assigné par défaut *
+                          </label>
+                          <select
+                            required
+                            value={googleAdsFormData.defaultAssignedUserId || ''}
+                            onChange={(e) =>
+                              setGoogleAdsFormData((prev) => ({
+                                ...prev,
+                                defaultAssignedUserId: e.target.value || null,
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          >
+                            <option value="">Sélectionnez un utilisateur</option>
+                            {metaLeadUsers.map((user) => (
+                              <option key={user.id} value={user.id}>
+                                {user.name} ({user.email})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Statut par défaut
+                        </label>
+                        <select
+                          value={googleAdsFormData.defaultStatusId || ''}
+                          onChange={(e) =>
+                            setGoogleAdsFormData((prev) => ({
+                              ...prev,
+                              defaultStatusId: e.target.value || null,
+                            }))
+                          }
+                          className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        >
+                          <option value="">Aucun statut par défaut</option>
+                          {statuses.map((status) => (
+                            <option key={status.id} value={status.id}>
+                              {status.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
+                        <p className="font-semibold">URL du webhook à renseigner dans Google Ads :</p>
+                        <p className="mt-1 break-all text-gray-800">
+                          {typeof window !== 'undefined'
+                            ? `${window.location.origin}/api/webhooks/google-ads`
+                            : '/api/webhooks/google-ads'}
+                        </p>
+                      </div>
+                    </form>
+
+                    {/* Pied de modal fixe */}
+                    <div className="shrink-0 border-t border-gray-100 pt-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowGoogleAdsModal(false);
+                            setEditingGoogleAdsConfig(null);
+                            setGoogleAdsFormData({
+                              name: '',
+                              active: true,
+                              webhookKey: '',
+                              defaultStatusId: null,
+                              defaultAssignedUserId: null,
+                            });
+                            setGoogleAdsError('');
+                          }}
+                          className="w-full cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          type="submit"
+                          form="google-ads-form"
+                          disabled={googleAdsSaving}
+                          className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                        >
+                          {googleAdsSaving ? 'Enregistrement...' : 'Enregistrer'}
+                        </button>
+                      </div>
                     </div>
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Statut par défaut
-                    </label>
-                    <select
-                      value={googleAdsConfig.defaultStatusId || ''}
-                      onChange={(e) =>
-                        setGoogleAdsConfig((prev) => ({
-                          ...prev,
-                          defaultStatusId: e.target.value || null,
-                        }))
-                      }
-                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    >
-                      <option value="">Aucun statut par défaut</option>
-                      {statuses.map((status) => (
-                        <option key={status.id} value={status.id}>
-                          {status.name}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Optionnel : le statut appliqué automatiquement aux contacts provenant de
-                      Google Ads.
-                    </p>
-                  </div>
-
-                  <div className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
-                    <p className="font-semibold">URL du webhook à renseigner dans Google Ads :</p>
-                    <p className="mt-1 break-all text-gray-800">
-                      {typeof window !== 'undefined'
-                        ? `${window.location.origin}/api/webhooks/google-ads`
-                        : '/api/webhooks/google-ads'}
-                    </p>
-                    <p className="mt-2">
-                      Dans Google Ads, configurez votre extension de formulaire pour envoyer les
-                      leads vers cette URL en utilisant la clé secrète ci-dessus comme paramètre
-                      <code className="mx-1 rounded bg-gray-100 px-1 py-0.5">google_key</code> ou
-                      champ approprié selon votre intégration.
-                    </p>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4">
-                    <button
-                      type="submit"
-                      disabled={googleAdsSaving}
-                      className="cursor-pointer rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {googleAdsSaving ? 'Enregistrement...' : 'Enregistrer'}
-                    </button>
-                  </div>
-                </form>
+                </div>
               )}
             </div>
           )}
@@ -2162,6 +2700,43 @@ export default function SettingsPage() {
                   <p className="mt-1 text-sm text-gray-600">
                     Importez automatiquement des contacts à partir d&apos;un Google Sheet.
                   </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleGoogleSheetSync}
+                    disabled={googleSheetSyncing}
+                    className="cursor-pointer rounded-lg border border-indigo-600 px-4 py-2 text-sm font-medium text-indigo-600 transition-colors hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {googleSheetSyncing ? 'Synchronisation...' : 'Synchroniser'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingGoogleSheetConfig(null);
+                      setGoogleSheetFormData({
+                        name: '',
+                        active: true,
+                        sheetUrl: '',
+                        sheetName: '',
+                        headerRow: '1',
+                        phoneColumn: '',
+                        firstNameColumn: '',
+                        lastNameColumn: '',
+                        emailColumn: '',
+                        cityColumn: '',
+                        postalCodeColumn: '',
+                        originColumn: '',
+                        defaultStatusId: null,
+                        defaultAssignedUserId: null,
+                      });
+                      setShowGoogleSheetModal(true);
+                      setGoogleSheetError('');
+                      setGoogleSheetSuccess('');
+                    }}
+                    className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+                  >
+                    + Ajouter
+                  </button>
                 </div>
               </div>
 
@@ -2207,279 +2782,428 @@ export default function SettingsPage() {
 
               {googleSheetLoading ? (
                 <div className="mt-6 text-center text-gray-500">Chargement...</div>
+              ) : googleSheetConfigs.length === 0 ? (
+                <div className="mt-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
+                  <p className="text-sm text-gray-600">Aucune configuration Google Sheets</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Cliquez sur &quot;+ Ajouter&quot; pour créer votre première configuration
+                  </p>
+                </div>
               ) : (
-                <form onSubmit={handleGoogleSheetSubmit} className="mt-6 space-y-4">
-                  <div className="flex items-center">
-                    <input
-                      id="google-sheet-active"
-                      type="checkbox"
-                      checked={googleSheetConfig.active}
-                      onChange={(e) =>
-                        setGoogleSheetConfig((prev) => ({ ...prev, active: e.target.checked }))
-                      }
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <label
-                      htmlFor="google-sheet-active"
-                      className="ml-2 text-sm font-medium text-gray-700"
+                <div className="mt-6 space-y-3">
+                  {googleSheetConfigs.map((config) => (
+                    <div
+                      key={config.id}
+                      className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-4"
                     >
-                      Activer l&apos;import automatique depuis Google Sheets
-                    </label>
-                  </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium text-gray-900">{config.name}</h3>
+                          {config.active ? (
+                            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                              Actif
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800">
+                              Inactif
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {config.sheetName} - Ligne {config.headerRow}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEditGoogleSheet(config)}
+                          className="cursor-pointer rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-100"
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          onClick={() => handleDeleteGoogleSheet(config.id)}
+                          className="cursor-pointer rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Lien du Google Sheet *
-                      </label>
-                      <input
-                        type="url"
-                        required
-                        value={googleSheetConfig.sheetUrl}
-                        onChange={(e) =>
-                          setGoogleSheetConfig((prev) => ({ ...prev, sheetUrl: e.target.value }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        placeholder="https://docs.google.com/spreadsheets/d/..."
-                      />
+              {/* Modal Google Sheets */}
+              {showGoogleSheetModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
+                  <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
+                    {/* En-tête fixe */}
+                    <div className="shrink-0 border-b border-gray-100 pb-4">
+                      <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                          {editingGoogleSheetConfig ? 'Modifier' : 'Ajouter'} une configuration
+                          Google Sheets
+                        </h2>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowGoogleSheetModal(false);
+                            setEditingGoogleSheetConfig(null);
+                            setGoogleSheetFormData({
+                              name: '',
+                              active: true,
+                              sheetUrl: '',
+                              sheetName: '',
+                              headerRow: '1',
+                              phoneColumn: '',
+                              firstNameColumn: '',
+                              lastNameColumn: '',
+                              emailColumn: '',
+                              cityColumn: '',
+                              postalCodeColumn: '',
+                              originColumn: '',
+                              defaultStatusId: null,
+                              defaultAssignedUserId: null,
+                            });
+                            setGoogleSheetError('');
+                          }}
+                          className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
+                        >
+                          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Nom de l&apos;onglet (Sheet) *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={googleSheetConfig.sheetName}
-                        onChange={(e) =>
-                          setGoogleSheetConfig((prev) => ({ ...prev, sheetName: e.target.value }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        placeholder="Feuille 1"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Ligne des en-têtes *
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        required
-                        value={googleSheetConfig.headerRow}
-                        onChange={(e) =>
-                          setGoogleSheetConfig((prev) => ({ ...prev, headerRow: e.target.value }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        placeholder="1"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Colonne Téléphone (obligatoire) *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={googleSheetConfig.phoneColumn}
-                        onChange={(e) =>
-                          setGoogleSheetConfig((prev) => ({
-                            ...prev,
-                            phoneColumn: e.target.value.toUpperCase(),
-                          }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        placeholder="A"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Colonne Prénom
-                      </label>
-                      <input
-                        type="text"
-                        value={googleSheetConfig.firstNameColumn}
-                        onChange={(e) =>
-                          setGoogleSheetConfig((prev) => ({
-                            ...prev,
-                            firstNameColumn: e.target.value.toUpperCase(),
-                          }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        placeholder="B"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Colonne Nom
-                      </label>
-                      <input
-                        type="text"
-                        value={googleSheetConfig.lastNameColumn}
-                        onChange={(e) =>
-                          setGoogleSheetConfig((prev) => ({
-                            ...prev,
-                            lastNameColumn: e.target.value.toUpperCase(),
-                          }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        placeholder="C"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Colonne Email
-                      </label>
-                      <input
-                        type="text"
-                        value={googleSheetConfig.emailColumn}
-                        onChange={(e) =>
-                          setGoogleSheetConfig((prev) => ({
-                            ...prev,
-                            emailColumn: e.target.value.toUpperCase(),
-                          }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        placeholder="D"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Colonne Ville
-                      </label>
-                      <input
-                        type="text"
-                        value={googleSheetConfig.cityColumn}
-                        onChange={(e) =>
-                          setGoogleSheetConfig((prev) => ({
-                            ...prev,
-                            cityColumn: e.target.value.toUpperCase(),
-                          }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        placeholder="E"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Colonne Code postal
-                      </label>
-                      <input
-                        type="text"
-                        value={googleSheetConfig.postalCodeColumn}
-                        onChange={(e) =>
-                          setGoogleSheetConfig((prev) => ({
-                            ...prev,
-                            postalCodeColumn: e.target.value.toUpperCase(),
-                          }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        placeholder="F"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Colonne Origine
-                      </label>
-                      <input
-                        type="text"
-                        value={googleSheetConfig.originColumn}
-                        onChange={(e) =>
-                          setGoogleSheetConfig((prev) => ({
-                            ...prev,
-                            originColumn: e.target.value.toUpperCase(),
-                          }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        placeholder="G"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Utilisateur assigné par défaut *
-                      </label>
-                      <select
-                        required
-                        value={googleSheetConfig.defaultAssignedUserId || ''}
-                        onChange={(e) =>
-                          setGoogleSheetConfig((prev) => ({
-                            ...prev,
-                            defaultAssignedUserId: e.target.value || null,
-                          }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                      >
-                        <option value="">Sélectionnez un utilisateur</option>
-                        {metaLeadUsers.map((user) => (
-                          <option key={user.id} value={user.id}>
-                            {user.name} ({user.email})
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Les contacts créés automatiquement seront assignés à cet utilisateur.
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Statut par défaut
-                      </label>
-                      <select
-                        value={googleSheetConfig.defaultStatusId || ''}
-                        onChange={(e) =>
-                          setGoogleSheetConfig((prev) => ({
-                            ...prev,
-                            defaultStatusId: e.target.value || null,
-                          }))
-                        }
-                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                      >
-                        <option value="">Aucun statut par défaut</option>
-                        {statuses.map((status) => (
-                          <option key={status.id} value={status.id}>
-                            {status.name}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Optionnel : le statut appliqué automatiquement aux contacts importés.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
-                    <button
-                      type="button"
-                      onClick={handleGoogleSheetSync}
-                      disabled={googleSheetSyncing || googleSheetSaving}
-                      className="w-full cursor-pointer rounded-lg border border-indigo-600 px-6 py-2 text-sm font-medium text-indigo-600 transition-colors hover:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                    {/* Contenu scrollable */}
+                    <form
+                      id="google-sheet-form"
+                      onSubmit={handleGoogleSheetSubmit}
+                      className="flex-1 space-y-4 overflow-y-auto pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     >
-                      {googleSheetSyncing ? 'Synchronisation...' : 'Synchroniser maintenant'}
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={googleSheetSaving || googleSheetSyncing}
-                      className="w-full cursor-pointer rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                    >
-                      {googleSheetSaving ? 'Enregistrement...' : 'Enregistrer'}
-                    </button>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Nom de la configuration *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={googleSheetFormData.name}
+                          onChange={(e) =>
+                            setGoogleSheetFormData((prev) => ({ ...prev, name: e.target.value }))
+                          }
+                          className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          placeholder="Ex: Contacts Ventes"
+                        />
+                      </div>
+
+                      <div className="flex items-center">
+                        <input
+                          id="google-sheet-active"
+                          type="checkbox"
+                          checked={googleSheetFormData.active}
+                          onChange={(e) =>
+                            setGoogleSheetFormData((prev) => ({
+                              ...prev,
+                              active: e.target.checked,
+                            }))
+                          }
+                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <label
+                          htmlFor="google-sheet-active"
+                          className="ml-2 text-sm font-medium text-gray-700"
+                        >
+                          Activer l&apos;import automatique depuis Google Sheets
+                        </label>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Lien du Google Sheet *
+                          </label>
+                          <input
+                            type="url"
+                            required
+                            value={googleSheetFormData.sheetUrl}
+                            onChange={(e) =>
+                              setGoogleSheetFormData((prev) => ({
+                                ...prev,
+                                sheetUrl: e.target.value,
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            placeholder="https://docs.google.com/spreadsheets/d/..."
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Nom de l&apos;onglet (Sheet) *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={googleSheetFormData.sheetName}
+                            onChange={(e) =>
+                              setGoogleSheetFormData((prev) => ({
+                                ...prev,
+                                sheetName: e.target.value,
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            placeholder="Feuille 1"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Ligne des en-têtes *
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            required
+                            value={googleSheetFormData.headerRow}
+                            onChange={(e) =>
+                              setGoogleSheetFormData((prev) => ({
+                                ...prev,
+                                headerRow: e.target.value,
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            placeholder="1"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Colonne Téléphone (obligatoire) *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={googleSheetFormData.phoneColumn}
+                            onChange={(e) =>
+                              setGoogleSheetFormData((prev) => ({
+                                ...prev,
+                                phoneColumn: e.target.value.toUpperCase(),
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            placeholder="A"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Colonne Prénom
+                          </label>
+                          <input
+                            type="text"
+                            value={googleSheetFormData.firstNameColumn}
+                            onChange={(e) =>
+                              setGoogleSheetFormData((prev) => ({
+                                ...prev,
+                                firstNameColumn: e.target.value.toUpperCase(),
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            placeholder="B"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Colonne Nom
+                          </label>
+                          <input
+                            type="text"
+                            value={googleSheetFormData.lastNameColumn}
+                            onChange={(e) =>
+                              setGoogleSheetFormData((prev) => ({
+                                ...prev,
+                                lastNameColumn: e.target.value.toUpperCase(),
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            placeholder="C"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Colonne Email
+                          </label>
+                          <input
+                            type="text"
+                            value={googleSheetFormData.emailColumn}
+                            onChange={(e) =>
+                              setGoogleSheetFormData((prev) => ({
+                                ...prev,
+                                emailColumn: e.target.value.toUpperCase(),
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            placeholder="D"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Colonne Ville
+                          </label>
+                          <input
+                            type="text"
+                            value={googleSheetFormData.cityColumn}
+                            onChange={(e) =>
+                              setGoogleSheetFormData((prev) => ({
+                                ...prev,
+                                cityColumn: e.target.value.toUpperCase(),
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            placeholder="E"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Colonne Code postal
+                          </label>
+                          <input
+                            type="text"
+                            value={googleSheetFormData.postalCodeColumn}
+                            onChange={(e) =>
+                              setGoogleSheetFormData((prev) => ({
+                                ...prev,
+                                postalCodeColumn: e.target.value.toUpperCase(),
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            placeholder="F"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Colonne Origine
+                          </label>
+                          <input
+                            type="text"
+                            value={googleSheetFormData.originColumn}
+                            onChange={(e) =>
+                              setGoogleSheetFormData((prev) => ({
+                                ...prev,
+                                originColumn: e.target.value.toUpperCase(),
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            placeholder="G"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Utilisateur assigné par défaut *
+                          </label>
+                          <select
+                            required
+                            value={googleSheetFormData.defaultAssignedUserId || ''}
+                            onChange={(e) =>
+                              setGoogleSheetFormData((prev) => ({
+                                ...prev,
+                                defaultAssignedUserId: e.target.value || null,
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          >
+                            <option value="">Sélectionnez un utilisateur</option>
+                            {metaLeadUsers.map((user) => (
+                              <option key={user.id} value={user.id}>
+                                {user.name} ({user.email})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Statut par défaut
+                          </label>
+                          <select
+                            value={googleSheetFormData.defaultStatusId || ''}
+                            onChange={(e) =>
+                              setGoogleSheetFormData((prev) => ({
+                                ...prev,
+                                defaultStatusId: e.target.value || null,
+                              }))
+                            }
+                            className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          >
+                            <option value="">Aucun statut par défaut</option>
+                            {statuses.map((status) => (
+                              <option key={status.id} value={status.id}>
+                                {status.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </form>
+
+                    {/* Pied de modal fixe */}
+                    <div className="shrink-0 border-t border-gray-100 pt-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowGoogleSheetModal(false);
+                            setEditingGoogleSheetConfig(null);
+                            setGoogleSheetFormData({
+                              name: '',
+                              active: true,
+                              sheetUrl: '',
+                              sheetName: '',
+                              headerRow: '1',
+                              phoneColumn: '',
+                              firstNameColumn: '',
+                              lastNameColumn: '',
+                              emailColumn: '',
+                              cityColumn: '',
+                              postalCodeColumn: '',
+                              originColumn: '',
+                              defaultStatusId: null,
+                              defaultAssignedUserId: null,
+                            });
+                            setGoogleSheetError('');
+                          }}
+                          className="w-full cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          type="submit"
+                          form="google-sheet-form"
+                          disabled={googleSheetSaving}
+                          className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                        >
+                          {googleSheetSaving ? 'Enregistrement...' : 'Enregistrer'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </form>
+                </div>
               )}
             </div>
           )}

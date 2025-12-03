@@ -267,7 +267,8 @@ model UserGoogleAccount {
 }
 
 model MetaLeadConfig {
-  id                    String   @id @default("meta_lead_config_singleton")
+  id                    String   @id @default(cuid())
+  name                  String   // Nom de la configuration (ex: "Campagne Facebook Q4")
   pageId                String
   accessToken           String // Jeton d'accès de la page ou du système (chiffré)
   verifyToken           String // Token de vérification pour le webhook
@@ -283,7 +284,8 @@ model MetaLeadConfig {
 }
 
 model GoogleAdsLeadConfig {
-  id                    String   @id @default("google_ads_lead_config_singleton")
+  id                    String   @id @default(cuid())
+  name                  String   // Nom de la configuration (ex: "Campagne Google Ads Produits")
   webhookKey            String // Clé secrète partagée pour sécuriser le webhook
   active                Boolean  @default(true)
   defaultStatusId       String?
@@ -297,7 +299,8 @@ model GoogleAdsLeadConfig {
 }
 
 model GoogleSheetSyncConfig {
-  id                    String   @id @default("google_sheet_sync_config_singleton")
+  id                    String   @id @default(cuid())
+  name                  String   // Nom de la configuration (ex: "Contacts Ventes")
   ownerUserId           String
   ownerUser             User     @relation("GoogleSheetOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
   spreadsheetId         String
