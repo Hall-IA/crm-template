@@ -60,6 +60,15 @@ const TASK_TYPE_LABELS = {
   OTHER: 'Autre',
 };
 
+const HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 6h à 22h
+
+const formatHourLabel = (hour: number) => {
+  return new Date(0, 0, 0, hour).toLocaleTimeString('fr-FR', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+};
+
 export default function AgendaPage() {
   const { data: session } = useSession();
   const { isAdmin } = useUserRole();
@@ -204,6 +213,20 @@ export default function AgendaPage() {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const getWeekDays = () => {
+    const start = new Date(currentDate);
+    const day = start.getDay() === 0 ? 7 : start.getDay(); // dimanche = 7
+    start.setDate(start.getDate() - (day - 1)); // lundi
+
+    const days: Date[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      days.push(d);
+    }
+    return days;
   };
 
   const toggleTaskComplete = async (taskId: string, currentStatus: boolean) => {
@@ -393,12 +416,100 @@ export default function AgendaPage() {
           </div>
         )}
 
-        {/* Liste des tâches pour la vue semaine/jour */}
-        {(view === 'week' || view === 'day') && (
+        {/* Vue semaine */}
+        {view === 'week' && (
+          <div className="overflow-auto rounded-lg bg-white shadow">
+            <div className="grid grid-cols-8 border-b border-gray-200 bg-gray-50 text-xs font-medium text-gray-500">
+              <div className="px-3 py-2 text-right">(UTC+01:00) Hr</div>
+              {getWeekDays().map((day) => {
+                const isToday = day.toDateString() === new Date().toDateString();
+                return (
+                  <div key={day.toISOString()} className="border-l border-gray-200 px-3 py-2 text-center">
+                    <div className="text-xs text-gray-500">
+                      {day.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}
+                    </div>
+                    <div
+                      className={`mx-auto mt-1 flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
+                        isToday ? 'bg-indigo-600 text-white' : 'text-gray-900'
+                      }`}
+                    >
+                      {day.getDate()}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="grid grid-cols-8 text-xs">
+              {/* Colonne des heures */}
+              <div className="border-r border-gray-200 bg-gray-50">
+                {HOURS.map((hour) => (
+                  <div
+                    key={hour}
+                    className="flex h-16 items-start justify-end border-b border-gray-200 pr-2 text-[11px] text-gray-500"
+                  >
+                    {formatHourLabel(hour)}
+                  </div>
+                ))}
+              </div>
+
+              {/* Colonnes des jours */}
+              {getWeekDays().map((day) => (
+                <div key={day.toISOString()} className="border-l border-gray-200">
+                  {HOURS.map((hour) => {
+                    const slotTasks = tasks.filter((task) => {
+                      const d = new Date(task.scheduledAt);
+                      return (
+                        d.getFullYear() === day.getFullYear() &&
+                        d.getMonth() === day.getMonth() &&
+                        d.getDate() === day.getDate() &&
+                        d.getHours() === hour
+                      );
+                    });
+
+                    return (
+                      <div
+                        key={hour}
+                        className="relative h-16 border-b border-gray-100 px-1.5 py-0.5 text-[11px]"
+                      >
+                        {slotTasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="mb-0.5 rounded border-l-4 bg-white px-1.5 py-0.5 text-[11px] shadow-sm"
+                            style={{
+                              borderColor: PRIORITY_COLORS[task.priority],
+                              backgroundColor: `${PRIORITY_COLORS[task.priority]}10`,
+                            }}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="truncate font-medium text-gray-900">
+                                {task.title || TASK_TYPE_LABELS[task.type]}
+                              </span>
+                            </div>
+                            {task.contact && (
+                              <div className="mt-0.5 flex items-center gap-1 text-[10px] text-gray-500">
+                                <User className="h-3 w-3" />
+                                <span className="truncate">
+                                  {task.contact.firstName} {task.contact.lastName}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Vue jour : liste des tâches */}
+        {view === 'day' && (
           <div className="space-y-4">
             {tasks.length === 0 ? (
               <div className="rounded-lg bg-white p-8 text-center shadow">
-                <p className="text-gray-500">Aucune tâche pour cette période</p>
+                <p className="text-gray-500">Aucune tâche pour cette journée</p>
               </div>
             ) : (
               tasks.map((task) => {
@@ -445,7 +556,9 @@ export default function AgendaPage() {
                           {task.contact && (
                             <div className="mt-1 inline-flex items-center gap-1 text-sm text-indigo-600">
                               <User className="h-4 w-4" />
-                              {task.contact.firstName} {task.contact.lastName}
+                              <span>
+                                {task.contact.firstName} {task.contact.lastName}
+                              </span>
                             </div>
                           )}
                           {task.googleMeetLink && (
