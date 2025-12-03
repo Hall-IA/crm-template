@@ -101,6 +101,30 @@ export default function SettingsPage() {
   const [googleLoading, setGoogleLoading] = useState(true);
   const [googleDisconnecting, setGoogleDisconnecting] = useState(false);
 
+  // État pour l'intégration Meta Lead Ads (admin uniquement)
+  const [metaLeadLoading, setMetaLeadLoading] = useState(true);
+  const [metaLeadSaving, setMetaLeadSaving] = useState(false);
+  const [metaLeadError, setMetaLeadError] = useState('');
+  const [metaLeadSuccess, setMetaLeadSuccess] = useState('');
+  const [metaLeadUsers, setMetaLeadUsers] = useState<
+    { id: string; name: string; email: string }[]
+  >([]);
+  const [metaLeadConfig, setMetaLeadConfig] = useState<{
+    active: boolean;
+    pageId: string;
+    accessToken: string;
+    verifyToken: string;
+    defaultStatusId: string | null;
+    defaultAssignedUserId: string | null;
+  }>({
+    active: true,
+    pageId: '',
+    accessToken: '',
+    verifyToken: '',
+    defaultStatusId: null,
+    defaultAssignedUserId: null,
+  });
+
   // Mettre à jour le nom quand la session change
   useEffect(() => {
     if (session?.user?.name) {
@@ -228,6 +252,50 @@ export default function SettingsPage() {
     };
     fetchGoogleAccount();
   }, []);
+
+  // Charger la configuration Meta Lead Ads et la liste des utilisateurs (admin uniquement)
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const fetchMetaLeadConfig = async () => {
+      try {
+        setMetaLeadLoading(true);
+        setMetaLeadError('');
+
+        const [configRes, usersRes] = await Promise.all([
+          fetch('/api/settings/meta-leads'),
+          fetch('/api/users/list'),
+        ]);
+
+        if (configRes.ok) {
+          const configData = await configRes.json();
+          if (configData) {
+            setMetaLeadConfig((prev) => ({
+              ...prev,
+              active: configData.active ?? true,
+              pageId: configData.pageId || '',
+              verifyToken: configData.verifyToken || '',
+              accessToken: '',
+              defaultStatusId: configData.defaultStatusId || null,
+              defaultAssignedUserId: configData.defaultAssignedUserId || null,
+            }));
+          }
+        }
+
+        if (usersRes.ok) {
+          const usersData = await usersRes.json();
+          setMetaLeadUsers(usersData);
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement de l'intégration Meta Lead Ads:", error);
+        setMetaLeadError("Erreur lors du chargement de l'intégration Meta Lead Ads");
+      } finally {
+        setMetaLeadLoading(false);
+      }
+    };
+
+    fetchMetaLeadConfig();
+  }, [isAdmin]);
 
   // Gérer les messages de succès/erreur depuis l'URL
   useEffect(() => {
@@ -608,6 +676,39 @@ export default function SettingsPage() {
       setPasswordError(err.message);
     } finally {
       setPasswordLoading(false);
+    }
+  };
+
+  const handleMetaLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMetaLeadError('');
+    setMetaLeadSuccess('');
+    setMetaLeadSaving(true);
+
+    try {
+      const response = await fetch('/api/settings/meta-leads', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(metaLeadConfig),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la sauvegarde de la configuration Meta');
+      }
+
+      setMetaLeadSuccess('✅ Intégration Meta Lead Ads sauvegardée avec succès !');
+      setMetaLeadConfig((prev) => ({
+        ...prev,
+        accessToken: '',
+      }));
+
+      setTimeout(() => setMetaLeadSuccess(''), 5000);
+    } catch (error: any) {
+      setMetaLeadError(error.message || 'Erreur lors de la sauvegarde de la configuration Meta');
+    } finally {
+      setMetaLeadSaving(false);
     }
   };
 
@@ -1460,6 +1561,220 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
+
+          {/* Section Meta Lead Ads - Admin uniquement */}
+          {isAdmin && (
+            <div className="rounded-lg bg-white p-4 shadow sm:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900 sm:text-lg">
+                    Intégration Meta Lead Ads
+                  </h2>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Importez automatiquement les leads de vos campagnes Meta (Facebook / Instagram)
+                    en nouveaux contacts dans le CRM.
+                  </p>
+                </div>
+              </div>
+
+              {metaLeadSuccess && (
+                <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-4">
+                  <div className="flex items-center">
+                    <svg
+                      className="mr-3 h-5 w-5 text-green-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <p className="text-sm font-medium text-green-800">{metaLeadSuccess}</p>
+                    <button
+                      onClick={() => setMetaLeadSuccess('')}
+                      className="ml-auto cursor-pointer text-green-600 hover:text-green-800"
+                    >
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {metaLeadError && (
+                <div className="mt-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">
+                  {metaLeadError}
+                </div>
+              )}
+
+              {metaLeadLoading ? (
+                <div className="mt-6 text-center text-gray-500">Chargement...</div>
+              ) : (
+                <form onSubmit={handleMetaLeadSubmit} className="mt-6 space-y-4">
+                  <div className="flex items-center">
+                    <input
+                      id="meta-active"
+                      type="checkbox"
+                      checked={metaLeadConfig.active}
+                      onChange={(e) =>
+                        setMetaLeadConfig((prev) => ({ ...prev, active: e.target.checked }))
+                      }
+                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <label
+                      htmlFor="meta-active"
+                      className="ml-2 text-sm font-medium text-gray-700"
+                    >
+                      Activer l&apos;import automatique des leads Meta
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        ID de la page Meta *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={metaLeadConfig.pageId}
+                        onChange={(e) =>
+                          setMetaLeadConfig((prev) => ({ ...prev, pageId: e.target.value }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="123456789012345"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Token de vérification (Webhook) *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={metaLeadConfig.verifyToken}
+                        onChange={(e) =>
+                          setMetaLeadConfig((prev) => ({ ...prev, verifyToken: e.target.value }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="Choisissez un token secret à reporter dans Meta"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Jeton d&apos;accès Meta (Page ou système) *
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        value={metaLeadConfig.accessToken}
+                        onChange={(e) =>
+                          setMetaLeadConfig((prev) => ({ ...prev, accessToken: e.target.value }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="EAAB..."
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Ce jeton est chiffré et utilisé uniquement côté serveur pour récupérer les
+                        informations des leads via l&apos;API Graph.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Utilisateur assigné par défaut *
+                      </label>
+                      <select
+                        required
+                        value={metaLeadConfig.defaultAssignedUserId || ''}
+                        onChange={(e) =>
+                          setMetaLeadConfig((prev) => ({
+                            ...prev,
+                            defaultAssignedUserId: e.target.value || null,
+                          }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      >
+                        <option value="">Sélectionnez un utilisateur</option>
+                        {metaLeadUsers.map((user) => (
+                          <option key={user.id} value={user.id}>
+                            {user.name} ({user.email})
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Les contacts créés automatiquement seront assignés à cet utilisateur.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Statut par défaut
+                      </label>
+                      <select
+                        value={metaLeadConfig.defaultStatusId || ''}
+                        onChange={(e) =>
+                          setMetaLeadConfig((prev) => ({
+                            ...prev,
+                            defaultStatusId: e.target.value || null,
+                          }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      >
+                        <option value="">Aucun statut par défaut</option>
+                        {statuses.map((status) => (
+                          <option key={status.id} value={status.id}>
+                            {status.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Optionnel : le statut appliqué automatiquement aux contacts provenant de
+                        Meta.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
+                    <p className="font-semibold">URL du webhook à renseigner dans Meta :</p>
+                    <p className="mt-1 break-all text-gray-800">
+                      {typeof window !== 'undefined'
+                        ? `${window.location.origin}/api/webhooks/meta-leads`
+                        : '/api/webhooks/meta-leads'}
+                    </p>
+                    <p className="mt-2">
+                      Dans Meta, abonnez-vous au champ <code>leadgen</code> pour votre page et
+                      utilisez le token de vérification défini ci-dessus.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button
+                      type="submit"
+                      disabled={metaLeadSaving}
+                      className="cursor-pointer rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {metaLeadSaving ? 'Enregistrement...' : 'Enregistrer'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
 
           {/* Section Gestion des statuts - Admin uniquement */}
           {isAdmin && (

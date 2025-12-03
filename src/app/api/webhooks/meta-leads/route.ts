@@ -1,0 +1,200 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { decrypt } from '@/lib/encryption';
+
+interface MetaLeadChange {
+  field: string;
+  value: {
+    leadgen_id: string;
+    form_id: string;
+    created_time: number;
+    page_id: string;
+  };
+}
+
+// GET /api/webhooks/meta-leads - Vérification du webhook Meta (subscription)
+export async function GET(request: NextRequest) {
+  try {
+    const url = new URL(request.url);
+    const mode = url.searchParams.get('hub.mode');
+    const verifyToken = url.searchParams.get('hub.verify_token');
+    const challenge = url.searchParams.get('hub.challenge');
+
+    if (mode !== 'subscribe' || !verifyToken || !challenge) {
+      return NextResponse.json({ error: 'Requête invalide' }, { status: 400 });
+    }
+
+    const config = await prisma.metaLeadConfig.findFirst();
+
+    if (!config || verifyToken !== config.verifyToken) {
+      return NextResponse.json({ error: 'Token de vérification invalide' }, { status: 403 });
+    }
+
+    return new Response(challenge, {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain' },
+    });
+  } catch (error: any) {
+    console.error('Erreur lors de la vérification du webhook Meta Lead Ads:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+  }
+}
+
+// POST /api/webhooks/meta-leads - Réception des leads Meta
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+
+    if (body.object !== 'page' || !Array.isArray(body.entry)) {
+      return NextResponse.json({ received: true });
+    }
+
+    const config = await prisma.metaLeadConfig.findFirst({
+      where: { active: true },
+    });
+
+    if (!config) {
+      console.warn('Webhook Meta Lead Ads reçu mais aucune configuration active trouvée.');
+      return NextResponse.json({ received: true });
+    }
+
+    const accessToken = decrypt(config.accessToken);
+
+    for (const entry of body.entry) {
+      if (!Array.isArray(entry.changes)) continue;
+
+      for (const change of entry.changes as MetaLeadChange[]) {
+        if (change.field !== 'leadgen') continue;
+
+        const { leadgen_id: leadId } = change.value;
+
+        try {
+          // Récupérer les données du lead depuis l'API Graph
+          const leadResponse = await fetch(
+            `https://graph.facebook.com/v18.0/${leadId}?access_token=${encodeURIComponent(
+              accessToken,
+            )}`,
+          );
+
+          if (!leadResponse.ok) {
+            const errorText = await leadResponse.text();
+            console.error('Erreur lors de la récupération du lead Meta:', errorText);
+            continue;
+          }
+
+          const leadData = await leadResponse.json();
+          const fieldData: Array<{ name: string; values: string[] }> = leadData.field_data || [];
+
+          const getField = (name: string): string | undefined => {
+            const field = fieldData.find((f) => f.name === name);
+            return field?.values?.[0];
+          };
+
+          let firstName = getField('first_name') || undefined;
+          let lastName = getField('last_name') || undefined;
+          const fullName = getField('full_name') || getField('name');
+          const email = getField('email');
+          const phone = getField('phone_number') || getField('phone');
+
+          if ((!firstName || !lastName) && fullName) {
+            const parts = fullName.split(' ');
+            firstName = firstName || parts.slice(0, -1).join(' ') || parts[0];
+            lastName = lastName || parts.slice(-1).join(' ');
+          }
+
+          // Le téléphone est obligatoire pour un contact dans ce CRM
+          if (!phone) {
+            console.warn(
+              'Lead Meta reçu sans numéro de téléphone, impossible de créer le contact. Lead ID:',
+              leadId,
+            );
+            continue;
+          }
+
+          // Déterminer l'utilisateur assigné par défaut
+          let assignedUserId = config.defaultAssignedUserId || null;
+          if (!assignedUserId) {
+            const adminUser = await prisma.user.findFirst({
+              where: { role: 'ADMIN' },
+              orderBy: { createdAt: 'asc' },
+            });
+            if (adminUser) {
+              assignedUserId = adminUser.id;
+            }
+          }
+
+          if (!assignedUserId) {
+            console.warn(
+              'Lead Meta reçu mais aucun utilisateur assigné par défaut trouvé. Lead ID:',
+              leadId,
+            );
+            continue;
+          }
+
+          // Vérifier si un contact existe déjà (par email ou téléphone)
+          let contact =
+            (email &&
+              (await prisma.contact.findFirst({
+                where: {
+                  OR: [{ email: email.toLowerCase() }, { phone }],
+                },
+              }))) ||
+            (await prisma.contact.findFirst({
+              where: { phone },
+            }));
+
+          if (!contact) {
+            contact = await prisma.contact.create({
+              data: {
+                firstName: firstName || null,
+                lastName: lastName || null,
+                email: email ? email.toLowerCase() : null,
+                phone,
+                origin: 'Meta Lead Ads',
+                statusId: config.defaultStatusId || null,
+                assignedUserId,
+                createdById: assignedUserId,
+              },
+            });
+          } else {
+            // Mettre à jour quelques infos si manquantes
+            await prisma.contact.update({
+              where: { id: contact.id },
+              data: {
+                firstName: contact.firstName || firstName || null,
+                lastName: contact.lastName || lastName || null,
+                email: contact.email || (email ? email.toLowerCase() : null),
+                origin: contact.origin || 'Meta Lead Ads',
+                statusId: contact.statusId || config.defaultStatusId || null,
+                assignedUserId: contact.assignedUserId || assignedUserId,
+              },
+            });
+          }
+
+          // Créer une interaction "Lead Meta"
+          await prisma.interaction.create({
+            data: {
+              contactId: contact.id,
+              type: 'NOTE',
+              title: 'Lead Meta Lead Ads',
+              content: `Lead importé automatiquement depuis Meta Lead Ads (formulaire: ${
+                change.value.form_id
+              }).`,
+              userId: assignedUserId,
+              date: new Date(change.value.created_time * 1000),
+            },
+          });
+        } catch (err: any) {
+          console.error('Erreur lors du traitement du lead Meta:', err);
+        }
+      }
+    }
+
+    return NextResponse.json({ received: true });
+  } catch (error: any) {
+    console.error('Erreur lors du traitement du webhook Meta Lead Ads:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+  }
+}
+
+
