@@ -181,3 +181,60 @@ export function AgendaDaySkeleton() {
   );
 }
 
+export function UsersTableSkeleton() {
+  return (
+    <div className="overflow-x-auto rounded-lg bg-white shadow">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+              Utilisateur
+            </th>
+            <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+              Email
+            </th>
+            <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+              Rôle
+            </th>
+            <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+              Email vérifié
+            </th>
+            <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+              Compte
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200 bg-white">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <tr key={i} className="hover:bg-gray-50">
+              <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                <div className="flex items-center">
+                  <Skeleton className="h-8 w-8 sm:h-10 sm:w-10 rounded-full" />
+                  <div className="ml-2 sm:ml-4 space-y-1">
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                </div>
+              </td>
+              <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                <Skeleton className="h-4 w-40" />
+              </td>
+              <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                <Skeleton className="h-8 w-24 rounded-md" />
+              </td>
+              <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                <Skeleton className="h-6 w-20 rounded-full" />
+              </td>
+              <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-5 w-9 rounded-full" />
+                  <Skeleton className="h-4 w-12" />
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+

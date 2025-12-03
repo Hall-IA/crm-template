@@ -4,6 +4,7 @@ import { useSession } from '@/lib/auth-client';
 import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { cn } from '@/lib/utils';
+import { UsersTableSkeleton } from '@/components/skeleton';
 
 interface User {
   id: string;
@@ -151,112 +152,110 @@ export default function UsersPage() {
         )}
 
         {/* Table */}
-        <div className="overflow-x-auto rounded-lg bg-white shadow">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                  Utilisateur
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                  Email
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                  Rôle
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                  Email vérifié
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                  Compte
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {loading ? (
+        {loading ? (
+          <UsersTableSkeleton />
+        ) : (
+          <div className="overflow-x-auto rounded-lg bg-white shadow">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <td colSpan={5} className="px-3 py-4 text-center text-sm text-gray-500 sm:px-6">
-                    Chargement...
-                  </td>
+                  <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                    Utilisateur
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                    Email
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                    Rôle
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                    Email vérifié
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                    Compte
+                  </th>
                 </tr>
-              ) : users.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-3 py-4 text-center text-sm text-gray-500 sm:px-6">
-                    Aucun utilisateur
-                  </td>
-                </tr>
-              ) : (
-                users.map((user) => (
-                  <tr key={user.id}>
-                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
-                      <div className="flex items-center">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 sm:h-10 sm:w-10">
-                          {user.name[0].toUpperCase()}
-                        </div>
-                        <div className="ml-2 min-w-0 sm:ml-4">
-                          <div className="truncate text-sm font-medium text-gray-900 sm:text-base">
-                            {user.name}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-4 text-xs whitespace-nowrap text-gray-500 sm:px-6 sm:text-sm">
-                      <span className="block max-w-[150px] truncate sm:max-w-none">
-                        {user.email}
-                      </span>
-                    </td>
-                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
-                      <select
-                        value={user.role}
-                        onChange={(e) => handleChangeRole(user.id, e.target.value as any)}
-                        disabled={user.id === session?.user?.id}
-                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-sm"
-                      >
-                        <option value="USER">Utilisateur</option>
-                        <option value="ADMIN">Admin</option>
-                      </select>
-                    </td>
-                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
-                      {user.emailVerified ? (
-                        <span className="inline-flex rounded-full bg-green-100 px-2 text-xs leading-5 font-semibold text-green-800">
-                          Vérifié
-                        </span>
-                      ) : (
-                        <span className="inline-flex rounded-full bg-yellow-100 px-2 text-xs leading-5 font-semibold text-yellow-800">
-                          Non vérifié
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          disabled={user.id === session?.user?.id}
-                          onClick={() => handleToggleActive(user.id, user.active, user.name)}
-                          className={cn(
-                            'relative inline-flex h-5 w-9 cursor-pointer items-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-60',
-                            user.active ? 'bg-green-500' : 'bg-gray-300',
-                          )}
-                          aria-label={user.active ? 'Désactiver le compte' : 'Activer le compte'}
-                        >
-                          <span
-                            className={cn(
-                              'inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition',
-                              user.active ? 'translate-x-4.5' : 'translate-x-0.5',
-                            )}
-                          />
-                        </button>
-                        <span className="text-xs font-medium text-gray-700">
-                          {user.active ? 'Actif' : 'Inactif'}
-                        </span>
-                      </div>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {users.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-4 text-center text-sm text-gray-500 sm:px-6">
+                      Aucun utilisateur
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  users.map((user) => (
+                    <tr key={user.id}>
+                      <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                        <div className="flex items-center">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 sm:h-10 sm:w-10">
+                            {user.name[0].toUpperCase()}
+                          </div>
+                          <div className="ml-2 min-w-0 sm:ml-4">
+                            <div className="truncate text-sm font-medium text-gray-900 sm:text-base">
+                              {user.name}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-4 text-xs whitespace-nowrap text-gray-500 sm:px-6 sm:text-sm">
+                        <span className="block max-w-[150px] truncate sm:max-w-none">
+                          {user.email}
+                        </span>
+                      </td>
+                      <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleChangeRole(user.id, e.target.value as any)}
+                          disabled={user.id === session?.user?.id}
+                          className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-sm"
+                        >
+                          <option value="USER">Utilisateur</option>
+                          <option value="ADMIN">Admin</option>
+                        </select>
+                      </td>
+                      <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                        {user.emailVerified ? (
+                          <span className="inline-flex rounded-full bg-green-100 px-2 text-xs leading-5 font-semibold text-green-800">
+                            Vérifié
+                          </span>
+                        ) : (
+                          <span className="inline-flex rounded-full bg-yellow-100 px-2 text-xs leading-5 font-semibold text-yellow-800">
+                            Non vérifié
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={user.id === session?.user?.id}
+                            onClick={() => handleToggleActive(user.id, user.active, user.name)}
+                            className={cn(
+                              'relative inline-flex h-5 w-9 cursor-pointer items-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-60',
+                              user.active ? 'bg-green-500' : 'bg-gray-300',
+                            )}
+                            aria-label={user.active ? 'Désactiver le compte' : 'Activer le compte'}
+                          >
+                            <span
+                              className={cn(
+                                'inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition',
+                                user.active ? 'translate-x-4.5' : 'translate-x-0.5',
+                              )}
+                            />
+                          </button>
+                          <span className="text-xs font-medium text-gray-700">
+                            {user.active ? 'Actif' : 'Inactif'}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Modal d'ajout */}
