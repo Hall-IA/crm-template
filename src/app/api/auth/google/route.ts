@@ -12,11 +12,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'GOOGLE_CLIENT_ID non configuré' }, { status: 500 });
   }
 
+  const scopes = [
+    'https://www.googleapis.com/auth/calendar.events',
+    'https://www.googleapis.com/auth/spreadsheets.readonly',
+  ];
+
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: 'https://www.googleapis.com/auth/calendar.events',
+    scope: scopes.join(' '),
     access_type: 'offline',
     prompt: 'consent', // Force le consentement pour obtenir le refresh_token
   });

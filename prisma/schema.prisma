@@ -19,26 +19,28 @@ enum Role {
 }
 
 model User {
-  id                   String                @id
-  name                 String
-  email                String
-  emailVerified        Boolean               @default(false)
-  active               Boolean               @default(true)
-  image                String?
-  role                 Role                  @default(USER)
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  sessions             Session[]
-  accounts             Account[]
-  smtpConfig           SmtpConfig?
-  contactsCreated      Contact[]             @relation("ContactCreatedBy")
-  contactsAssigned     Contact[]             @relation("ContactAssignedTo")
-  interactions         Interaction[]
-  tasksAssigned        Task[]                @relation("TaskAssignedTo")
-  tasksCreated         Task[]                @relation("TaskCreatedBy")
-  googleAccount        UserGoogleAccount?
-  metaLeadConfigs      MetaLeadConfig[]
-  googleAdsLeadConfigs GoogleAdsLeadConfig[]
+  id                             String                  @id
+  name                           String
+  email                          String
+  emailVerified                  Boolean                 @default(false)
+  active                         Boolean                 @default(true)
+  image                          String?
+  role                           Role                    @default(USER)
+  createdAt                      DateTime                @default(now())
+  updatedAt                      DateTime                @updatedAt
+  sessions                       Session[]
+  accounts                       Account[]
+  smtpConfig                     SmtpConfig?
+  contactsCreated                Contact[]               @relation("ContactCreatedBy")
+  contactsAssigned               Contact[]               @relation("ContactAssignedTo")
+  interactions                   Interaction[]
+  tasksAssigned                  Task[]                  @relation("TaskAssignedTo")
+  tasksCreated                   Task[]                  @relation("TaskCreatedBy")
+  googleAccount                  UserGoogleAccount?
+  metaLeadConfigs                MetaLeadConfig[]
+  googleAdsLeadConfigs           GoogleAdsLeadConfig[]
+  googleSheetSyncConfigsOwned    GoogleSheetSyncConfig[] @relation("GoogleSheetOwner")
+  googleSheetSyncConfigsAssigned GoogleSheetSyncConfig[] @relation("GoogleSheetAssignedUser")
 
   @@unique([email])
   @@map("user")
@@ -130,15 +132,16 @@ model SmtpConfig {
 }
 
 model Status {
-  id                   String                @id @default(cuid())
-  name                 String
-  color                String // Couleur au format hexadécimal (ex: #3B82F6)
-  order                Int                   @default(0) // Ordre d'affichage
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  contacts             Contact[]
-  metaLeadConfigs      MetaLeadConfig[]
-  googleAdsLeadConfigs GoogleAdsLeadConfig[]
+  id                     String                  @id @default(cuid())
+  name                   String
+  color                  String // Couleur au format hexadécimal (ex: #3B82F6)
+  order                  Int                     @default(0) // Ordre d'affichage
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  contacts               Contact[]
+  metaLeadConfigs        MetaLeadConfig[]
+  googleAdsLeadConfigs   GoogleAdsLeadConfig[]
+  googleSheetSyncConfigs GoogleSheetSyncConfig[]
 
   @@unique([name])
   @@map("status")
@@ -291,4 +294,30 @@ model GoogleAdsLeadConfig {
   updatedAt             DateTime @updatedAt
 
   @@map("google_ads_lead_config")
+}
+
+model GoogleSheetSyncConfig {
+  id                    String   @id @default("google_sheet_sync_config_singleton")
+  ownerUserId           String
+  ownerUser             User     @relation("GoogleSheetOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  spreadsheetId         String
+  sheetName             String
+  headerRow             Int
+  phoneColumn           String
+  firstNameColumn       String?
+  lastNameColumn        String?
+  emailColumn           String?
+  cityColumn            String?
+  postalCodeColumn      String?
+  originColumn          String?
+  active                Boolean  @default(true)
+  lastSyncedRow         Int?
+  defaultStatusId       String?
+  defaultStatus         Status?  @relation(fields: [defaultStatusId], references: [id], onDelete: SetNull)
+  defaultAssignedUserId String?
+  defaultAssignedUser   User?    @relation("GoogleSheetAssignedUser", fields: [defaultAssignedUserId], references: [id], onDelete: SetNull)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("google_sheet_sync_config")
 }

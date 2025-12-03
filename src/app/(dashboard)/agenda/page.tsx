@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from '@/lib/auth-client';
 import { useUserRole } from '@/hooks/use-user-role';
 import { PageHeader } from '@/components/page-header';
 import {
@@ -16,6 +15,11 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
+import {
+  AgendaMonthSkeleton,
+  AgendaWeekSkeleton,
+  AgendaDaySkeleton,
+} from '@/components/skeleton';
 
 interface Task {
   id: string;
@@ -70,7 +74,6 @@ const formatHourLabel = (hour: number) => {
 };
 
 export default function AgendaPage() {
-  const { data: session } = useSession();
   const { isAdmin } = useUserRole();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,6 +92,21 @@ export default function AgendaPage() {
   });
   const [editMeetLoading, setEditMeetLoading] = useState(false);
   const [editMeetError, setEditMeetError] = useState('');
+
+  // Synchronisation automatique Google Sheets
+  useEffect(() => {
+    const syncGoogleSheet = async () => {
+      try {
+        await fetch('/api/integrations/google-sheet/sync', {
+          method: 'POST',
+        });
+      } catch (err) {
+        console.error('Erreur lors de la synchronisation Google Sheets:', err);
+      }
+    };
+
+    syncGoogleSheet();
+  }, []);
 
   // Calculer le début et la fin du mois/semaine/jour
   const getDateRange = () => {
@@ -294,13 +312,7 @@ export default function AgendaPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-gray-500">Chargement...</div>
-      </div>
-    );
-  }
+  // Ne pas afficher le skeleton global, on l'affiche par vue
 
   return (
     <div className="relative h-full">
@@ -346,7 +358,11 @@ export default function AgendaPage() {
         <div className="mb-4 text-xl font-semibold text-gray-900">{formatDate(currentDate)}</div>
 
         {view === 'month' && (
-          <div className="rounded-lg bg-white shadow">
+          <>
+            {loading ? (
+              <AgendaMonthSkeleton />
+            ) : (
+              <div className="rounded-lg bg-white shadow">
             <div className="grid grid-cols-7 border-b border-gray-200">
               {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day) => (
                 <div
@@ -413,12 +429,18 @@ export default function AgendaPage() {
                 );
               })}
             </div>
-          </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Vue semaine */}
         {view === 'week' && (
-          <div className="overflow-auto rounded-lg bg-white shadow">
+          <>
+            {loading ? (
+              <AgendaWeekSkeleton />
+            ) : (
+              <div className="overflow-auto rounded-lg bg-white shadow">
             <div className="grid grid-cols-8 border-b border-gray-200 bg-gray-50 text-xs font-medium text-gray-500">
               <div className="px-3 py-2 text-right">(UTC+01:00) Hr</div>
               {getWeekDays().map((day) => {
@@ -501,13 +523,19 @@ export default function AgendaPage() {
                 </div>
               ))}
             </div>
-          </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Vue jour : liste des tâches */}
         {view === 'day' && (
-          <div className="space-y-4">
-            {tasks.length === 0 ? (
+          <>
+            {loading ? (
+              <AgendaDaySkeleton />
+            ) : (
+              <div className="space-y-4">
+                {tasks.length === 0 ? (
               <div className="rounded-lg bg-white p-8 text-center shadow">
                 <p className="text-gray-500">Aucune tâche pour cette journée</p>
               </div>
@@ -648,12 +676,14 @@ export default function AgendaPage() {
                   </div>
                 );
               })
+                )}
+              </div>
             )}
-          </div>
+          </>
         )}
 
         {/* Liste des tâches du mois (en bas) */}
-        {view === 'month' && (
+        {view === 'month' && !loading && (
           <div className="mt-6">
             <h2 className="mb-4 text-lg font-semibold text-gray-900">Toutes les tâches du mois</h2>
             <div className="space-y-4">

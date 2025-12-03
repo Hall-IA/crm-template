@@ -1,11 +1,12 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useSession } from "@/lib/auth-client";
-import { PageHeader } from "@/components/page-header";
-import { Search, Plus, Edit, Trash2, Eye, Phone, Mail, MapPin } from "lucide-react";
-import Link from "next/link";
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from '@/lib/auth-client';
+import { PageHeader } from '@/components/page-header';
+import { Search, Plus, Edit, Trash2, Eye, Phone, Mail, MapPin } from 'lucide-react';
+import Link from 'next/link';
+import { ContactTableSkeleton } from '@/components/skeleton';
 
 interface Status {
   id: string;
@@ -50,29 +51,44 @@ export default function ContactsPage() {
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   // Filtres
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
-  const [assignedUserFilter, setAssignedUserFilter] = useState<string>("");
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [assignedUserFilter, setAssignedUserFilter] = useState<string>('');
 
   // Formulaire
   const [formData, setFormData] = useState({
-    civility: "",
-    firstName: "",
-    lastName: "",
-    phone: "",
-    secondaryPhone: "",
-    email: "",
-    address: "",
-    city: "",
-    postalCode: "",
-    origin: "",
-    statusId: "",
-    assignedUserId: "",
+    civility: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    secondaryPhone: '',
+    email: '',
+    address: '',
+    city: '',
+    postalCode: '',
+    origin: '',
+    statusId: '',
+    assignedUserId: '',
   });
+
+  // Synchronisation automatique Google Sheets
+  useEffect(() => {
+    const syncGoogleSheet = async () => {
+      try {
+        await fetch('/api/integrations/google-sheet/sync', {
+          method: 'POST',
+        });
+      } catch (err) {
+        console.error('Erreur lors de la synchronisation Google Sheets:', err);
+      }
+    };
+
+    syncGoogleSheet();
+  }, []);
 
   // Charger les statuts et utilisateurs
   useEffect(() => {
@@ -336,7 +352,7 @@ export default function ContactsPage() {
 
         {/* Liste des contacts */}
         {loading ? (
-          <div className="text-center text-gray-500">Chargement...</div>
+          <ContactTableSkeleton />
         ) : contacts.length === 0 ? (
           <div className="rounded-lg bg-white p-12 text-center shadow">
             <div className="text-4xl sm:text-6xl">👥</div>
@@ -490,7 +506,7 @@ export default function ContactsPage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
                   {editingContact ? "Modifier le contact" : "Nouveau contact"}
-                </h2>
+          </h2>
                 <button
                   type="button"
                   onClick={() => {
@@ -759,9 +775,9 @@ export default function ContactsPage() {
                   className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
                 >
                   {editingContact ? "Modifier" : "Créer"}
-                </button>
-              </div>
-            </div>
+          </button>
+        </div>
+      </div>
           </div>
         </div>
       )}

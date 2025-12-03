@@ -142,6 +142,42 @@ export default function SettingsPage() {
     defaultAssignedUserId: null,
   });
 
+  // État pour l'intégration Google Sheets (admin uniquement)
+  const [googleSheetLoading, setGoogleSheetLoading] = useState(true);
+  const [googleSheetSaving, setGoogleSheetSaving] = useState(false);
+  const [googleSheetSyncing, setGoogleSheetSyncing] = useState(false);
+  const [googleSheetError, setGoogleSheetError] = useState('');
+  const [googleSheetSuccess, setGoogleSheetSuccess] = useState('');
+  const [googleSheetConfig, setGoogleSheetConfig] = useState<{
+    active: boolean;
+    sheetUrl: string;
+    sheetName: string;
+    headerRow: string;
+    phoneColumn: string;
+    firstNameColumn: string;
+    lastNameColumn: string;
+    emailColumn: string;
+    cityColumn: string;
+    postalCodeColumn: string;
+    originColumn: string;
+    defaultStatusId: string | null;
+    defaultAssignedUserId: string | null;
+  }>({
+    active: true,
+    sheetUrl: '',
+    sheetName: '',
+    headerRow: '1',
+    phoneColumn: '',
+    firstNameColumn: '',
+    lastNameColumn: '',
+    emailColumn: '',
+    cityColumn: '',
+    postalCodeColumn: '',
+    originColumn: '',
+    defaultStatusId: null,
+    defaultAssignedUserId: null,
+  });
+
   // Mettre à jour le nom quand la session change
   useEffect(() => {
     if (session?.user?.name) {
@@ -278,14 +314,18 @@ export default function SettingsPage() {
       try {
         setMetaLeadLoading(true);
         setGoogleAdsLoading(true);
+        setGoogleSheetLoading(true);
         setMetaLeadError('');
         setGoogleAdsError('');
+        setGoogleSheetError('');
 
-        const [metaConfigRes, googleAdsConfigRes, usersRes] = await Promise.all([
-          fetch('/api/settings/meta-leads'),
-          fetch('/api/settings/google-ads'),
-          fetch('/api/users/list'),
-        ]);
+        const [metaConfigRes, googleAdsConfigRes, googleSheetConfigRes, usersRes] =
+          await Promise.all([
+            fetch('/api/settings/meta-leads'),
+            fetch('/api/settings/google-ads'),
+            fetch('/api/settings/google-sheet'),
+            fetch('/api/users/list'),
+          ]);
 
         if (metaConfigRes.ok) {
           const configData = await metaConfigRes.json();
@@ -315,6 +355,30 @@ export default function SettingsPage() {
           }
         }
 
+        if (googleSheetConfigRes.ok) {
+          const sheetConfigData = await googleSheetConfigRes.json();
+          if (sheetConfigData) {
+            setGoogleSheetConfig((prev) => ({
+              ...prev,
+              active: sheetConfigData.active ?? true,
+              sheetUrl: sheetConfigData.spreadsheetId
+                ? `https://docs.google.com/spreadsheets/d/${sheetConfigData.spreadsheetId}/edit`
+                : '',
+              sheetName: sheetConfigData.sheetName || '',
+              headerRow: sheetConfigData.headerRow?.toString() || '1',
+              phoneColumn: sheetConfigData.phoneColumn || '',
+              firstNameColumn: sheetConfigData.firstNameColumn || '',
+              lastNameColumn: sheetConfigData.lastNameColumn || '',
+              emailColumn: sheetConfigData.emailColumn || '',
+              cityColumn: sheetConfigData.cityColumn || '',
+              postalCodeColumn: sheetConfigData.postalCodeColumn || '',
+              originColumn: sheetConfigData.originColumn || '',
+              defaultStatusId: sheetConfigData.defaultStatusId || null,
+              defaultAssignedUserId: sheetConfigData.defaultAssignedUserId || null,
+            }));
+          }
+        }
+
         if (usersRes.ok) {
           const usersData = await usersRes.json();
           setMetaLeadUsers(usersData);
@@ -325,6 +389,7 @@ export default function SettingsPage() {
       } finally {
         setMetaLeadLoading(false);
         setGoogleAdsLoading(false);
+        setGoogleSheetLoading(false);
       }
     };
 
@@ -773,6 +838,67 @@ export default function SettingsPage() {
       setGoogleAdsError(error.message || 'Erreur lors de la sauvegarde de la configuration Google');
     } finally {
       setGoogleAdsSaving(false);
+    }
+  };
+
+  const handleGoogleSheetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGoogleSheetError('');
+    setGoogleSheetSuccess('');
+    setGoogleSheetSaving(true);
+
+    try {
+      const response = await fetch('/api/settings/google-sheet', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(googleSheetConfig),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || 'Erreur lors de la sauvegarde de la configuration Google Sheets',
+        );
+      }
+
+      setGoogleSheetSuccess('✅ Intégration Google Sheets sauvegardée avec succès !');
+      setTimeout(() => setGoogleSheetSuccess(''), 5000);
+    } catch (error: any) {
+      setGoogleSheetError(
+        error.message || 'Erreur lors de la sauvegarde de la configuration Google Sheets',
+      );
+    } finally {
+      setGoogleSheetSaving(false);
+    }
+  };
+
+  const handleGoogleSheetSync = async () => {
+    setGoogleSheetError('');
+    setGoogleSheetSuccess('');
+    setGoogleSheetSyncing(true);
+
+    try {
+      const response = await fetch('/api/integrations/google-sheet/sync', {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la synchronisation Google Sheets');
+      }
+
+      setGoogleSheetSuccess(
+        `✅ Synchronisation terminée : ${data.imported} nouveau(x) contact(s), ${data.updated} mis à jour, ${data.skipped} ignoré(s).`,
+      );
+      setTimeout(() => setGoogleSheetSuccess(''), 8000);
+    } catch (error: any) {
+      setGoogleSheetError(
+        error.message || 'Erreur lors de la synchronisation des contacts Google Sheets',
+      );
+    } finally {
+      setGoogleSheetSyncing(false);
     }
   };
 
@@ -2018,6 +2144,339 @@ export default function SettingsPage() {
                       className="cursor-pointer rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {googleAdsSaving ? 'Enregistrement...' : 'Enregistrer'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* Section Google Sheets - Admin uniquement */}
+          {isAdmin && (
+            <div className="rounded-lg bg-white p-4 shadow sm:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900 sm:text-lg">
+                    Intégration Google Sheets
+                  </h2>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Importez automatiquement des contacts à partir d&apos;un Google Sheet.
+                  </p>
+                </div>
+              </div>
+
+              {googleSheetSuccess && (
+                <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-4">
+                  <div className="flex items-center">
+                    <svg
+                      className="mr-3 h-5 w-5 text-green-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <p className="text-sm font-medium text-green-800">{googleSheetSuccess}</p>
+                    <button
+                      onClick={() => setGoogleSheetSuccess('')}
+                      className="ml-auto cursor-pointer text-green-600 hover:text-green-800"
+                    >
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {googleSheetError && (
+                <div className="mt-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">
+                  {googleSheetError}
+                </div>
+              )}
+
+              {googleSheetLoading ? (
+                <div className="mt-6 text-center text-gray-500">Chargement...</div>
+              ) : (
+                <form onSubmit={handleGoogleSheetSubmit} className="mt-6 space-y-4">
+                  <div className="flex items-center">
+                    <input
+                      id="google-sheet-active"
+                      type="checkbox"
+                      checked={googleSheetConfig.active}
+                      onChange={(e) =>
+                        setGoogleSheetConfig((prev) => ({ ...prev, active: e.target.checked }))
+                      }
+                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <label
+                      htmlFor="google-sheet-active"
+                      className="ml-2 text-sm font-medium text-gray-700"
+                    >
+                      Activer l&apos;import automatique depuis Google Sheets
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Lien du Google Sheet *
+                      </label>
+                      <input
+                        type="url"
+                        required
+                        value={googleSheetConfig.sheetUrl}
+                        onChange={(e) =>
+                          setGoogleSheetConfig((prev) => ({ ...prev, sheetUrl: e.target.value }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="https://docs.google.com/spreadsheets/d/..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Nom de l&apos;onglet (Sheet) *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={googleSheetConfig.sheetName}
+                        onChange={(e) =>
+                          setGoogleSheetConfig((prev) => ({ ...prev, sheetName: e.target.value }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="Feuille 1"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Ligne des en-têtes *
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        required
+                        value={googleSheetConfig.headerRow}
+                        onChange={(e) =>
+                          setGoogleSheetConfig((prev) => ({ ...prev, headerRow: e.target.value }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="1"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Colonne Téléphone (obligatoire) *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={googleSheetConfig.phoneColumn}
+                        onChange={(e) =>
+                          setGoogleSheetConfig((prev) => ({
+                            ...prev,
+                            phoneColumn: e.target.value.toUpperCase(),
+                          }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="A"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Colonne Prénom
+                      </label>
+                      <input
+                        type="text"
+                        value={googleSheetConfig.firstNameColumn}
+                        onChange={(e) =>
+                          setGoogleSheetConfig((prev) => ({
+                            ...prev,
+                            firstNameColumn: e.target.value.toUpperCase(),
+                          }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="B"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Colonne Nom
+                      </label>
+                      <input
+                        type="text"
+                        value={googleSheetConfig.lastNameColumn}
+                        onChange={(e) =>
+                          setGoogleSheetConfig((prev) => ({
+                            ...prev,
+                            lastNameColumn: e.target.value.toUpperCase(),
+                          }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="C"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Colonne Email
+                      </label>
+                      <input
+                        type="text"
+                        value={googleSheetConfig.emailColumn}
+                        onChange={(e) =>
+                          setGoogleSheetConfig((prev) => ({
+                            ...prev,
+                            emailColumn: e.target.value.toUpperCase(),
+                          }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="D"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Colonne Ville
+                      </label>
+                      <input
+                        type="text"
+                        value={googleSheetConfig.cityColumn}
+                        onChange={(e) =>
+                          setGoogleSheetConfig((prev) => ({
+                            ...prev,
+                            cityColumn: e.target.value.toUpperCase(),
+                          }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="E"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Colonne Code postal
+                      </label>
+                      <input
+                        type="text"
+                        value={googleSheetConfig.postalCodeColumn}
+                        onChange={(e) =>
+                          setGoogleSheetConfig((prev) => ({
+                            ...prev,
+                            postalCodeColumn: e.target.value.toUpperCase(),
+                          }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="F"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Colonne Origine
+                      </label>
+                      <input
+                        type="text"
+                        value={googleSheetConfig.originColumn}
+                        onChange={(e) =>
+                          setGoogleSheetConfig((prev) => ({
+                            ...prev,
+                            originColumn: e.target.value.toUpperCase(),
+                          }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="G"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Utilisateur assigné par défaut *
+                      </label>
+                      <select
+                        required
+                        value={googleSheetConfig.defaultAssignedUserId || ''}
+                        onChange={(e) =>
+                          setGoogleSheetConfig((prev) => ({
+                            ...prev,
+                            defaultAssignedUserId: e.target.value || null,
+                          }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      >
+                        <option value="">Sélectionnez un utilisateur</option>
+                        {metaLeadUsers.map((user) => (
+                          <option key={user.id} value={user.id}>
+                            {user.name} ({user.email})
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Les contacts créés automatiquement seront assignés à cet utilisateur.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Statut par défaut
+                      </label>
+                      <select
+                        value={googleSheetConfig.defaultStatusId || ''}
+                        onChange={(e) =>
+                          setGoogleSheetConfig((prev) => ({
+                            ...prev,
+                            defaultStatusId: e.target.value || null,
+                          }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      >
+                        <option value="">Aucun statut par défaut</option>
+                        {statuses.map((status) => (
+                          <option key={status.id} value={status.id}>
+                            {status.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Optionnel : le statut appliqué automatiquement aux contacts importés.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
+                    <button
+                      type="button"
+                      onClick={handleGoogleSheetSync}
+                      disabled={googleSheetSyncing || googleSheetSaving}
+                      className="w-full cursor-pointer rounded-lg border border-indigo-600 px-6 py-2 text-sm font-medium text-indigo-600 transition-colors hover:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                    >
+                      {googleSheetSyncing ? 'Synchronisation...' : 'Synchroniser maintenant'}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={googleSheetSaving || googleSheetSyncing}
+                      className="w-full cursor-pointer rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                    >
+                      {googleSheetSaving ? 'Enregistrement...' : 'Enregistrer'}
                     </button>
                   </div>
                 </form>
