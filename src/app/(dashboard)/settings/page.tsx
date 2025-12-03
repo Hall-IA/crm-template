@@ -125,6 +125,23 @@ export default function SettingsPage() {
     defaultAssignedUserId: null,
   });
 
+  // État pour l'intégration Google Ads Lead Forms (admin uniquement)
+  const [googleAdsLoading, setGoogleAdsLoading] = useState(true);
+  const [googleAdsSaving, setGoogleAdsSaving] = useState(false);
+  const [googleAdsError, setGoogleAdsError] = useState('');
+  const [googleAdsSuccess, setGoogleAdsSuccess] = useState('');
+  const [googleAdsConfig, setGoogleAdsConfig] = useState<{
+    active: boolean;
+    webhookKey: string;
+    defaultStatusId: string | null;
+    defaultAssignedUserId: string | null;
+  }>({
+    active: true,
+    webhookKey: '',
+    defaultStatusId: null,
+    defaultAssignedUserId: null,
+  });
+
   // Mettre à jour le nom quand la session change
   useEffect(() => {
     if (session?.user?.name) {
@@ -257,18 +274,21 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!isAdmin) return;
 
-    const fetchMetaLeadConfig = async () => {
+    const fetchLeadConfigs = async () => {
       try {
         setMetaLeadLoading(true);
+        setGoogleAdsLoading(true);
         setMetaLeadError('');
+        setGoogleAdsError('');
 
-        const [configRes, usersRes] = await Promise.all([
+        const [metaConfigRes, googleAdsConfigRes, usersRes] = await Promise.all([
           fetch('/api/settings/meta-leads'),
+          fetch('/api/settings/google-ads'),
           fetch('/api/users/list'),
         ]);
 
-        if (configRes.ok) {
-          const configData = await configRes.json();
+        if (metaConfigRes.ok) {
+          const configData = await metaConfigRes.json();
           if (configData) {
             setMetaLeadConfig((prev) => ({
               ...prev,
@@ -282,6 +302,19 @@ export default function SettingsPage() {
           }
         }
 
+        if (googleAdsConfigRes.ok) {
+          const googleConfigData = await googleAdsConfigRes.json();
+          if (googleConfigData) {
+            setGoogleAdsConfig((prev) => ({
+              ...prev,
+              active: googleConfigData.active ?? true,
+              webhookKey: googleConfigData.webhookKey || '',
+              defaultStatusId: googleConfigData.defaultStatusId || null,
+              defaultAssignedUserId: googleConfigData.defaultAssignedUserId || null,
+            }));
+          }
+        }
+
         if (usersRes.ok) {
           const usersData = await usersRes.json();
           setMetaLeadUsers(usersData);
@@ -291,10 +324,11 @@ export default function SettingsPage() {
         setMetaLeadError("Erreur lors du chargement de l'intégration Meta Lead Ads");
       } finally {
         setMetaLeadLoading(false);
+        setGoogleAdsLoading(false);
       }
     };
 
-    fetchMetaLeadConfig();
+    fetchLeadConfigs();
   }, [isAdmin]);
 
   // Gérer les messages de succès/erreur depuis l'URL
@@ -709,6 +743,36 @@ export default function SettingsPage() {
       setMetaLeadError(error.message || 'Erreur lors de la sauvegarde de la configuration Meta');
     } finally {
       setMetaLeadSaving(false);
+    }
+  };
+
+  const handleGoogleAdsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGoogleAdsError('');
+    setGoogleAdsSuccess('');
+    setGoogleAdsSaving(true);
+
+    try {
+      const response = await fetch('/api/settings/google-ads', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(googleAdsConfig),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || 'Erreur lors de la sauvegarde de la configuration Google Ads',
+        );
+      }
+
+      setGoogleAdsSuccess('✅ Intégration Google Ads Lead Forms sauvegardée avec succès !');
+      setTimeout(() => setGoogleAdsSuccess(''), 5000);
+    } catch (error: any) {
+      setGoogleAdsError(error.message || 'Erreur lors de la sauvegarde de la configuration Google');
+    } finally {
+      setGoogleAdsSaving(false);
     }
   };
 
@@ -1769,6 +1833,191 @@ export default function SettingsPage() {
                       className="cursor-pointer rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {metaLeadSaving ? 'Enregistrement...' : 'Enregistrer'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* Section Google Ads Lead Forms - Admin uniquement */}
+          {isAdmin && (
+            <div className="rounded-lg bg-white p-4 shadow sm:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900 sm:text-lg">
+                    Intégration Google Ads (Lead Forms)
+                  </h2>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Importez automatiquement les leads provenant des extensions de formulaire
+                    Google Ads.
+                  </p>
+                </div>
+              </div>
+
+              {googleAdsSuccess && (
+                <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-4">
+                  <div className="flex items-center">
+                    <svg
+                      className="mr-3 h-5 w-5 text-green-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <p className="text-sm font-medium text-green-800">{googleAdsSuccess}</p>
+                    <button
+                      onClick={() => setGoogleAdsSuccess('')}
+                      className="ml-auto cursor-pointer text-green-600 hover:text-green-800"
+                    >
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {googleAdsError && (
+                <div className="mt-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">
+                  {googleAdsError}
+                </div>
+              )}
+
+              {googleAdsLoading ? (
+                <div className="mt-6 text-center text-gray-500">Chargement...</div>
+              ) : (
+                <form onSubmit={handleGoogleAdsSubmit} className="mt-6 space-y-4">
+                  <div className="flex items-center">
+                    <input
+                      id="google-ads-active"
+                      type="checkbox"
+                      checked={googleAdsConfig.active}
+                      onChange={(e) =>
+                        setGoogleAdsConfig((prev) => ({ ...prev, active: e.target.checked }))
+                      }
+                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <label
+                      htmlFor="google-ads-active"
+                      className="ml-2 text-sm font-medium text-gray-700"
+                    >
+                      Activer l&apos;import automatique des leads Google Ads
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Clé secrète (webhook key) *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={googleAdsConfig.webhookKey}
+                        onChange={(e) =>
+                          setGoogleAdsConfig((prev) => ({
+                            ...prev,
+                            webhookKey: e.target.value,
+                          }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        placeholder="Clé secrète à reporter dans Google Ads"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Cette clé doit être identique à la valeur configurée dans votre extension de
+                        formulaire Google Ads.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Utilisateur assigné par défaut *
+                      </label>
+                      <select
+                        required
+                        value={googleAdsConfig.defaultAssignedUserId || ''}
+                        onChange={(e) =>
+                          setGoogleAdsConfig((prev) => ({
+                            ...prev,
+                            defaultAssignedUserId: e.target.value || null,
+                          }))
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      >
+                        <option value="">Sélectionnez un utilisateur</option>
+                        {metaLeadUsers.map((user) => (
+                          <option key={user.id} value={user.id}>
+                            {user.name} ({user.email})
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Les contacts créés automatiquement seront assignés à cet utilisateur.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Statut par défaut
+                    </label>
+                    <select
+                      value={googleAdsConfig.defaultStatusId || ''}
+                      onChange={(e) =>
+                        setGoogleAdsConfig((prev) => ({
+                          ...prev,
+                          defaultStatusId: e.target.value || null,
+                        }))
+                      }
+                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    >
+                      <option value="">Aucun statut par défaut</option>
+                      {statuses.map((status) => (
+                        <option key={status.id} value={status.id}>
+                          {status.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Optionnel : le statut appliqué automatiquement aux contacts provenant de
+                      Google Ads.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
+                    <p className="font-semibold">URL du webhook à renseigner dans Google Ads :</p>
+                    <p className="mt-1 break-all text-gray-800">
+                      {typeof window !== 'undefined'
+                        ? `${window.location.origin}/api/webhooks/google-ads`
+                        : '/api/webhooks/google-ads'}
+                    </p>
+                    <p className="mt-2">
+                      Dans Google Ads, configurez votre extension de formulaire pour envoyer les
+                      leads vers cette URL en utilisant la clé secrète ci-dessus comme paramètre
+                      <code className="mx-1 rounded bg-gray-100 px-1 py-0.5">google_key</code> ou
+                      champ approprié selon votre intégration.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button
+                      type="submit"
+                      disabled={googleAdsSaving}
+                      className="cursor-pointer rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {googleAdsSaving ? 'Enregistrement...' : 'Enregistrer'}
                     </button>
                   </div>
                 </form>
