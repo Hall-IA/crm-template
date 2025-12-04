@@ -21,6 +21,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -59,6 +60,7 @@ export default function UsersPage() {
     setSuccessMessage('');
 
     try {
+      setIsSubmitting(true);
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -77,6 +79,8 @@ export default function UsersPage() {
       fetchUsers();
     } catch (error: any) {
       setError(error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -338,21 +342,27 @@ export default function UsersPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => {
+                    if (isSubmitting) return;
                     setShowAddModal(false);
                     setFormData({ name: '', email: '', role: 'USER' });
                     setError('');
                   }}
-                  className="w-full cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                  className="w-full cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   form="add-user-form"
-                  className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
+                  disabled={isSubmitting}
+                  className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                 >
-                  Créer
+                  {isSubmitting && (
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  )}
+                  {isSubmitting ? 'Création en cours...' : 'Créer'}
                 </button>
               </div>
             </div>
