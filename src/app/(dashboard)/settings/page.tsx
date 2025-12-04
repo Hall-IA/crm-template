@@ -106,9 +106,9 @@ export default function SettingsPage() {
   const [metaLeadSaving, setMetaLeadSaving] = useState(false);
   const [metaLeadError, setMetaLeadError] = useState('');
   const [metaLeadSuccess, setMetaLeadSuccess] = useState('');
-  const [metaLeadUsers, setMetaLeadUsers] = useState<
-    { id: string; name: string; email: string }[]
-  >([]);
+  const [metaLeadUsers, setMetaLeadUsers] = useState<{ id: string; name: string; email: string }[]>(
+    [],
+  );
   const [metaLeadConfigs, setMetaLeadConfigs] = useState<
     Array<{
       id: string;
@@ -1005,7 +1005,7 @@ export default function SettingsPage() {
   };
 
   // Fonctions pour gérer les configurations Meta Lead Ads
-  const handleEditMetaLead = (config: typeof metaLeadConfigs[0]) => {
+  const handleEditMetaLead = (config: (typeof metaLeadConfigs)[0]) => {
     setEditingMetaLeadConfig(config.id);
     setMetaLeadFormData({
       name: config.name,
@@ -1051,7 +1051,7 @@ export default function SettingsPage() {
   };
 
   // Fonctions pour gérer les configurations Google Ads
-  const handleEditGoogleAds = (config: typeof googleAdsConfigs[0]) => {
+  const handleEditGoogleAds = (config: (typeof googleAdsConfigs)[0]) => {
     setEditingGoogleAdsConfig(config.id);
     setGoogleAdsFormData({
       name: config.name,
@@ -1095,7 +1095,7 @@ export default function SettingsPage() {
   };
 
   // Fonctions pour gérer les configurations Google Sheets
-  const handleEditGoogleSheet = (config: typeof googleSheetConfigs[0]) => {
+  const handleEditGoogleSheet = (config: (typeof googleSheetConfigs)[0]) => {
     setEditingGoogleSheetConfig(config.id);
     setGoogleSheetFormData({
       name: config.name,
@@ -1969,9 +1969,7 @@ export default function SettingsPage() {
                         />
                       </svg>
                       <div>
-                        <p className="text-sm font-medium text-green-800">
-                          Compte Google connecté
-                        </p>
+                        <p className="text-sm font-medium text-green-800">Compte Google connecté</p>
                         {googleAccount.email && (
                           <p className="text-xs text-green-700">{googleAccount.email}</p>
                         )}
@@ -2055,7 +2053,12 @@ export default function SettingsPage() {
                       onClick={() => setMetaLeadSuccess('')}
                       className="ml-auto cursor-pointer text-green-600 hover:text-green-800"
                     >
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -2153,7 +2156,12 @@ export default function SettingsPage() {
                           }}
                           className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
                         >
-                          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg
+                            className="h-6 w-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
                             <path
                               strokeLinecap="round"
                               strokeLinejoin="round"
@@ -2376,8 +2384,8 @@ export default function SettingsPage() {
                     Intégration Google Ads (Lead Forms)
                   </h2>
                   <p className="mt-1 text-sm text-gray-600">
-                    Importez automatiquement les leads provenant des extensions de formulaire
-                    Google Ads.
+                    Importez automatiquement les leads provenant des extensions de formulaire Google
+                    Ads.
                   </p>
                 </div>
                 <button
@@ -2421,7 +2429,12 @@ export default function SettingsPage() {
                       onClick={() => setGoogleAdsSuccess('')}
                       className="ml-auto cursor-pointer text-green-600 hover:text-green-800"
                     >
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -2519,7 +2532,12 @@ export default function SettingsPage() {
                           }}
                           className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
                         >
-                          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg
+                            className="h-6 w-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
                             <path
                               strokeLinecap="round"
                               strokeLinejoin="round"
@@ -2643,7 +2661,9 @@ export default function SettingsPage() {
                       </div>
 
                       <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
-                        <p className="font-semibold">URL du webhook à renseigner dans Google Ads :</p>
+                        <p className="font-semibold">
+                          URL du webhook à renseigner dans Google Ads :
+                        </p>
                         <p className="mt-1 break-all text-gray-800">
                           {typeof window !== 'undefined'
                             ? `${window.location.origin}/api/webhooks/google-ads`
@@ -2761,7 +2781,12 @@ export default function SettingsPage() {
                       onClick={() => setGoogleSheetSuccess('')}
                       className="ml-auto cursor-pointer text-green-600 hover:text-green-800"
                     >
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -2868,7 +2893,12 @@ export default function SettingsPage() {
                           }}
                           className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
                         >
-                          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg
+                            className="h-6 w-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
                             <path
                               strokeLinecap="round"
                               strokeLinejoin="round"

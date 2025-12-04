@@ -1,12 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useParams } from 'next/navigation';
 import { useSession } from '@/lib/auth-client';
 import {
   User,
-  Edit,
-  Trash2,
   ArrowLeft,
   PhoneCall,
   MessageSquare,
@@ -15,14 +13,20 @@ import {
   FileText,
   Video,
   ExternalLink,
-  Linkedin,
-  MessageCircle,
-  CheckCircle2,
   Activity,
+  Star,
+  Lock,
+  Search,
+  Download,
+  RefreshCw,
+  Settings,
+  Plus,
+  MoreVertical,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Editor, type DefaultTemplateRef } from '@/components/editor';
 import { useUserRole } from '@/hooks/use-user-role';
+import { useMobileMenuContext } from '@/contexts/mobile-menu-context';
 
 interface Status {
   id: string;
@@ -72,10 +76,10 @@ interface Contact {
 }
 
 export default function ContactDetailPage() {
-  const router = useRouter();
   const params = useParams();
   const { data: session } = useSession();
   const { isAdmin } = useUserRole();
+  const { isOpen: isMobileMenuOpen, toggle: toggleMobileMenu } = useMobileMenuContext();
   const contactId = params.id as string;
 
   const [contact, setContact] = useState<Contact | null>(null);
@@ -163,6 +167,33 @@ export default function ContactDetailPage() {
   });
   const [editMeetLoading, setEditMeetLoading] = useState(false);
   const [editMeetError, setEditMeetError] = useState('');
+
+  // État pour les onglets
+  const [activeTab, setActiveTab] = useState<'activities' | 'notes' | 'calls' | 'files' | 'email'>(
+    'activities',
+  );
+
+  // Grouper les interactions par date (doit être avant les useEffect)
+  const groupedInteractions = useMemo(() => {
+    if (!contact) return {};
+    const allInteractions = contact.interactions.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+    const groups: { [key: string]: Interaction[] } = {};
+    allInteractions.forEach((interaction) => {
+      const date = new Date(interaction.createdAt);
+      const dateKey = date.toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(interaction);
+    });
+    return groups;
+  }, [contact]);
 
   // Charger les données
   useEffect(() => {
@@ -290,26 +321,6 @@ export default function ContactDetailPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce contact ?')) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/contacts/${contactId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de la suppression');
-      }
-
-      router.push('/contacts');
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
   const handleInteractionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -362,26 +373,6 @@ export default function ContactDetailPage() {
         date: '',
       });
       interactionEditorRef.current?.injectHTML('');
-      fetchContact();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  const handleInteractionDelete = async (interactionId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette interaction ?')) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/contacts/${contactId}/interactions/${interactionId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de la suppression');
-      }
-
       fetchContact();
     } catch (err: any) {
       setError(err.message);
@@ -561,23 +552,6 @@ export default function ContactDetailPage() {
 
       const htmlContent = await meetEditorRef.current.getHTML();
 
-      // Vérifier si l'éditeur contient vraiment du contenu
-      const hasContent =
-        htmlContent &&
-        htmlContent.trim() !== '' &&
-        htmlContent
-          .replace(/<[^>]+>/g, '')
-          .replace(/&nbsp;/g, ' ')
-          .trim() !== '';
-
-      const plainText = (htmlContent || '')
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/p>/gi, '\n\n')
-        .replace(/<[^>]+>/g, '')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-
       if (!meetData.scheduledAt) {
         setError('La date/heure est requise');
         setCreatingMeet(false);
@@ -706,36 +680,123 @@ export default function ContactDetailPage() {
     }
   };
 
-  const sanitizeHtml = (html: string) => {
-    if (typeof window === 'undefined') return html;
-    const container = document.createElement('div');
-    container.innerHTML = html;
-
-    // Supprimer les balises dangereuses
-    container.querySelectorAll('script, style').forEach((el) => el.remove());
-
-    // Supprimer les attributs on* et les urls javascript:
-    container.querySelectorAll<HTMLElement>('*').forEach((el) => {
-      Array.from(el.attributes).forEach((attr) => {
-        if (/^on/i.test(attr.name)) {
-          el.removeAttribute(attr.name);
-        }
-        if (
-          typeof attr.value === 'string' &&
-          attr.value.trim().toLowerCase().startsWith('javascript:')
-        ) {
-          el.removeAttribute(attr.name);
-        }
-      });
-    });
-
-    return container.innerHTML;
-  };
-
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-gray-500">Chargement...</div>
+      <div className="flex h-full flex-col">
+        {/* Skeleton Header */}
+        <div className="border-b border-gray-200 bg-white px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* Skeleton Burger Button */}
+              <div className="h-10 w-10 shrink-0 animate-pulse rounded-lg bg-gray-200 lg:hidden" />
+              {/* Skeleton Title */}
+              <div className="h-6 w-32 animate-pulse rounded bg-gray-200" />
+            </div>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <div className="h-10 w-10 animate-pulse rounded-lg bg-gray-200" />
+              <div className="h-10 w-10 animate-pulse rounded-lg bg-gray-200" />
+            </div>
+          </div>
+          {/* Skeleton Breadcrumbs */}
+          <div className="mt-2 flex items-center gap-2">
+            <div className="h-4 w-16 animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-1 animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
+          </div>
+        </div>
+
+        {/* Skeleton Back Link */}
+        <div className="border-b border-gray-200 bg-white px-4 py-3 sm:px-6 lg:px-8">
+          <div className="h-5 w-40 animate-pulse rounded bg-gray-200" />
+        </div>
+
+        {/* Skeleton Profile Section */}
+        <div className="border-b border-gray-200 bg-white px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-3 sm:gap-4">
+              {/* Skeleton Avatar */}
+              <div className="h-12 w-12 shrink-0 animate-pulse rounded-full bg-gray-200 sm:h-16 sm:w-16" />
+              <div className="min-w-0 flex-1 space-y-2">
+                {/* Skeleton Name */}
+                <div className="h-5 w-48 animate-pulse rounded bg-gray-200" />
+                {/* Skeleton Company */}
+                <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
+              </div>
+            </div>
+            {/* Skeleton Action Buttons */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <div className="h-9 w-32 animate-pulse rounded-lg bg-gray-200 sm:w-40" />
+            </div>
+          </div>
+        </div>
+
+        {/* Skeleton Main Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="flex flex-col gap-6 p-4 lg:flex-row lg:p-6">
+            {/* Skeleton Left Column - Form */}
+            <div className="w-full space-y-4 lg:w-1/3">
+              <div className="rounded-lg bg-white p-3 shadow sm:p-4">
+                <div className="space-y-3">
+                  {/* Skeleton Form Fields */}
+                  {[...Array(10)].map((_, i) => (
+                    <div key={i} className="space-y-1.5">
+                      <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
+                      <div className="h-9 w-full animate-pulse rounded-lg bg-gray-200" />
+                    </div>
+                  ))}
+                  {/* Skeleton Save Button */}
+                  <div className="pt-3">
+                    <div className="h-9 w-full animate-pulse rounded-lg bg-gray-200" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Skeleton Right Column - Tabs */}
+            <div className="flex-1">
+              {/* Skeleton Card with Tabs and Content */}
+              <div className="rounded-lg bg-white shadow">
+                {/* Skeleton Tabs */}
+                <div className="border-b border-gray-200">
+                  <div className="flex flex-wrap space-x-4 sm:space-x-8">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="h-12 w-20 animate-pulse rounded bg-gray-200" />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Skeleton Tab Content */}
+                <div className="p-4 sm:p-6">
+                  <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="h-6 w-32 animate-pulse rounded bg-gray-200" />
+                    <div className="h-9 w-40 animate-pulse rounded-lg bg-gray-200" />
+                  </div>
+                  <div className="space-y-6">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="space-y-3">
+                        <div className="h-5 w-40 animate-pulse rounded bg-gray-200" />
+                        <div className="space-y-3">
+                          {[...Array(2)].map((_, j) => (
+                            <div key={j} className="rounded-lg border border-gray-200 p-3 sm:p-4">
+                              <div className="flex items-start gap-2 sm:gap-3">
+                                <div className="h-5 w-5 shrink-0 animate-pulse rounded bg-gray-200" />
+                                <div className="min-w-0 flex-1 space-y-2">
+                                  <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
+                                  <div className="h-4 w-full animate-pulse rounded bg-gray-200" />
+                                  <div className="h-3 w-20 animate-pulse rounded bg-gray-200" />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -767,54 +828,126 @@ export default function ContactDetailPage() {
 
   // Filtrer les interactions par type
   const notes = contact.interactions.filter((i) => i.type === 'NOTE');
-  const allInteractions = contact.interactions.sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
-
-  // Fonction pour formater la date relative
-  const formatRelativeDate = (date: string) => {
-    const now = new Date();
-    const interactionDate = new Date(date);
-    const diffInMs = now.getTime() - interactionDate.getTime();
-    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-
-    if (diffInDays === 0) return "Aujourd'hui";
-    if (diffInDays === 1) return 'Il y a 1 jour';
-    if (diffInDays < 7) return `Il y a ${diffInDays} jours`;
-    if (diffInDays < 30)
-      return `Il y a ${Math.floor(diffInDays / 7)} semaine${Math.floor(diffInDays / 7) > 1 ? 's' : ''}`;
-    return `Il y a ${Math.floor(diffInDays / 30)} mois`;
-  };
 
   return (
     <div className="flex h-full flex-col">
-      {/* En-tête personnalisé */}
-      <div className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      {/* Header avec Contacts et badge */}
+      <div className="border-b border-gray-200 bg-white px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Bouton burger pour mobile */}
             <button
-              onClick={() => router.push('/contacts')}
-              className="cursor-pointer rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100"
+              onClick={toggleMobileMenu}
+              className="shrink-0 cursor-pointer rounded-lg p-2 text-gray-700 transition-colors hover:bg-gray-100 lg:hidden"
+              aria-label="Toggle menu"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {isMobileMenuOpen ? (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                ) : (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                )}
+              </svg>
             </button>
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-lg font-semibold text-indigo-600">
-                {contactInitial}
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">{contactName}</h1>
-                <p className="text-sm text-gray-500">Contact CRM</p>
-              </div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-semibold text-gray-900 sm:text-lg">Contacts</h1>
+              {/* <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs sm:text-sm font-medium text-indigo-700">
+                125
+              </span> */}
             </div>
           </div>
-          <button
-            onClick={handleDelete}
-            className="cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
-          >
-            <Trash2 className="mr-2 inline h-4 w-4" />
-            Supprimer
-          </button>
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button
+              onClick={fetchContact}
+              className="cursor-pointer rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100"
+              title="Actualiser"
+            >
+              <RefreshCw className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => {
+                return;
+              }}
+              className="cursor-pointer rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100"
+              title="Paramètres"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+        {/* Breadcrumbs */}
+        <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
+          <Link href="/dashboard" className="hover:text-gray-700">
+            Accueil
+          </Link>
+          <span>/</span>
+          <Link href="/contacts" className="hover:text-gray-700">
+            Contacts
+          </Link>
+        </div>
+      </div>
+
+      {/* Lien Back to Contacts */}
+      <div className="border-b border-gray-200 bg-white px-4 py-3 sm:px-6 lg:px-8">
+        <Link
+          href="/contacts"
+          className="flex cursor-pointer items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Retour aux contacts</span>
+        </Link>
+      </div>
+
+      {/* Section Profil avec badges */}
+      <div className="border-b border-gray-200 bg-white px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-lg font-semibold text-indigo-600 sm:h-16 sm:w-16 sm:text-xl">
+              {contactInitial}
+            </div>
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-bold text-gray-900 sm:text-lg">
+                {contactName}
+              </h2>
+              <p className="mt-1 truncate text-xs text-gray-500 sm:text-sm">
+                {/* TODO: Ajouter un champ titre/fonction */}
+                Entreprise A
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <button
+              onClick={() => {
+                setShowTaskModal(true);
+                setTaskData({
+                  type: 'MEETING',
+                  title: '',
+                  description: '',
+                  priority: 'MEDIUM',
+                  scheduledAt: '',
+                  assignedUserId: '',
+                  reminderMinutesBefore: null,
+                });
+                setError('');
+                setSuccess('');
+              }}
+              className="cursor-pointer rounded-lg bg-gray-900 px-2 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-800 sm:px-4 sm:py-2 sm:text-sm"
+            >
+              <Plus className="mr-1 inline h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Créer une tâche</span>
+              <span className="sm:hidden">Tâche</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -831,174 +964,12 @@ export default function ContactDetailPage() {
         </div>
       )}
 
-      {/* Barre de boutons d'action */}
-      <div className="border-b border-gray-200 bg-white px-4 py-3 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => {
-              setShowInteractionModal(true);
-              setEditingInteraction(null);
-              setInteractionData({
-                type: 'NOTE',
-                title: '',
-                content: '',
-                date: '',
-              });
-              setError('');
-            }}
-            className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
-          >
-            <FileText className="h-4 w-4" />
-            Note
-          </button>
-          <button
-            onClick={() => {
-              setShowEmailModal(true);
-              setEmailData({ subject: '', content: '' });
-              setError('');
-              setSuccess('');
-            }}
-            className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
-          >
-            <MailIcon className="h-4 w-4" />
-            E-mail
-          </button>
-          {contact.phone && (
-            <a
-              href={`https://wa.me/${contact.phone.replace(/\s/g, '')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
-            >
-              <MessageCircle className="h-4 w-4" />
-              WhatsApp
-            </a>
-          )}
-          {contact.phone && (
-            <a
-              href={`tel:${contact.phone}`}
-              className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
-            >
-              <PhoneCall className="h-4 w-4" />
-              Appel
-            </a>
-          )}
-          <button
-            onClick={() => {
-              setShowTaskModal(true);
-              setTaskData({
-                type: 'MEETING',
-                title: '',
-                description: '',
-                priority: 'MEDIUM',
-                scheduledAt: '',
-                assignedUserId: '',
-                reminderMinutesBefore: null,
-              });
-              setError('');
-              setSuccess('');
-            }}
-            className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
-          >
-            <CalendarIcon className="h-4 w-4" />
-            RDV
-          </button>
-          <button
-            onClick={() => {
-              setShowTaskModal(true);
-              setTaskData({
-                type: 'CALL',
-                title: '',
-                description: '',
-                priority: 'MEDIUM',
-                scheduledAt: '',
-                assignedUserId: '',
-                reminderMinutesBefore: null,
-              });
-              setError('');
-              setSuccess('');
-            }}
-            className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            Tâche
-          </button>
-          <button
-            onClick={() => {
-              // TODO: Implémenter LinkedIn
-              alert('Fonctionnalité LinkedIn à venir');
-            }}
-            className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
-          >
-            <Linkedin className="h-4 w-4" />
-            LinkedIn
-          </button>
-          {googleAccountConnected && (
-            <button
-              onClick={() => {
-                setShowMeetModal(true);
-                setMeetData({
-                  title: contact
-                    ? `RDV avec ${contact.firstName || ''} ${contact.lastName || ''}`.trim()
-                    : '',
-                  description: '',
-                  scheduledAt: '',
-                  durationMinutes: 30,
-                  attendees: contact?.email ? [contact.email] : [],
-                  reminderMinutesBefore: null,
-                });
-                setError('');
-                setSuccess('');
-              }}
-              className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
-            >
-              <Video className="h-4 w-4" />
-              Google Meet
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* Contenu principal - Deux colonnes */}
       <div className="flex-1 overflow-y-auto">
-        <div className="flex w-full gap-4 p-4">
-          {/* Colonne gauche - Formulaire de contact */}
-          <div className="w-1/3 space-y-4">
-            <div className="rounded-lg bg-white p-3 shadow">
-              {/* En-tête avec nom et statut */}
-              <div className="mb-3 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-base font-semibold text-indigo-600">
-                  {contactInitial}
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-base font-bold text-gray-900">{contactName}</h2>
-                  <select
-                    value={formData.statusId || ''}
-                    onChange={(e) => {
-                      setFormData({ ...formData, statusId: e.target.value });
-                      handleStatusChange(e.target.value);
-                    }}
-                    className="mt-1 cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    style={
-                      contact.status
-                        ? {
-                            backgroundColor: `${contact.status.color}20`,
-                            color: contact.status.color,
-                            borderColor: contact.status.color,
-                          }
-                        : {}
-                    }
-                  >
-                    <option value="">Aucun statut</option>
-                    {statuses.map((status) => (
-                      <option key={status.id} value={status.id}>
-                        {status.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
+        <div className="flex flex-col gap-6 p-4 lg:flex-row lg:p-6">
+          {/* Colonne gauche - Formulaire */}
+          <div className="w-full space-y-4 lg:w-1/3">
+            <div className="rounded-lg bg-white p-3 shadow sm:p-4">
               {/* Formulaire */}
               <form
                 onSubmit={(e) => {
@@ -1009,7 +980,7 @@ export default function ContactDetailPage() {
               >
                 {/* Civilité */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Civilité</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Civilité</label>
                   <div className="flex gap-4">
                     <label className="flex cursor-pointer items-center gap-2">
                       <input
@@ -1038,96 +1009,105 @@ export default function ContactDetailPage() {
 
                 {/* Prénom */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Prénom</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Prénom</label>
                   <input
                     type="text"
                     value={formData.firstName}
                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
 
                 {/* Nom */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Nom</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Nom</label>
                   <input
                     type="text"
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
 
                 {/* Entreprise Client */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
                     Entreprise Client
                   </label>
                   <input
                     type="text"
                     placeholder="Non renseigné"
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     disabled
                   />
                 </div>
 
                 {/* Email */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Email</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
 
                 {/* Téléphone */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Téléphone</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Téléphone</label>
                   <input
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
 
                 {/* Adresse */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Adresse</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Adresse</label>
                   <input
                     type="text"
                     value={formData.address || ''}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     placeholder="..."
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
 
                 {/* Code postal */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
                     Code postal
                   </label>
                   <input
                     type="text"
                     value={formData.postalCode || ''}
                     onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
 
                 {/* Statut */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Statut</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Statut</label>
                   <select
                     value={formData.statusId || ''}
                     onChange={(e) => {
                       setFormData({ ...formData, statusId: e.target.value });
                       handleStatusChange(e.target.value);
                     }}
-                    className="w-full cursor-pointer rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full cursor-pointer rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    style={
+                      contact.status
+                        ? {
+                            backgroundColor: `${contact.status.color}20`,
+                            color: contact.status.color,
+                            borderColor: contact.status.color,
+                          }
+                        : {}
+                    }
                   >
                     <option value="">Aucun statut</option>
                     {statuses.map((status) => (
@@ -1140,70 +1120,70 @@ export default function ContactDetailPage() {
 
                 {/* Motif de fermeture */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
                     Motif de fermeture
                   </label>
                   <input
                     type="text"
                     placeholder="Non renseigné"
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     disabled
                   />
                 </div>
 
                 {/* Campagne d'origine */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
                     Campagne d'origine
                   </label>
                   <input
                     type="text"
                     value={formData.origin || ''}
                     onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
 
                 {/* Data MADA */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Data MADA</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Data MADA</label>
                   <input
                     type="text"
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     disabled
                   />
                 </div>
 
                 {/* Plateforme leads */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
                     Plateforme leads
                   </label>
                   <input
                     type="text"
                     placeholder="Non renseigné"
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     disabled
                   />
                 </div>
 
                 {/* Société */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Société</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Société</label>
                   <input
                     type="text"
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     disabled
                   />
                 </div>
 
                 {/* Commercial */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Commercial</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Commercial</label>
                   <select
                     value={formData.assignedUserId || ''}
                     onChange={(e) => setFormData({ ...formData, assignedUserId: e.target.value })}
-                    className="w-full cursor-pointer rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full cursor-pointer rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   >
                     <option value="">N/A Non Attribué</option>
                     {users.map((user) => (
@@ -1213,20 +1193,20 @@ export default function ContactDetailPage() {
                     ))}
                   </select>
                   {!formData.assignedUserId && (
-                    <p className="mt-1 text-xs text-gray-500">Aucun commercial assigné</p>
+                    <p className="mt-1 text-sm text-gray-500">Aucun commercial assigné</p>
                   )}
                 </div>
 
                 {/* Télépro */}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Télépro</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Télépro</label>
                   <select
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     disabled
                   >
                     <option>N/A Non Attribué</option>
                   </select>
-                  <p className="mt-1 text-xs text-gray-500">Aucun télépro assigné</p>
+                  <p className="mt-1 text-sm text-gray-500">Aucun télépro assigné</p>
                 </div>
 
                 {/* Bouton Enregistrer */}
@@ -1237,7 +1217,7 @@ export default function ContactDetailPage() {
                       e.preventDefault();
                       await handleUpdate(e);
                     }}
-                    className="w-full cursor-pointer rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700"
+                    className="w-full cursor-pointer rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
                   >
                     Enregistrer les modifications
                   </button>
@@ -1246,125 +1226,299 @@ export default function ContactDetailPage() {
             </div>
           </div>
 
-          {/* Colonne droite - Notes et Fil d'actualité */}
-          <div className="w-full space-y-4">
-            {/* Section Notes */}
-            <div className="rounded-lg bg-white p-4 shadow">
-              <div className="mb-4 flex items-center gap-2">
-                <FileText className="h-5 w-5 text-gray-600" />
-                <h2 className="text-lg font-semibold text-gray-900">Notes</h2>
-              </div>
-              <p className="mb-4 text-sm text-gray-500">{notes.length} note(s) ajoutée(s)</p>
-              <div className="space-y-3">
-                {notes.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-gray-500">Aucune note</p>
-                ) : (
-                  notes.map((note) => (
-                    <div key={note.id} className="rounded-lg border border-gray-200 p-3">
-                      <div className="flex items-start gap-2">
-                        <PhoneCall className="mt-0.5 h-4 w-4 text-gray-400" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">
-                            {note.title || 'Note'}
-                          </p>
-                          <p className="mt-1 text-xs text-gray-500">
-                            {new Date(note.createdAt).toLocaleDateString('fr-FR', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Section Fil d'actualité */}
-            <div className="rounded-lg bg-white p-4 shadow">
-              <div className="mb-4 flex items-center gap-2">
-                <Activity className="h-5 w-5 text-gray-600" />
-                <h2 className="text-lg font-semibold text-gray-900">Fil d'actualité</h2>
-              </div>
-              <p className="mb-4 text-sm text-gray-500">
-                Historique complet des interactions et modifications
-              </p>
-              <div className="space-y-4">
-                {allInteractions.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-gray-500">Aucune activité</p>
-                ) : (
-                  allInteractions.map((interaction) => {
-                    const interactionTypeLabel = getInteractionLabel(interaction.type);
-                    const isModification =
-                      interaction.type === 'NOTE' &&
-                      interaction.title?.toLowerCase().includes('modifié');
-
+          {/* Colonne droite - Onglets et activités */}
+          <div className="flex-1">
+            {/* Carte blanche contenant les onglets et le contenu */}
+            <div className="rounded-lg bg-white shadow">
+              {/* Onglets */}
+              <div className="border-b border-gray-200">
+                <nav className="flex flex-wrap" aria-label="Tabs">
+                  {[
+                    { id: 'activities' as const, label: 'Activités', icon: Activity },
+                    { id: 'notes' as const, label: 'Notes', icon: FileText },
+                    { id: 'calls' as const, label: 'Appels', icon: PhoneCall },
+                    { id: 'files' as const, label: 'Fichiers', icon: FileText },
+                    { id: 'email' as const, label: 'Email', icon: MailIcon },
+                  ].map((tab) => {
+                    const TabIcon = tab.icon;
                     return (
-                      <div
-                        key={interaction.id}
-                        className="border-b border-gray-100 pb-4 last:border-b-0 last:pb-0"
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex cursor-pointer items-center gap-1.5 border-b-2 px-4 py-4 text-sm font-medium transition-colors sm:gap-2 sm:px-6 ${
+                          activeTab === tab.id
+                            ? 'border-indigo-600 text-indigo-600'
+                            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                        }`}
                       >
-                        <div className="flex items-start gap-3">
-                          <div className="mt-0.5 text-gray-600">
-                            {isModification ? (
-                              <Edit className="h-4 w-4" />
-                            ) : (
-                              getInteractionIcon(interaction.type)
-                            )}
+                        <TabIcon className="h-4 w-4 shrink-0" />
+                        <span className="whitespace-nowrap">{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+
+              {/* Contenu des onglets */}
+              <div className="p-4 sm:p-6">
+                {activeTab === 'activities' && (
+                  <div>
+                    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <h2 className="text-lg font-semibold text-gray-900">Activités</h2>
+                      <select className="cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <option>Trier par</option>
+                        <option>Date (plus récent)</option>
+                        <option>Date (plus ancien)</option>
+                        <option>Type</option>
+                      </select>
+                    </div>
+                    <div className="space-y-6">
+                      {Object.keys(groupedInteractions).length === 0 ? (
+                        <p className="py-8 text-center text-sm text-gray-500">Aucune activité</p>
+                      ) : (
+                        Object.entries(groupedInteractions).map(([date, interactions]) => (
+                          <div key={date}>
+                            <h3 className="mb-4 text-sm font-semibold text-gray-700">{date}</h3>
+                            <div className="space-y-3">
+                              {interactions.map((interaction) => {
+                                const getCardColor = (type: string) => {
+                                  switch (type) {
+                                    case 'EMAIL':
+                                      return 'bg-blue-50 border-blue-200';
+                                    case 'CALL':
+                                      return 'bg-green-50 border-green-200';
+                                    case 'NOTE':
+                                      return 'bg-red-50 border-red-200';
+                                    case 'MEETING':
+                                      return 'bg-yellow-50 border-yellow-200';
+                                    default:
+                                      return 'bg-gray-50 border-gray-200';
+                                  }
+                                };
+                                return (
+                                  <div
+                                    key={interaction.id}
+                                    className={`rounded-lg border p-3 sm:p-4 ${getCardColor(interaction.type)}`}
+                                  >
+                                    <div className="flex items-start gap-2 sm:gap-3">
+                                      <div className="mt-0.5 shrink-0">
+                                        {getInteractionIcon(interaction.type)}
+                                      </div>
+                                      <div className="min-w-0 flex-1">
+                                        <p className="wrap-break-words text-sm font-medium text-gray-900">
+                                          {getInteractionLabel(interaction.type)}
+                                          {interaction.title && `: ${interaction.title}`}
+                                        </p>
+                                        {interaction.content && (
+                                          <p className="wrap-break-words mt-1 text-sm text-gray-700">
+                                            {interaction.content
+                                              .replace(/<[^>]+>/g, '')
+                                              .substring(0, 150)}
+                                            {interaction.content.length > 150 && '...'}
+                                          </p>
+                                        )}
+                                        <p className="mt-2 text-sm text-gray-500">
+                                          {new Date(interaction.createdAt).toLocaleTimeString(
+                                            'fr-FR',
+                                            {
+                                              hour: '2-digit',
+                                              minute: '2-digit',
+                                            },
+                                          )}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">
-                                  {isModification ? 'Modification' : interactionTypeLabel}
-                                  {interaction.title && !isModification && (
-                                    <span className="ml-1 text-gray-600">
-                                      : {interaction.title}
-                                    </span>
-                                  )}
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'notes' && (
+                  <div>
+                    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <h2 className="text-lg font-semibold text-gray-900">Notes</h2>
+                      <button
+                        onClick={() => {
+                          setShowInteractionModal(true);
+                          setEditingInteraction(null);
+                          setInteractionData({
+                            type: 'NOTE',
+                            title: '',
+                            content: '',
+                            date: '',
+                          });
+                          setError('');
+                        }}
+                        className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+                      >
+                        <Plus className="mr-2 inline h-4 w-4" />
+                        Ajouter une note
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      {notes.length === 0 ? (
+                        <p className="py-8 text-center text-sm text-gray-500">Aucune note</p>
+                      ) : (
+                        notes.map((note) => (
+                          <div
+                            key={note.id}
+                            className="rounded-lg border border-gray-200 p-3 sm:p-4"
+                          >
+                            <div className="flex items-start gap-2 sm:gap-3">
+                              <FileText className="mt-0.5 h-5 w-5 shrink-0 text-gray-400" />
+                              <div className="min-w-0 flex-1">
+                                <p className="wrap-break-words text-sm font-medium text-gray-900">
+                                  {note.title || 'Note'}
                                 </p>
-                                {interaction.title && isModification && (
-                                  <p className="mt-1 text-sm text-gray-700">{interaction.title}</p>
-                                )}
-                                {interaction.content && !isModification && (
-                                  <p className="mt-1 line-clamp-2 text-sm text-gray-700">
-                                    {interaction.content.replace(/<[^>]+>/g, '').substring(0, 100)}
-                                    {interaction.content.length > 100 && '...'}
-                                  </p>
-                                )}
-                                <button
-                                  onClick={() => {
-                                    setEditingInteraction(interaction);
-                                    setInteractionData({
-                                      type: interaction.type,
-                                      title: interaction.title || '',
-                                      content: interaction.content,
-                                      date: interaction.date
-                                        ? new Date(interaction.date).toISOString().split('T')[0]
-                                        : '',
-                                    });
-                                    setShowInteractionModal(true);
-                                    setError('');
-                                  }}
-                                  className="mt-2 text-xs text-indigo-600 hover:text-indigo-700"
-                                >
-                                  Voir les détails
-                                </button>
+                                <p className="wrap-break-words mt-1 text-sm text-gray-700">
+                                  {note.content.replace(/<[^>]+>/g, '')}
+                                </p>
+                                <p className="mt-2 text-sm text-gray-500">
+                                  {new Date(note.createdAt).toLocaleDateString('fr-FR', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </p>
                               </div>
                             </div>
-                            <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
-                              <span>Par {interaction.user.name}</span>
-                              <span>{formatRelativeDate(interaction.createdAt)}</span>
-                            </div>
                           </div>
-                        </div>
-                      </div>
-                    );
-                  })
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'calls' && (
+                  <div>
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Appels</h3>
+                    </div>
+                    <div className="space-y-3">
+                      {contact &&
+                      contact.interactions.filter((i) => i.type === 'CALL').length === 0 ? (
+                        <p className="py-8 text-center text-sm text-gray-500">Aucun appel</p>
+                      ) : (
+                        contact &&
+                        contact.interactions
+                          .filter((i) => i.type === 'CALL')
+                          .map((call) => (
+                            <div
+                              key={call.id}
+                              className="rounded-lg border border-gray-200 p-3 sm:p-4"
+                            >
+                              <div className="flex items-start gap-2 sm:gap-3">
+                                <PhoneCall className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="wrap-break-words text-sm font-medium text-gray-900">
+                                    {call.title || 'Appel'}
+                                  </p>
+                                  {call.content && (
+                                    <p className="wrap-break-words mt-1 text-sm text-gray-700">
+                                      {call.content.replace(/<[^>]+>/g, '')}
+                                    </p>
+                                  )}
+                                  <p className="mt-2 text-sm text-gray-500">
+                                    {call.date
+                                      ? new Date(call.date).toLocaleDateString('fr-FR', {
+                                          day: 'numeric',
+                                          month: 'short',
+                                          year: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                        })
+                                      : new Date(call.createdAt).toLocaleDateString('fr-FR', {
+                                          day: 'numeric',
+                                          month: 'short',
+                                          year: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                        })}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'files' && (
+                  <div>
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Fichiers</h3>
+                    </div>
+                    <p className="py-8 text-center text-sm text-gray-500">Aucun fichier</p>
+                  </div>
+                )}
+
+                {activeTab === 'email' && (
+                  <div>
+                    <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <h3 className="text-lg font-semibold text-gray-900">Email</h3>
+                      <button
+                        onClick={() => {
+                          setShowEmailModal(true);
+                          setEmailData({ subject: '', content: '' });
+                          setError('');
+                          setSuccess('');
+                        }}
+                        className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+                      >
+                        <Plus className="mr-2 inline h-4 w-4" />
+                        Nouvel email
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      {contact &&
+                      contact.interactions.filter((i) => i.type === 'EMAIL').length === 0 ? (
+                        <p className="py-8 text-center text-sm text-gray-500">Aucun email</p>
+                      ) : (
+                        contact &&
+                        contact.interactions
+                          .filter((i) => i.type === 'EMAIL')
+                          .map((email) => (
+                            <div
+                              key={email.id}
+                              className="rounded-lg border border-gray-200 p-3 sm:p-4"
+                            >
+                              <div className="flex items-start gap-2 sm:gap-3">
+                                <MailIcon className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="wrap-break-words text-sm font-medium text-gray-900">
+                                    {email.title || 'Email'}
+                                  </p>
+                                  {email.content && (
+                                    <p className="wrap-break-words mt-1 text-sm text-gray-700">
+                                      {email.content.replace(/<[^>]+>/g, '').substring(0, 200)}
+                                      {email.content.length > 200 && '...'}
+                                    </p>
+                                  )}
+                                  <p className="mt-2 text-sm text-gray-500">
+                                    {new Date(email.createdAt).toLocaleDateString('fr-FR', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -1731,7 +1885,7 @@ export default function ContactDetailPage() {
       {/* Modal d'envoi d'email */}
       {showEmailModal && contact && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
-          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
+          <div className="flex max-h-[95vh] w-full max-w-5xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
             {/* En-tête fixe */}
             <div className="shrink-0 border-b border-gray-100 pb-4">
               <div className="flex items-center justify-between">
