@@ -3,16 +3,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useSession } from '@/lib/auth-client';
-import { PageHeader } from '@/components/page-header';
 import {
-  Phone,
-  Mail,
-  MapPin,
-  Calendar,
   User,
   Edit,
   Trash2,
-  Plus,
   ArrowLeft,
   PhoneCall,
   MessageSquare,
@@ -21,6 +15,10 @@ import {
   FileText,
   Video,
   ExternalLink,
+  Linkedin,
+  MessageCircle,
+  CheckCircle2,
+  Activity,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Editor, type DefaultTemplateRef } from '@/components/editor';
@@ -471,17 +469,22 @@ export default function ContactDetailPage() {
 
     try {
       if (!taskEditorRef.current) {
-        setError('L\'éditeur n\'est pas prêt. Veuillez réessayer.');
+        setError("L'éditeur n'est pas prêt. Veuillez réessayer.");
         setCreatingTask(false);
         return;
       }
 
       const htmlContent = await taskEditorRef.current.getHTML();
-      
+
       // Vérifier si l'éditeur contient vraiment du contenu
-      const hasContent = htmlContent && htmlContent.trim() !== '' && 
-        htmlContent.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim() !== '';
-      
+      const hasContent =
+        htmlContent &&
+        htmlContent.trim() !== '' &&
+        htmlContent
+          .replace(/<[^>]+>/g, '')
+          .replace(/&nbsp;/g, ' ')
+          .trim() !== '';
+
       const plainText = (htmlContent || '')
         .replace(/<br\s*\/?>/gi, '\n')
         .replace(/<\/p>/gi, '\n\n')
@@ -520,7 +523,7 @@ export default function ContactDetailPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de la création de la tâche");
+        throw new Error(data.error || 'Erreur lors de la création de la tâche');
       }
 
       setShowTaskModal(false);
@@ -551,17 +554,22 @@ export default function ContactDetailPage() {
 
     try {
       if (!meetEditorRef.current) {
-        setError('L\'éditeur n\'est pas prêt. Veuillez réessayer.');
+        setError("L'éditeur n'est pas prêt. Veuillez réessayer.");
         setCreatingMeet(false);
         return;
       }
 
       const htmlContent = await meetEditorRef.current.getHTML();
-      
+
       // Vérifier si l'éditeur contient vraiment du contenu
-      const hasContent = htmlContent && htmlContent.trim() !== '' && 
-        htmlContent.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim() !== '';
-      
+      const hasContent =
+        htmlContent &&
+        htmlContent.trim() !== '' &&
+        htmlContent
+          .replace(/<[^>]+>/g, '')
+          .replace(/&nbsp;/g, ' ')
+          .trim() !== '';
+
       const plainText = (htmlContent || '')
         .replace(/<br\s*\/?>/gi, '\n')
         .replace(/<\/p>/gi, '\n\n')
@@ -598,7 +606,7 @@ export default function ContactDetailPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de la création du Google Meet");
+        throw new Error(data.error || 'Erreur lors de la création du Google Meet');
       }
 
       setShowMeetModal(false);
@@ -647,7 +655,7 @@ export default function ContactDetailPage() {
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de la mise à jour du Google Meet");
+        throw new Error(data.error || 'Erreur lors de la mise à jour du Google Meet');
       }
 
       setShowEditMeetModal(false);
@@ -712,7 +720,10 @@ export default function ContactDetailPage() {
         if (/^on/i.test(attr.name)) {
           el.removeAttribute(attr.name);
         }
-        if (typeof attr.value === 'string' && attr.value.trim().toLowerCase().startsWith('javascript:')) {
+        if (
+          typeof attr.value === 'string' &&
+          attr.value.trim().toLowerCase().startsWith('javascript:')
+        ) {
           el.removeAttribute(attr.name);
         }
       });
@@ -749,400 +760,611 @@ export default function ContactDetailPage() {
     return null;
   }
 
+  const contactInitial = (contact.firstName?.[0] || contact.lastName?.[0] || '?').toUpperCase();
+  const contactName =
+    `${contact.civility ? `${contact.civility}. ` : ''}${contact.firstName || ''} ${contact.lastName || ''}`.trim() ||
+    contact.phone;
+
+  // Filtrer les interactions par type
+  const notes = contact.interactions.filter((i) => i.type === 'NOTE');
+  const allInteractions = contact.interactions.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+
+  // Fonction pour formater la date relative
+  const formatRelativeDate = (date: string) => {
+    const now = new Date();
+    const interactionDate = new Date(date);
+    const diffInMs = now.getTime() - interactionDate.getTime();
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+    if (diffInDays === 0) return "Aujourd'hui";
+    if (diffInDays === 1) return 'Il y a 1 jour';
+    if (diffInDays < 7) return `Il y a ${diffInDays} jours`;
+    if (diffInDays < 30)
+      return `Il y a ${Math.floor(diffInDays / 7)} semaine${Math.floor(diffInDays / 7) > 1 ? 's' : ''}`;
+    return `Il y a ${Math.floor(diffInDays / 30)} mois`;
+  };
+
   return (
-    <div className="h-full">
-      <PageHeader
-        title={
-          `${contact.civility ? `${contact.civility}. ` : ''}${contact.firstName || ''} ${contact.lastName || ''}`.trim() ||
-          'Contact'
-        }
-        description="Détails du contact"
-        action={
-          <div className="flex gap-2">
+    <div className="flex h-full flex-col">
+      {/* En-tête personnalisé */}
+      <div className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push('/contacts')}
+              className="cursor-pointer rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-lg font-semibold text-indigo-600">
+                {contactInitial}
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">{contactName}</h1>
+                <p className="text-sm text-gray-500">Contact CRM</p>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={handleDelete}
+            className="cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+          >
+            <Trash2 className="mr-2 inline h-4 w-4" />
+            Supprimer
+          </button>
+        </div>
+      </div>
+
+      {/* Messages d'erreur/succès */}
+      {error && (
+        <div className="mx-4 mt-4 rounded-lg bg-red-50 p-4 text-sm text-red-600 sm:mx-6 lg:mx-8">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="mx-4 mt-4 rounded-lg bg-green-50 p-4 text-sm text-green-600 sm:mx-6 lg:mx-8">
+          {success}
+        </div>
+      )}
+
+      {/* Barre de boutons d'action */}
+      <div className="border-b border-gray-200 bg-white px-4 py-3 sm:px-6 lg:px-8">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => {
+              setShowInteractionModal(true);
+              setEditingInteraction(null);
+              setInteractionData({
+                type: 'NOTE',
+                title: '',
+                content: '',
+                date: '',
+              });
+              setError('');
+            }}
+            className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            <FileText className="h-4 w-4" />
+            Note
+          </button>
+          <button
+            onClick={() => {
+              setShowEmailModal(true);
+              setEmailData({ subject: '', content: '' });
+              setError('');
+              setSuccess('');
+            }}
+            className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            <MailIcon className="h-4 w-4" />
+            E-mail
+          </button>
+          {contact.phone && (
+            <a
+              href={`https://wa.me/${contact.phone.replace(/\s/g, '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            >
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp
+            </a>
+          )}
+          {contact.phone && (
+            <a
+              href={`tel:${contact.phone}`}
+              className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            >
+              <PhoneCall className="h-4 w-4" />
+              Appel
+            </a>
+          )}
+          <button
+            onClick={() => {
+              setShowTaskModal(true);
+              setTaskData({
+                type: 'MEETING',
+                title: '',
+                description: '',
+                priority: 'MEDIUM',
+                scheduledAt: '',
+                assignedUserId: '',
+                reminderMinutesBefore: null,
+              });
+              setError('');
+              setSuccess('');
+            }}
+            className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            <CalendarIcon className="h-4 w-4" />
+            RDV
+          </button>
+          <button
+            onClick={() => {
+              setShowTaskModal(true);
+              setTaskData({
+                type: 'CALL',
+                title: '',
+                description: '',
+                priority: 'MEDIUM',
+                scheduledAt: '',
+                assignedUserId: '',
+                reminderMinutesBefore: null,
+              });
+              setError('');
+              setSuccess('');
+            }}
+            className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Tâche
+          </button>
+          <button
+            onClick={() => {
+              // TODO: Implémenter LinkedIn
+              alert('Fonctionnalité LinkedIn à venir');
+            }}
+            className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            <Linkedin className="h-4 w-4" />
+            LinkedIn
+          </button>
+          {googleAccountConnected && (
             <button
               onClick={() => {
-                setShowEditModal(true);
+                setShowMeetModal(true);
+                setMeetData({
+                  title: contact
+                    ? `RDV avec ${contact.firstName || ''} ${contact.lastName || ''}`.trim()
+                    : '',
+                  description: '',
+                  scheduledAt: '',
+                  durationMinutes: 30,
+                  attendees: contact?.email ? [contact.email] : [],
+                  reminderMinutesBefore: null,
+                });
                 setError('');
+                setSuccess('');
               }}
-              className="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
-              <Edit className="mr-2 inline h-4 w-4" />
-              Modifier
+              <Video className="h-4 w-4" />
+              Google Meet
             </button>
-            <button
-              onClick={handleDelete}
-              className="cursor-pointer rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50"
-            >
-              <Trash2 className="mr-2 inline h-4 w-4" />
-              Supprimer
-            </button>
-          </div>
-        }
-      />
+          )}
+        </div>
+      </div>
 
-      <div className="p-4 sm:p-6 lg:p-8">
-        <Link
-          href="/contacts"
-          className="mb-4 inline-flex items-center text-sm text-indigo-600 hover:text-indigo-700"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Retour à la liste
-        </Link>
+      {/* Contenu principal - Deux colonnes */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="flex w-full gap-4 p-4">
+          {/* Colonne gauche - Formulaire de contact */}
+          <div className="w-1/3 space-y-4">
+            <div className="rounded-lg bg-white p-3 shadow">
+              {/* En-tête avec nom et statut */}
+              <div className="mb-3 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-base font-semibold text-indigo-600">
+                  {contactInitial}
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-base font-bold text-gray-900">{contactName}</h2>
+                  <select
+                    value={formData.statusId || ''}
+                    onChange={(e) => {
+                      setFormData({ ...formData, statusId: e.target.value });
+                      handleStatusChange(e.target.value);
+                    }}
+                    className="mt-1 cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    style={
+                      contact.status
+                        ? {
+                            backgroundColor: `${contact.status.color}20`,
+                            color: contact.status.color,
+                            borderColor: contact.status.color,
+                          }
+                        : {}
+                    }
+                  >
+                    <option value="">Aucun statut</option>
+                    {statuses.map((status) => (
+                      <option key={status.id} value={status.id}>
+                        {status.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-        {error && <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>}
-
-        {success && (
-          <div className="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-600">{success}</div>
-        )}
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Informations principales */}
-          <div className="space-y-6 lg:col-span-2">
-            {/* Informations de contact */}
-            <div className="rounded-lg bg-white p-6 shadow">
-              <h2 className="mb-4 text-lg font-semibold text-gray-900">Informations de contact</h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="flex items-start gap-3">
-                  <Phone className="mt-1 h-5 w-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Téléphone</p>
-                    <p className="text-sm text-gray-900">{contact.phone}</p>
-                    {contact.secondaryPhone && (
-                      <p className="mt-1 text-sm text-gray-500">
-                        Secondaire: {contact.secondaryPhone}
-                      </p>
-                    )}
+              {/* Formulaire */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setShowEditModal(true);
+                }}
+                className="space-y-3"
+              >
+                {/* Civilité */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Civilité</label>
+                  <div className="flex gap-4">
+                    <label className="flex cursor-pointer items-center gap-2">
+                      <input
+                        type="radio"
+                        name="civility"
+                        value="M"
+                        checked={formData.civility === 'M'}
+                        onChange={(e) => setFormData({ ...formData, civility: e.target.value })}
+                        className="cursor-pointer"
+                      />
+                      <span className="text-sm text-gray-700">M.</span>
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2">
+                      <input
+                        type="radio"
+                        name="civility"
+                        value="MME"
+                        checked={formData.civility === 'MME'}
+                        onChange={(e) => setFormData({ ...formData, civility: e.target.value })}
+                        className="cursor-pointer"
+                      />
+                      <span className="text-sm text-gray-700">Mme</span>
+                    </label>
                   </div>
                 </div>
 
-                {contact.email && (
-                  <div className="flex items-start gap-3">
-                    <Mail className="mt-1 h-5 w-5 text-gray-400" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-700">Email</p>
-                      <p className="text-sm text-gray-900">{contact.email}</p>
-                      <button
-                        onClick={() => {
-                          setShowEmailModal(true);
-                          setEmailData({ subject: '', content: '' });
-                          setError('');
-                          setSuccess('');
-                        }}
-                        className="mt-2 cursor-pointer rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700"
-                      >
-                        <MailIcon className="mr-1 inline h-3 w-3" />
-                        Envoyer un email
-                      </button>
-                    </div>
-                  </div>
-                )}
+                {/* Prénom */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Prénom</label>
+                  <input
+                    type="text"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
 
-                {(contact.address || contact.city) && (
-                  <div className="flex items-start gap-3 sm:col-span-2">
-                    <MapPin className="mt-1 h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">Adresse</p>
-                      <p className="text-sm text-gray-900">
-                        {contact.address && `${contact.address}, `}
-                        {contact.postalCode && `${contact.postalCode} `}
-                        {contact.city}
-                      </p>
-                    </div>
-                  </div>
-                )}
+                {/* Nom */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Nom</label>
+                  <input
+                    type="text"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
 
-                {contact.origin && (
-                  <div className="flex items-start gap-3 sm:col-span-2">
-                    <User className="mt-1 h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">Origine</p>
-                      <p className="text-sm text-gray-900">{contact.origin}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+                {/* Entreprise Client */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">
+                    Entreprise Client
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Non renseigné"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    disabled
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Email</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Téléphone */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Téléphone</label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Adresse */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Adresse</label>
+                  <input
+                    type="text"
+                    value={formData.address || ''}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="..."
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Code postal */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">
+                    Code postal
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.postalCode || ''}
+                    onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Statut */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Statut</label>
+                  <select
+                    value={formData.statusId || ''}
+                    onChange={(e) => {
+                      setFormData({ ...formData, statusId: e.target.value });
+                      handleStatusChange(e.target.value);
+                    }}
+                    className="w-full cursor-pointer rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  >
+                    <option value="">Aucun statut</option>
+                    {statuses.map((status) => (
+                      <option key={status.id} value={status.id}>
+                        {status.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Motif de fermeture */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">
+                    Motif de fermeture
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Non renseigné"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    disabled
+                  />
+                </div>
+
+                {/* Campagne d'origine */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">
+                    Campagne d'origine
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.origin || ''}
+                    onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Data MADA */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Data MADA</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    disabled
+                  />
+                </div>
+
+                {/* Plateforme leads */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">
+                    Plateforme leads
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Non renseigné"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    disabled
+                  />
+                </div>
+
+                {/* Société */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Société</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    disabled
+                  />
+                </div>
+
+                {/* Commercial */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Commercial</label>
+                  <select
+                    value={formData.assignedUserId || ''}
+                    onChange={(e) => setFormData({ ...formData, assignedUserId: e.target.value })}
+                    className="w-full cursor-pointer rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  >
+                    <option value="">N/A Non Attribué</option>
+                    {users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                  </select>
+                  {!formData.assignedUserId && (
+                    <p className="mt-1 text-xs text-gray-500">Aucun commercial assigné</p>
+                  )}
+                </div>
+
+                {/* Télépro */}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">Télépro</label>
+                  <select
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    disabled
+                  >
+                    <option>N/A Non Attribué</option>
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">Aucun télépro assigné</p>
+                </div>
+
+                {/* Bouton Enregistrer */}
+                <div className="pt-3">
+                  <button
+                    type="button"
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      await handleUpdate(e);
+                    }}
+                    className="w-full cursor-pointer rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700"
+                  >
+                    Enregistrer les modifications
+                  </button>
+                </div>
+              </form>
             </div>
+          </div>
 
-            {/* Historique des interactions */}
-            <div className="rounded-lg bg-white p-6 shadow">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">Historique des interactions</h2>
-                <button
-                  onClick={() => {
-                    setShowInteractionModal(true);
-                    setEditingInteraction(null);
-                    setInteractionData({
-                      type: 'NOTE',
-                      title: '',
-                      content: '',
-                      date: '',
-                    });
-                    setError('');
-                  }}
-                  className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
-                >
-                  <Plus className="mr-2 inline h-4 w-4" />
-                  Ajouter
-                </button>
+          {/* Colonne droite - Notes et Fil d'actualité */}
+          <div className="w-full space-y-4">
+            {/* Section Notes */}
+            <div className="rounded-lg bg-white p-4 shadow">
+              <div className="mb-4 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-gray-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Notes</h2>
               </div>
-
-              {contact.interactions.length === 0 ? (
-                <div className="py-8 text-center text-gray-500">Aucune interaction enregistrée</div>
-              ) : (
-                <div className="space-y-4">
-                  {contact.interactions.map((interaction) => (
-                    <div key={interaction.id} className="rounded-lg border border-gray-200 p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex flex-1 items-start gap-3">
-                          <div className="mt-1 text-indigo-600">
-                            {getInteractionIcon(interaction.type)}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-gray-900">
-                                {getInteractionLabel(interaction.type)}
-                              </span>
-                              {interaction.title && (
-                                <span className="text-sm text-gray-600">- {interaction.title}</span>
-                              )}
-                            </div>
-                            <div
-                              className="mt-1 text-sm text-gray-700"
-                              dangerouslySetInnerHTML={{ __html: sanitizeHtml(interaction.content) }}
-                            />
-                            {/* Afficher le lien Google Meet si disponible */}
-                            {(() => {
-                              // Chercher la tâche correspondante à cette interaction
-                              const relatedTask = tasks.find(
-                                (task) =>
-                                  task.contactId === contactId &&
-                                  task.type === 'MEETING' &&
-                                  task.googleMeetLink &&
-                                  interaction.type === 'MEETING' &&
-                                  interaction.title?.includes('Google Meet')
-                              );
-                              const meetLink = relatedTask?.googleMeetLink;
-                              return meetLink && relatedTask ? (
-                                <div className="mt-2 flex flex-wrap items-center gap-2">
-                                  <a
-                                    href={meetLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100"
-                                  >
-                                    <Video className="h-4 w-4" />
-                                    <span>Rejoindre Google Meet</span>
-                                    <ExternalLink className="h-3 w-3" />
-                                  </a>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const scheduled = new Date(relatedTask.scheduledAt);
-                                      setEditMeetData({
-                                        scheduledAt: scheduled.toISOString(),
-                                        durationMinutes: relatedTask.durationMinutes ?? 30,
-                                      });
-                                      setEditingMeetTask(relatedTask);
-                                      setEditMeetError('');
-                                      setShowEditMeetModal(true);
-                                    }}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                    Modifier le rendez-vous
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={async () => {
-                                      if (
-                                        !confirm(
-                                          'Êtes-vous sûr de vouloir supprimer ce rendez-vous ? Le contact sera notifié de l\'annulation.'
-                                        )
-                                      ) {
-                                        return;
-                                      }
-
-                                      try {
-                                        const response = await fetch(`/api/tasks/${relatedTask.id}`, {
-                                          method: 'DELETE',
-                                        });
-
-                                        if (!response.ok) {
-                                          const data = await response.json();
-                                          throw new Error(data.error || 'Erreur lors de la suppression');
-                                        }
-
-                                        setSuccess('Rendez-vous supprimé avec succès !');
-                                        fetchContact();
-                                        fetchTasks();
-
-                                        setTimeout(() => setSuccess(''), 5000);
-                                      } catch (err: any) {
-                                        setError(err.message);
-                                      }
-                                    }}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                    Supprimer le rendez-vous
-                                  </button>
-                                </div>
-                              ) : null;
-                            })()}
-                            <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
-                              <span>Par {interaction.user.name}</span>
-                              {interaction.date && (
-                                <span>
-                                  <Calendar className="mr-1 inline h-3 w-3" />
-                                  {new Date(interaction.date).toLocaleDateString('fr-FR')}
-                                </span>
-                              )}
-                              <span>
-                                {new Date(interaction.createdAt).toLocaleDateString('fr-FR', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="ml-4 flex gap-2">
-                          <button
-                            onClick={() => {
-                              setEditingInteraction(interaction);
-                              setInteractionData({
-                                type: interaction.type,
-                                title: interaction.title || '',
-                                content: interaction.content,
-                                date: interaction.date
-                                  ? new Date(interaction.date).toISOString().split('T')[0]
-                                  : '',
-                              });
-                              setShowInteractionModal(true);
-                              setError('');
-                            }}
-                            className="cursor-pointer rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100"
-                            title="Modifier"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleInteractionDelete(interaction.id)}
-                            className="cursor-pointer rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50"
-                            title="Supprimer"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+              <p className="mb-4 text-sm text-gray-500">{notes.length} note(s) ajoutée(s)</p>
+              <div className="space-y-3">
+                {notes.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-gray-500">Aucune note</p>
+                ) : (
+                  notes.map((note) => (
+                    <div key={note.id} className="rounded-lg border border-gray-200 p-3">
+                      <div className="flex items-start gap-2">
+                        <PhoneCall className="mt-0.5 h-4 w-4 text-gray-400" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            {note.title || 'Note'}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {new Date(note.createdAt).toLocaleDateString('fr-FR', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </p>
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Statut et assignation */}
-            <div className="rounded-lg bg-white p-6 shadow">
-              <h2 className="mb-4 text-lg font-semibold text-gray-900">Statut</h2>
-              <select
-                value={contact.statusId || ''}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              >
-                <option value="">Aucun statut</option>
-                {statuses.map((status) => (
-                  <option key={status.id} value={status.id}>
-                    {status.name}
-                  </option>
-                ))}
-              </select>
-              {contact.status && (
-                <div className="mt-2 flex items-center gap-2">
-                  <div
-                    className="h-3 w-3 rounded-full"
-                    style={{ backgroundColor: contact.status.color }}
-                  />
-                  <span className="text-xs text-gray-500">{contact.status.name}</span>
-                </div>
-              )}
-
-              <h2 className="mt-6 mb-4 text-lg font-semibold text-gray-900">Assignation</h2>
-              {contact.assignedUser ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
-                    {contact.assignedUser.name[0].toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{contact.assignedUser.name}</p>
-                    <p className="text-xs text-gray-500">{contact.assignedUser.email}</p>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">Non assigné</p>
-              )}
-
-              <h2 className="mt-6 mb-4 text-lg font-semibold text-gray-900">Créé par</h2>
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-600">
-                  {contact.createdBy.name[0].toUpperCase()}
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{contact.createdBy.name}</p>
-                  <p className="text-xs text-gray-500">
-                    {new Date(contact.createdAt).toLocaleDateString('fr-FR')}
-                  </p>
-                </div>
+                  ))
+                )}
               </div>
+            </div>
 
-              <div className="mt-6 space-y-2">
-                <button
-                  onClick={() => {
-                    setShowTaskModal(true);
-                    setTaskData({
-                      type: 'CALL',
-                      title: '',
-                      description: '',
-                      priority: 'MEDIUM',
-                      scheduledAt: '',
-                      assignedUserId: '',
-                      reminderMinutesBefore: null
-                    });
-                    setError('');
-                    setSuccess('');
-                  }}
-                  className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
-                >
-                  <CalendarIcon className="mr-2 inline h-4 w-4" />
-                  Créer une tâche
-                </button>
-                {googleAccountConnected && (
-                  <button
-                    onClick={() => {
-                      setShowMeetModal(true);
-                      setMeetData({
-                        title: contact
-                          ? `RDV avec ${contact.firstName || ''} ${contact.lastName || ''}`.trim()
-                          : '',
-                        description: '',
-                        scheduledAt: '',
-                        durationMinutes: 30,
-                        attendees: contact?.email ? [contact.email] : [],
-                        reminderMinutesBefore: null,
-                      });
-                      setError('');
-                      setSuccess('');
-                    }}
-                    className="w-full cursor-pointer rounded-lg border border-indigo-600 bg-white px-4 py-2 text-sm font-medium text-indigo-600 transition-colors hover:bg-indigo-50"
-                  >
-                    <MailIcon className="mr-2 inline h-4 w-4" />
-                    Programmer un Google Meet
-                  </button>
+            {/* Section Fil d'actualité */}
+            <div className="rounded-lg bg-white p-4 shadow">
+              <div className="mb-4 flex items-center gap-2">
+                <Activity className="h-5 w-5 text-gray-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Fil d'actualité</h2>
+              </div>
+              <p className="mb-4 text-sm text-gray-500">
+                Historique complet des interactions et modifications
+              </p>
+              <div className="space-y-4">
+                {allInteractions.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-gray-500">Aucune activité</p>
+                ) : (
+                  allInteractions.map((interaction) => {
+                    const interactionTypeLabel = getInteractionLabel(interaction.type);
+                    const isModification =
+                      interaction.type === 'NOTE' &&
+                      interaction.title?.toLowerCase().includes('modifié');
+
+                    return (
+                      <div
+                        key={interaction.id}
+                        className="border-b border-gray-100 pb-4 last:border-b-0 last:pb-0"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 text-gray-600">
+                            {isModification ? (
+                              <Edit className="h-4 w-4" />
+                            ) : (
+                              getInteractionIcon(interaction.type)
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  {isModification ? 'Modification' : interactionTypeLabel}
+                                  {interaction.title && !isModification && (
+                                    <span className="ml-1 text-gray-600">
+                                      : {interaction.title}
+                                    </span>
+                                  )}
+                                </p>
+                                {interaction.title && isModification && (
+                                  <p className="mt-1 text-sm text-gray-700">{interaction.title}</p>
+                                )}
+                                {interaction.content && !isModification && (
+                                  <p className="mt-1 line-clamp-2 text-sm text-gray-700">
+                                    {interaction.content.replace(/<[^>]+>/g, '').substring(0, 100)}
+                                    {interaction.content.length > 100 && '...'}
+                                  </p>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    setEditingInteraction(interaction);
+                                    setInteractionData({
+                                      type: interaction.type,
+                                      title: interaction.title || '',
+                                      content: interaction.content,
+                                      date: interaction.date
+                                        ? new Date(interaction.date).toISOString().split('T')[0]
+                                        : '',
+                                    });
+                                    setShowInteractionModal(true);
+                                    setError('');
+                                  }}
+                                  className="mt-2 text-xs text-indigo-600 hover:text-indigo-700"
+                                >
+                                  Voir les détails
+                                </button>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
+                              <span>Par {interaction.user.name}</span>
+                              <span>{formatRelativeDate(interaction.createdAt)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -1153,7 +1375,7 @@ export default function ContactDetailPage() {
       {/* Modal d'édition */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
-          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg bg-white shadow-xl p-6 sm:p-8">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
             {/* En-tête fixe */}
             <div className="shrink-0 border-b border-gray-100 pb-4">
               <div className="flex items-center justify-between">
@@ -1376,7 +1598,7 @@ export default function ContactDetailPage() {
       {/* Modal d'interaction */}
       {showInteractionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
-          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg bg-white shadow-xl p-6 sm:p-8">
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
             {/* En-tête fixe */}
             <div className="shrink-0 border-b border-gray-100 pb-4">
               <div className="flex items-center justify-between">
@@ -1509,7 +1731,7 @@ export default function ContactDetailPage() {
       {/* Modal d'envoi d'email */}
       {showEmailModal && contact && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
-          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg bg-white shadow-xl p-6 sm:p-8">
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
             {/* En-tête fixe */}
             <div className="shrink-0 border-b border-gray-100 pb-4">
               <div className="flex items-center justify-between">
@@ -1604,7 +1826,7 @@ export default function ContactDetailPage() {
       {/* Modal de création de tâche */}
       {showTaskModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-6 backdrop-blur-sm sm:p-8">
-          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-2xl bg-white shadow-xl p-6">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-2xl bg-white p-6 shadow-xl">
             {/* En-tête fixe */}
             <div className="shrink-0 border-b border-gray-100 pb-4">
               <div className="flex items-start justify-between gap-4">
@@ -1630,7 +1852,7 @@ export default function ContactDetailPage() {
                       priority: 'MEDIUM',
                       scheduledAt: '',
                       assignedUserId: '',
-                      reminderMinutesBefore: null
+                      reminderMinutesBefore: null,
                     });
                     setError('');
                   }}
@@ -1716,7 +1938,7 @@ export default function ContactDetailPage() {
                                 : option.value,
                           })
                         }
-                        className={`cursor-pointer flex flex-col items-center justify-center rounded-xl border px-3 py-3 text-xs font-medium transition-colors sm:text-sm ${
+                        className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border px-3 py-3 text-xs font-medium transition-colors sm:text-sm ${
                           isActive
                             ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                             : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-200 hover:bg-indigo-50/60'
@@ -1754,10 +1976,12 @@ export default function ContactDetailPage() {
                             : '';
                         setTaskData({
                           ...taskData,
-                          scheduledAt: time ? `${e.target.value}T${time}` : `${e.target.value}T09:00`,
+                          scheduledAt: time
+                            ? `${e.target.value}T${time}`
+                            : `${e.target.value}T09:00`,
                         });
                       }}
-                      className="block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                     <input
                       type="time"
@@ -1776,7 +2000,7 @@ export default function ContactDetailPage() {
                           scheduledAt: `${datePart}T${e.target.value || '09:00'}`,
                         });
                       }}
-                      className="block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1845,9 +2069,7 @@ export default function ContactDetailPage() {
                   onChange={(e) => setTaskData({ ...taskData, assignedUserId: e.target.value })}
                   className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 >
-                  <option value="">
-                    Moi-même ({session?.user?.name || 'Utilisateur'})
-                  </option>
+                  <option value="">Moi-même ({session?.user?.name || 'Utilisateur'})</option>
                   {isAdmin &&
                     users.map((user) => (
                       <option key={user.id} value={user.id}>
@@ -1886,7 +2108,7 @@ export default function ContactDetailPage() {
                       priority: 'MEDIUM',
                       scheduledAt: '',
                       assignedUserId: '',
-                      reminderMinutesBefore: null
+                      reminderMinutesBefore: null,
                     });
                     setError('');
                   }}
@@ -1911,7 +2133,7 @@ export default function ContactDetailPage() {
       {/* Modal Google Meet */}
       {showMeetModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
-          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg bg-white shadow-xl p-6 sm:p-8">
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
             {/* En-tête fixe */}
             <div className="shrink-0 border-b border-gray-100 pb-4">
               <div className="flex items-center justify-between">
@@ -1986,7 +2208,7 @@ export default function ContactDetailPage() {
                             : `${e.target.value}T09:00`,
                         });
                       }}
-                      className="block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                     <input
                       type="time"
@@ -2005,7 +2227,7 @@ export default function ContactDetailPage() {
                           scheduledAt: `${datePart}T${e.target.value || '09:00'}`,
                         });
                       }}
-                      className="block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -2182,13 +2404,16 @@ export default function ContactDetailPage() {
                       const time =
                         editMeetData.scheduledAt && editMeetData.scheduledAt.includes('T')
                           ? editMeetData.scheduledAt.split('T')[1]
-                          : new Date(editingMeetTask.scheduledAt).toISOString().split('T')[1].slice(0, 5);
+                          : new Date(editingMeetTask.scheduledAt)
+                              .toISOString()
+                              .split('T')[1]
+                              .slice(0, 5);
                       setEditMeetData({
                         ...editMeetData,
                         scheduledAt: `${e.target.value}T${time || '09:00'}`,
                       });
                     }}
-                    className="block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                   <input
                     type="time"
@@ -2196,7 +2421,10 @@ export default function ContactDetailPage() {
                     value={
                       editMeetData.scheduledAt && editMeetData.scheduledAt.includes('T')
                         ? editMeetData.scheduledAt.split('T')[1].slice(0, 5)
-                        : new Date(editingMeetTask.scheduledAt).toISOString().split('T')[1].slice(0, 5)
+                        : new Date(editingMeetTask.scheduledAt)
+                            .toISOString()
+                            .split('T')[1]
+                            .slice(0, 5)
                     }
                     onChange={(e) => {
                       const datePart =
@@ -2208,15 +2436,13 @@ export default function ContactDetailPage() {
                         scheduledAt: `${datePart}T${e.target.value || '09:00'}`,
                       });
                     }}
-                    className="block w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Durée (minutes)
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Durée (minutes)</label>
                 <select
                   value={editMeetData.durationMinutes}
                   onChange={(e) =>
@@ -2253,9 +2479,7 @@ export default function ContactDetailPage() {
               )}
 
               {editMeetError && (
-                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
-                  {editMeetError}
-                </div>
+                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{editMeetError}</div>
               )}
             </form>
 
