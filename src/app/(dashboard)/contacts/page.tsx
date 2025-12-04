@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useSession } from '@/lib/auth-client';
 import { PageHeader } from '@/components/page-header';
 import { Search, Plus, Edit, Trash2, Eye, Phone, Mail, MapPin } from 'lucide-react';
-import Link from 'next/link';
 import { ContactTableSkeleton } from '@/components/skeleton';
 
 interface Status {
@@ -95,8 +94,8 @@ export default function ContactsPage() {
     const fetchData = async () => {
       try {
         const [statusesRes, usersRes] = await Promise.all([
-          fetch("/api/statuses"),
-          fetch("/api/users/list"),
+          fetch('/api/statuses'),
+          fetch('/api/users/list'),
         ]);
 
         if (statusesRes.ok) {
@@ -109,7 +108,7 @@ export default function ContactsPage() {
           setUsers(usersData);
         }
       } catch (error) {
-        console.error("Erreur lors du chargement des données:", error);
+        console.error('Erreur lors du chargement des données:', error);
       }
     };
     fetchData();
@@ -124,20 +123,20 @@ export default function ContactsPage() {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (search) params.append("search", search);
-      if (statusFilter) params.append("statusId", statusFilter);
-      if (assignedUserFilter) params.append("assignedUserId", assignedUserFilter);
+      if (search) params.append('search', search);
+      if (statusFilter) params.append('statusId', statusFilter);
+      if (assignedUserFilter) params.append('assignedUserId', assignedUserFilter);
 
       const response = await fetch(`/api/contacts?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setContacts(data.contacts || []);
       } else {
-        setError("Erreur lors du chargement des contacts");
+        setError('Erreur lors du chargement des contacts');
       }
     } catch (error) {
-      console.error("Erreur:", error);
-      setError("Erreur lors du chargement des contacts");
+      console.error('Erreur:', error);
+      setError('Erreur lors du chargement des contacts');
     } finally {
       setLoading(false);
     }
@@ -145,23 +144,21 @@ export default function ContactsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
+    setError('');
+    setSuccess('');
 
     if (!formData.phone) {
-      setError("Le téléphone est obligatoire");
+      setError('Le téléphone est obligatoire');
       return;
     }
 
     try {
-      const url = editingContact
-        ? `/api/contacts/${editingContact.id}`
-        : "/api/contacts";
-      const method = editingContact ? "PUT" : "POST";
+      const url = editingContact ? `/api/contacts/${editingContact.id}` : '/api/contacts';
+      const method = editingContact ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
           civility: formData.civility || null,
@@ -172,53 +169,53 @@ export default function ContactsPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de la sauvegarde");
+        throw new Error(data.error || 'Erreur lors de la sauvegarde');
       }
 
-      setSuccess(editingContact ? "Contact modifié avec succès !" : "Contact créé avec succès !");
+      setSuccess(editingContact ? 'Contact modifié avec succès !' : 'Contact créé avec succès !');
       setShowModal(false);
       setEditingContact(null);
       setFormData({
-        civility: "",
-        firstName: "",
-        lastName: "",
-        phone: "",
-        secondaryPhone: "",
-        email: "",
-        address: "",
-        city: "",
-        postalCode: "",
-        origin: "",
-        statusId: "",
-        assignedUserId: "",
+        civility: '',
+        firstName: '',
+        lastName: '',
+        phone: '',
+        secondaryPhone: '',
+        email: '',
+        address: '',
+        city: '',
+        postalCode: '',
+        origin: '',
+        statusId: '',
+        assignedUserId: '',
       });
       fetchContacts();
 
-      setTimeout(() => setSuccess(""), 5000);
+      setTimeout(() => setSuccess(''), 5000);
     } catch (err: any) {
       setError(err.message);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer ce contact ?")) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce contact ?')) {
       return;
     }
 
     try {
       const response = await fetch(`/api/contacts/${id}`, {
-        method: "DELETE",
+        method: 'DELETE',
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de la suppression");
+        throw new Error(data.error || 'Erreur lors de la suppression');
       }
 
-      setSuccess("Contact supprimé avec succès !");
+      setSuccess('Contact supprimé avec succès !');
       fetchContacts();
-      setTimeout(() => setSuccess(""), 5000);
+      setTimeout(() => setSuccess(''), 5000);
     } catch (err: any) {
       setError(err.message);
     }
@@ -227,18 +224,18 @@ export default function ContactsPage() {
   const handleEdit = (contact: Contact) => {
     setEditingContact(contact);
     setFormData({
-      civility: contact.civility || "",
-      firstName: contact.firstName || "",
-      lastName: contact.lastName || "",
+      civility: contact.civility || '',
+      firstName: contact.firstName || '',
+      lastName: contact.lastName || '',
       phone: contact.phone,
-      secondaryPhone: contact.secondaryPhone || "",
-      email: contact.email || "",
-      address: contact.address || "",
-      city: contact.city || "",
-      postalCode: contact.postalCode || "",
-      origin: contact.origin || "",
-      statusId: contact.statusId || "",
-      assignedUserId: contact.assignedUserId || "",
+      secondaryPhone: contact.secondaryPhone || '',
+      email: contact.email || '',
+      address: contact.address || '',
+      city: contact.city || '',
+      postalCode: contact.postalCode || '',
+      origin: contact.origin || '',
+      statusId: contact.statusId || '',
+      assignedUserId: contact.assignedUserId || '',
     });
     setShowModal(true);
   };
@@ -246,22 +243,22 @@ export default function ContactsPage() {
   const handleNewContact = () => {
     setEditingContact(null);
     setFormData({
-      civility: "",
-      firstName: "",
-      lastName: "",
-      phone: "",
-      secondaryPhone: "",
-      email: "",
-      address: "",
-      city: "",
-      postalCode: "",
-      origin: "",
-      statusId: "",
-      assignedUserId: session?.user?.id || "",
+      civility: '',
+      firstName: '',
+      lastName: '',
+      phone: '',
+      secondaryPhone: '',
+      email: '',
+      address: '',
+      city: '',
+      postalCode: '',
+      origin: '',
+      statusId: '',
+      assignedUserId: session?.user?.id || '',
     });
     setShowModal(true);
-    setError("");
-    setSuccess("");
+    setError('');
+    setSuccess('');
   };
 
   return (
@@ -272,7 +269,7 @@ export default function ContactsPage() {
         action={
           <button
             onClick={handleNewContact}
-            className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
+            className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
           >
             <Plus className="mr-2 inline h-4 w-4" />
             Nouveau contact
@@ -282,40 +279,30 @@ export default function ContactsPage() {
 
       <div className="p-4 sm:p-6 lg:p-8">
         {success && (
-          <div className="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-600">
-            {success}
-          </div>
+          <div className="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-600">{success}</div>
         )}
 
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">
-            {error}
-          </div>
-        )}
+        {error && <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>}
 
         {/* Filtres */}
         <div className="mb-6 rounded-lg bg-white p-4 shadow sm:p-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Recherche
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Recherche</label>
               <div className="relative mt-1">
-                <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                <Search className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Nom, prénom, email, téléphone..."
-                  className="w-full rounded-lg border border-gray-300 pl-10 pr-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Statut
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Statut</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -330,10 +317,8 @@ export default function ContactsPage() {
               </select>
             </div>
 
-          <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Assigné à
-              </label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Assigné à</label>
               <select
                 value={assignedUserFilter}
                 onChange={(e) => setAssignedUserFilter(e.target.value)}
@@ -361,13 +346,13 @@ export default function ContactsPage() {
             </h2>
             <p className="mt-2 text-sm text-gray-600 sm:text-base">
               {search || statusFilter || assignedUserFilter
-                ? "Aucun contact ne correspond à vos critères"
-                : "Commencez par ajouter votre premier contact"}
+                ? 'Aucun contact ne correspond à vos critères'
+                : 'Commencez par ajouter votre premier contact'}
             </p>
             {!search && !statusFilter && !assignedUserFilter && (
               <button
                 onClick={handleNewContact}
-                className="cursor-pointer mt-6 rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:text-base"
+                className="mt-6 cursor-pointer rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:text-base"
               >
                 Ajouter un contact
               </button>
@@ -400,13 +385,17 @@ export default function ContactsPage() {
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
                 {contacts.map((contact) => (
-                  <tr key={contact.id} className="hover:bg-gray-50">
+                  <tr
+                    key={contact.id}
+                    onClick={() => router.push(`/contacts/${contact.id}`)}
+                    className="cursor-pointer hover:bg-gray-50"
+                  >
                     <td className="px-3 py-4 whitespace-nowrap sm:px-6">
                       <div className="flex items-center">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
-                          {(contact.firstName?.[0] || contact.lastName?.[0] || "?").toUpperCase()}
+                          {(contact.firstName?.[0] || contact.lastName?.[0] || '?').toUpperCase()}
                         </div>
-                        <div className="ml-3 sm:ml-4 min-w-0">
+                        <div className="ml-3 min-w-0 sm:ml-4">
                           <div className="text-sm font-medium text-gray-900">
                             {contact.civility && `${contact.civility}. `}
                             {contact.firstName} {contact.lastName}
@@ -427,16 +416,14 @@ export default function ContactsPage() {
                         {contact.phone}
                       </div>
                       {contact.secondaryPhone && (
-                        <div className="mt-1 text-xs text-gray-500">
-                          {contact.secondaryPhone}
-                        </div>
+                        <div className="mt-1 text-xs text-gray-500">{contact.secondaryPhone}</div>
                       )}
                     </td>
                     <td className="px-3 py-4 text-sm whitespace-nowrap sm:px-6">
                       {contact.email ? (
                         <div className="flex items-center text-gray-900">
                           <Mail className="mr-2 h-4 w-4 text-gray-400" />
-                          <span className="truncate max-w-[200px]">{contact.email}</span>
+                          <span className="max-w-[200px] truncate">{contact.email}</span>
                         </div>
                       ) : (
                         <span className="text-gray-400">-</span>
@@ -466,28 +453,27 @@ export default function ContactsPage() {
                     </td>
                     <td className="px-3 py-4 text-right text-sm font-medium whitespace-nowrap sm:px-6">
                       <div className="flex items-center justify-end gap-2">
-                        <Link
-                          href={`/contacts/${contact.id}`}
-                          className="cursor-pointer rounded-lg p-2 text-indigo-600 transition-colors hover:bg-indigo-50"
-                          title="Voir les détails"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Link>
                         <button
-                          onClick={() => handleEdit(contact)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(contact);
+                          }}
                           className="cursor-pointer rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100"
                           title="Modifier"
                         >
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(contact.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(contact.id);
+                          }}
                           className="cursor-pointer rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50"
                           title="Supprimer"
                         >
                           <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -499,20 +485,20 @@ export default function ContactsPage() {
 
       {/* Modal de création/édition */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 backdrop-blur-sm p-4 sm:p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
           <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
             {/* En-tête fixe */}
             <div className="shrink-0 border-b border-gray-100 pb-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
-                  {editingContact ? "Modifier le contact" : "Nouveau contact"}
-          </h2>
+                  {editingContact ? 'Modifier le contact' : 'Nouveau contact'}
+                </h2>
                 <button
                   type="button"
                   onClick={() => {
                     setShowModal(false);
                     setEditingContact(null);
-                    setError("");
+                    setError('');
                   }}
                   className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
                 >
@@ -541,14 +527,10 @@ export default function ContactsPage() {
                 </h3>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Civilité
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700">Civilité</label>
                     <select
                       value={formData.civility}
-                      onChange={(e) =>
-                        setFormData({ ...formData, civility: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, civility: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     >
                       <option value="">-</option>
@@ -559,30 +541,22 @@ export default function ContactsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Prénom
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700">Prénom</label>
                     <input
                       type="text"
                       value={formData.firstName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, firstName: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                       placeholder="Prénom"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Nom
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700">Nom</label>
                     <input
                       type="text"
                       value={formData.lastName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, lastName: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                       placeholder="Nom"
                     />
@@ -595,16 +569,12 @@ export default function ContactsPage() {
                 <h3 className="mb-4 text-lg font-semibold text-gray-900">Coordonnées</h3>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Téléphone *
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700">Téléphone *</label>
                     <input
                       type="tel"
                       required
                       value={formData.phone}
-                      onChange={(e) =>
-                        setFormData({ ...formData, phone: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                       placeholder="+33 1 23 45 67 89"
                     />
@@ -617,24 +587,18 @@ export default function ContactsPage() {
                     <input
                       type="tel"
                       value={formData.secondaryPhone}
-                      onChange={(e) =>
-                        setFormData({ ...formData, secondaryPhone: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, secondaryPhone: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                       placeholder="+33 1 23 45 67 89"
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Email
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700">Email</label>
                     <input
                       type="email"
                       value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                       placeholder="email@exemple.com"
                     />
@@ -653,9 +617,7 @@ export default function ContactsPage() {
                     <input
                       type="text"
                       value={formData.address}
-                      onChange={(e) =>
-                        setFormData({ ...formData, address: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                       placeholder="123 Rue de la République"
                     />
@@ -666,24 +628,18 @@ export default function ContactsPage() {
                     <input
                       type="text"
                       value={formData.city}
-                      onChange={(e) =>
-                        setFormData({ ...formData, city: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                       placeholder="Paris"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Code postal
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700">Code postal</label>
                     <input
                       type="text"
                       value={formData.postalCode}
-                      onChange={(e) =>
-                        setFormData({ ...formData, postalCode: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                       placeholder="75001"
                     />
@@ -702,9 +658,7 @@ export default function ContactsPage() {
                     <input
                       type="text"
                       value={formData.origin}
-                      onChange={(e) =>
-                        setFormData({ ...formData, origin: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                       placeholder="Site web, recommandation, etc."
                     />
@@ -714,9 +668,7 @@ export default function ContactsPage() {
                     <label className="block text-sm font-medium text-gray-700">Statut</label>
                     <select
                       value={formData.statusId}
-                      onChange={(e) =>
-                        setFormData({ ...formData, statusId: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, statusId: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     >
                       <option value="">Aucun statut</option>
@@ -729,14 +681,10 @@ export default function ContactsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Assigné à
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700">Assigné à</label>
                     <select
                       value={formData.assignedUserId}
-                      onChange={(e) =>
-                        setFormData({ ...formData, assignedUserId: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, assignedUserId: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     >
                       <option value="">Non assigné</option>
@@ -763,21 +711,21 @@ export default function ContactsPage() {
                   onClick={() => {
                     setShowModal(false);
                     setEditingContact(null);
-                    setError("");
+                    setError('');
                   }}
-                  className="cursor-pointer w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                  className="w-full cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   form="contact-form"
-                  className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
+                  className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
                 >
-                  {editingContact ? "Modifier" : "Créer"}
-          </button>
-        </div>
-      </div>
+                  {editingContact ? 'Modifier' : 'Créer'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
