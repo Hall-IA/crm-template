@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { decrypt } from '@/lib/encryption';
+import { handleContactDuplicate } from '@/lib/contact-duplicate';
 
 interface MetaLeadChange {
   field: string;
@@ -147,44 +148,54 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
-          // Vérifier si un contact existe déjà (par email ou téléphone)
-          let contact =
-            (email &&
-              (await prisma.contact.findFirst({
-                where: {
-                  OR: [{ email: email.toLowerCase() }, { phone }],
-                },
-              }))) ||
-            (await prisma.contact.findFirst({
-              where: { phone },
-            }));
+          // Vérifier si c'est un doublon (nom, prénom ET email)
+          const duplicateContactId = await handleContactDuplicate(
+            firstName,
+            lastName,
+            email,
+            `Meta Lead Ads - ${config.name}`,
+            assignedUserId
+          );
 
-          if (!contact) {
-            contact = await prisma.contact.create({
-              data: {
-                firstName: firstName || null,
-                lastName: lastName || null,
-                email: email ? email.toLowerCase() : null,
-                phone,
-                origin: `Meta Lead Ads - ${config.name}`,
-                statusId: config.defaultStatusId || null,
-                assignedUserId,
-                createdById: assignedUserId,
-              },
+          let contact;
+          if (duplicateContactId) {
+            // C'est un doublon, récupérer le contact existant
+            contact = await prisma.contact.findUnique({
+              where: { id: duplicateContactId },
             });
           } else {
-            // Mettre à jour quelques infos si manquantes
-            await prisma.contact.update({
-              where: { id: contact.id },
-              data: {
-                firstName: contact.firstName || firstName || null,
-                lastName: contact.lastName || lastName || null,
-                email: contact.email || (email ? email.toLowerCase() : null),
-                origin: contact.origin || `Meta Lead Ads - ${config.name}`,
-                statusId: contact.statusId || config.defaultStatusId || null,
-                assignedUserId: contact.assignedUserId || assignedUserId,
-              },
+            // Vérifier si un contact existe déjà (par téléphone uniquement)
+            contact = await prisma.contact.findFirst({
+              where: { phone },
             });
+
+            if (!contact) {
+              contact = await prisma.contact.create({
+                data: {
+                  firstName: firstName || null,
+                  lastName: lastName || null,
+                  email: email ? email.toLowerCase() : null,
+                  phone,
+                  origin: `Meta Lead Ads - ${config.name}`,
+                  statusId: config.defaultStatusId || null,
+                  assignedUserId,
+                  createdById: assignedUserId,
+                },
+              });
+            } else {
+              // Mettre à jour quelques infos si manquantes
+              await prisma.contact.update({
+                where: { id: contact.id },
+                data: {
+                  firstName: contact.firstName || firstName || null,
+                  lastName: contact.lastName || lastName || null,
+                  email: contact.email || (email ? email.toLowerCase() : null),
+                  origin: contact.origin || `Meta Lead Ads - ${config.name}`,
+                  statusId: contact.statusId || config.defaultStatusId || null,
+                  assignedUserId: contact.assignedUserId || assignedUserId,
+                },
+              });
+            }
           }
 
           // Créer une interaction "Lead Meta"

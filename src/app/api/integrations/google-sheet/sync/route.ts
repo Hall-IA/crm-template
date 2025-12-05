@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getValidAccessToken } from '@/lib/google-calendar';
+import { handleContactDuplicate } from '@/lib/contact-duplicate';
 
 function columnToIndex(column: string | null | undefined): number | null {
   if (!column) return null;
@@ -184,49 +185,67 @@ export async function POST(request: NextRequest) {
           const origin =
             originIdx !== null ? row[originIdx]?.trim() || 'Google Sheets' : 'Google Sheets';
 
-          // Chercher un contact existant
-          let contact =
-            (email &&
-              (await client.contact.findFirst({
-                where: {
-                  OR: [{ email: email.toLowerCase() }, { phone }],
-                },
-              }))) ||
-            (await client.contact.findFirst({
-              where: { phone },
-            }));
+          // Vérifier si c'est un doublon (nom, prénom ET email)
+          const duplicateContactId = await handleContactDuplicate(
+            firstName,
+            lastName,
+            email,
+            origin,
+            config.defaultAssignedUserId
+          );
 
-          if (!contact) {
-            contact = await client.contact.create({
-              data: {
-                firstName: firstName || null,
-                lastName: lastName || null,
-                email: email ? email.toLowerCase() : null,
-                phone,
-                city: city || null,
-                postalCode: postalCode || null,
-                origin,
-                statusId: config.defaultStatusId || null,
-                assignedUserId: config.defaultAssignedUserId,
-                createdById: config.defaultAssignedUserId,
-              },
-            });
-            imported++;
-          } else {
-            await client.contact.update({
-              where: { id: contact.id },
-              data: {
-                firstName: contact.firstName || firstName || null,
-                lastName: contact.lastName || lastName || null,
-                email: contact.email || (email ? email.toLowerCase() : null),
-                city: contact.city || city || null,
-                postalCode: contact.postalCode || postalCode || null,
-                origin: contact.origin || origin,
-                statusId: contact.statusId || config.defaultStatusId || null,
-                assignedUserId: contact.assignedUserId || config.defaultAssignedUserId,
-              },
+          let contact;
+          if (duplicateContactId) {
+            // C'est un doublon, récupérer le contact existant
+            contact = await client.contact.findUnique({
+              where: { id: duplicateContactId },
             });
             updated++;
+          } else {
+            // Chercher un contact existant (par téléphone uniquement)
+            contact =
+              (email &&
+                (await client.contact.findFirst({
+                  where: {
+                    OR: [{ email: email.toLowerCase() }, { phone }],
+                  },
+                }))) ||
+              (await client.contact.findFirst({
+                where: { phone },
+              }));
+
+            if (!contact) {
+              contact = await client.contact.create({
+                data: {
+                  firstName: firstName || null,
+                  lastName: lastName || null,
+                  email: email ? email.toLowerCase() : null,
+                  phone,
+                  city: city || null,
+                  postalCode: postalCode || null,
+                  origin,
+                  statusId: config.defaultStatusId || null,
+                  assignedUserId: config.defaultAssignedUserId,
+                  createdById: config.defaultAssignedUserId,
+                },
+              });
+              imported++;
+            } else {
+              await client.contact.update({
+                where: { id: contact.id },
+                data: {
+                  firstName: contact.firstName || firstName || null,
+                  lastName: contact.lastName || lastName || null,
+                  email: contact.email || (email ? email.toLowerCase() : null),
+                  city: contact.city || city || null,
+                  postalCode: contact.postalCode || postalCode || null,
+                  origin: contact.origin || origin,
+                  statusId: contact.statusId || config.defaultStatusId || null,
+                  assignedUserId: contact.assignedUserId || config.defaultAssignedUserId,
+                },
+              });
+              updated++;
+            }
           }
 
           // Créer une interaction de log uniquement pour les nouveaux contacts

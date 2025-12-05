@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { handleContactDuplicate } from '@/lib/contact-duplicate';
 
 interface GoogleAdsUserColumnData {
   columnName: string;
@@ -94,46 +95,63 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    // Vérifier si un contact existe déjà
-    let contact =
-      (email &&
-        (await client.contact.findFirst({
-          where: {
-            OR: [{ email: email.toLowerCase() }, phone ? { phone } : undefined].filter(
-              Boolean,
-            ) as any,
-          },
-        }))) ||
-      (phone &&
-        (await client.contact.findFirst({
-          where: { phone },
-        })));
+    // Vérifier si c'est un doublon (nom, prénom ET email)
+    const duplicateContactId = await handleContactDuplicate(
+      firstName,
+      lastName,
+      email,
+      `Google Ads - ${config.name}`,
+      assignedUserId
+    );
 
-    if (!contact) {
-      contact = await client.contact.create({
-        data: {
-          firstName: firstName || null,
-          lastName: lastName || null,
-          email: email ? email.toLowerCase() : null,
-          phone: phone || '',
-          origin: `Google Ads - ${config.name}`,
-          statusId: config.defaultStatusId || null,
-          assignedUserId,
-          createdById: assignedUserId,
-        },
+    let contact;
+    if (duplicateContactId) {
+      // C'est un doublon, récupérer le contact existant
+      contact = await client.contact.findUnique({
+        where: { id: duplicateContactId },
       });
     } else {
-      await client.contact.update({
-        where: { id: contact.id },
-        data: {
-          firstName: contact.firstName || firstName || null,
-          lastName: contact.lastName || lastName || null,
-          email: contact.email || (email ? email.toLowerCase() : null),
-          origin: contact.origin || `Google Ads - ${config.name}`,
-          statusId: contact.statusId || config.defaultStatusId || null,
-          assignedUserId: contact.assignedUserId || assignedUserId,
-        },
-      });
+      // Vérifier si un contact existe déjà (par téléphone uniquement)
+      contact =
+        (email &&
+          (await client.contact.findFirst({
+            where: {
+              OR: [{ email: email.toLowerCase() }, phone ? { phone } : undefined].filter(
+                Boolean,
+              ) as any,
+            },
+          }))) ||
+        (phone &&
+          (await client.contact.findFirst({
+            where: { phone },
+          })));
+
+      if (!contact) {
+        contact = await client.contact.create({
+          data: {
+            firstName: firstName || null,
+            lastName: lastName || null,
+            email: email ? email.toLowerCase() : null,
+            phone: phone || '',
+            origin: `Google Ads - ${config.name}`,
+            statusId: config.defaultStatusId || null,
+            assignedUserId,
+            createdById: assignedUserId,
+          },
+        });
+      } else {
+        await client.contact.update({
+          where: { id: contact.id },
+          data: {
+            firstName: contact.firstName || firstName || null,
+            lastName: contact.lastName || lastName || null,
+            email: contact.email || (email ? email.toLowerCase() : null),
+            origin: contact.origin || `Google Ads - ${config.name}`,
+            statusId: contact.statusId || config.defaultStatusId || null,
+            assignedUserId: contact.assignedUserId || assignedUserId,
+          },
+        });
+      }
     }
 
     // Créer une interaction "Lead Google Ads"

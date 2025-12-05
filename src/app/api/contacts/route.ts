@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { handleContactDuplicate } from "@/lib/contact-duplicate";
 
 // GET /api/contacts - Récupérer tous les contacts avec filtres
 export async function GET(request: NextRequest) {
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
             select: { id: true, name: true, email: true },
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { updatedAt: "desc" },
         skip,
         take: limit,
       }),
@@ -116,6 +117,33 @@ export async function POST(request: NextRequest) {
     // Par défaut, assigner à l'utilisateur qui crée le contact
     const finalAssignedUserId = assignedUserId || session.user.id;
 
+    // Vérifier si c'est un doublon (nom, prénom ET email)
+    const duplicateContactId = await handleContactDuplicate(
+      firstName,
+      lastName,
+      email,
+      origin || "Création manuelle",
+      session.user.id
+    );
+
+    // Si c'est un doublon, retourner le contact existant
+    if (duplicateContactId) {
+      const existingContact = await prisma.contact.findUnique({
+        where: { id: duplicateContactId },
+        include: {
+          status: true,
+          assignedUser: {
+            select: { id: true, name: true, email: true },
+          },
+          createdBy: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      });
+      return NextResponse.json(existingContact, { status: 200 });
+    }
+
+    // Sinon, créer un nouveau contact
     const contact = await prisma.contact.create({
       data: {
         civility: civility || null,

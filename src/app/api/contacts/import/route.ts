@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { handleContactDuplicate } from '@/lib/contact-duplicate';
 
 // POST /api/contacts/import - Importer des contacts depuis un fichier CSV/Excel
 export async function POST(request: NextRequest) {
@@ -144,12 +145,42 @@ export async function POST(request: NextRequest) {
 
     for (const contactData of contactsToCreate) {
       try {
-        // Vérifier si le contact existe déjà (par téléphone)
-        const existing = await prisma.contact.findFirst({
+        // Vérifier si c'est un doublon (nom, prénom ET email)
+        const duplicateContactId = await handleContactDuplicate(
+          contactData.firstName,
+          contactData.lastName,
+          contactData.email,
+          contactData.origin || 'Import CSV/Excel',
+          session.user.id
+        );
+
+        if (duplicateContactId) {
+          // C'est un doublon, récupérer le contact existant
+          const existingContact = await prisma.contact.findUnique({
+            where: { id: duplicateContactId },
+            include: {
+              status: true,
+              assignedUser: {
+                select: { id: true, name: true, email: true },
+              },
+              createdBy: {
+                select: { id: true, name: true, email: true },
+              },
+            },
+          });
+          if (existingContact) {
+            createdContacts.push(existingContact);
+            duplicateErrors.push(`Contact ${contactData.firstName} ${contactData.lastName} (${contactData.email}) - doublon détecté`);
+          }
+          continue;
+        }
+
+        // Vérifier aussi par téléphone pour éviter les doublons par téléphone uniquement
+        const existingByPhone = await prisma.contact.findFirst({
           where: { phone: contactData.phone },
         });
 
-        if (existing) {
+        if (existingByPhone) {
           duplicateErrors.push(`Téléphone ${contactData.phone} déjà existant`);
           continue;
         }
