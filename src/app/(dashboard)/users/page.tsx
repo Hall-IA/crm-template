@@ -10,7 +10,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: 'USER' | 'ADMIN';
+  role: 'USER' | 'ADMIN' | 'MANAGER' | 'COMMERCIAL' | 'TELEPRO' | 'COMPTABLE';
   emailVerified: boolean;
   active: boolean;
   createdAt: string;
@@ -107,7 +107,7 @@ export default function UsersPage() {
     }
   };
 
-  const handleChangeRole = async (userId: string, newRole: 'USER' | 'ADMIN') => {
+  const handleChangeRole = async (userId: string, newRole: 'USER' | 'ADMIN' | 'MANAGER' | 'COMMERCIAL' | 'TELEPRO' | 'COMPTABLE') => {
     try {
       const response = await fetch(`/api/users/${userId}`, {
         method: 'PUT',
@@ -214,8 +214,11 @@ export default function UsersPage() {
                           disabled={user.id === session?.user?.id}
                           className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-sm"
                         >
-                          <option value="USER">Utilisateur</option>
-                          <option value="ADMIN">Admin</option>
+                          <option value="ADMIN">Administrateur</option>
+                          <option value="MANAGER">Manager</option>
+                          <option value="COMMERCIAL">Commercial</option>
+                          <option value="TELEPRO">Télépro</option>
+                          <option value="COMPTABLE">Comptable</option>
                         </select>
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap sm:px-6">
@@ -331,8 +334,11 @@ export default function UsersPage() {
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="USER">Utilisateur</option>
-                  <option value="ADMIN">Admin</option>
+                  <option value="ADMIN">Administrateur</option>
+                  <option value="MANAGER">Manager</option>
+                  <option value="COMMERCIAL">Commercial</option>
+                  <option value="TELEPRO">Télépro</option>
+                  <option value="COMPTABLE">Comptable</option>
                 </select>
               </div>
             </form>

@@ -121,9 +121,12 @@ export async function POST(request: NextRequest) {
           postalCode: getValueFromRow(row, mapping.postalCode) || null,
           origin: getValueFromRow(row, mapping.origin) || null,
           statusId: statusId,
-          assignedUserId: mapping.assignedUserId
-            ? getValueFromRow(row, mapping.assignedUserId) || session.user.id
-            : session.user.id,
+          assignedCommercialId: mapping.assignedCommercialId
+            ? getValueFromRow(row, mapping.assignedCommercialId) || null
+            : null,
+          assignedTeleproId: mapping.assignedTeleproId
+            ? getValueFromRow(row, mapping.assignedTeleproId) || null
+            : null,
           createdById: session.user.id,
         };
 
@@ -160,7 +163,10 @@ export async function POST(request: NextRequest) {
             where: { id: duplicateContactId },
             include: {
               status: true,
-              assignedUser: {
+              assignedCommercial: {
+                select: { id: true, name: true, email: true },
+              },
+              assignedTelepro: {
                 select: { id: true, name: true, email: true },
               },
               createdBy: {

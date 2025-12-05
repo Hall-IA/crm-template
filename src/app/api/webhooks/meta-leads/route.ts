@@ -128,24 +128,44 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
-          // Déterminer l'utilisateur assigné par défaut
-          let assignedUserId = config.defaultAssignedUserId || null;
-          if (!assignedUserId) {
+          // Déterminer l'utilisateur pour createdById (nécessaire pour créer le contact)
+          let createdById = config.defaultAssignedUserId || null;
+          if (!createdById) {
             const adminUser = await prisma.user.findFirst({
               where: { role: 'ADMIN' },
               orderBy: { createdAt: 'asc' },
             });
             if (adminUser) {
-              assignedUserId = adminUser.id;
+              createdById = adminUser.id;
             }
           }
 
-          if (!assignedUserId) {
+          if (!createdById) {
             console.warn(
-              'Lead Meta reçu mais aucun utilisateur assigné par défaut trouvé. Lead ID:',
+              'Lead Meta reçu mais aucun utilisateur pour créer le contact trouvé. Lead ID:',
               leadId,
             );
             continue;
+          }
+
+          // Déterminer l'assignation selon le rôle de l'utilisateur par défaut
+          let assignedCommercialId: string | null = null;
+          let assignedTeleproId: string | null = null;
+
+          if (config.defaultAssignedUserId) {
+            const defaultUser = await prisma.user.findUnique({
+              where: { id: config.defaultAssignedUserId },
+              select: { role: true },
+            });
+
+            if (defaultUser) {
+              if (defaultUser.role === 'COMMERCIAL' || defaultUser.role === 'ADMIN' || defaultUser.role === 'MANAGER') {
+                assignedCommercialId = config.defaultAssignedUserId;
+              } else if (defaultUser.role === 'TELEPRO') {
+                assignedTeleproId = config.defaultAssignedUserId;
+              }
+              // Sinon, on ne assigne pas (null pour les deux)
+            }
           }
 
           // Vérifier si c'est un doublon (nom, prénom ET email)
@@ -154,7 +174,7 @@ export async function POST(request: NextRequest) {
             lastName,
             email,
             `Meta Lead Ads - ${config.name}`,
-            assignedUserId
+            createdById
           );
 
           let contact;
@@ -178,8 +198,9 @@ export async function POST(request: NextRequest) {
                   phone,
                   origin: `Meta Lead Ads - ${config.name}`,
                   statusId: config.defaultStatusId || null,
-                  assignedUserId,
-                  createdById: assignedUserId,
+                  assignedCommercialId: assignedCommercialId,
+                  assignedTeleproId: assignedTeleproId,
+                  createdById: createdById,
                 },
               });
             } else {
@@ -192,7 +213,9 @@ export async function POST(request: NextRequest) {
                   email: contact.email || (email ? email.toLowerCase() : null),
                   origin: contact.origin || `Meta Lead Ads - ${config.name}`,
                   statusId: contact.statusId || config.defaultStatusId || null,
-                  assignedUserId: contact.assignedUserId || assignedUserId,
+                  // Ne pas écraser les assignations existantes
+                  assignedCommercialId: contact.assignedCommercialId || assignedCommercialId,
+                  assignedTeleproId: contact.assignedTeleproId || assignedTeleproId,
                 },
               });
             }
@@ -207,7 +230,7 @@ export async function POST(request: NextRequest) {
               content: `Lead importé automatiquement depuis Meta Lead Ads (${config.name}, formulaire: ${
                 change.value.form_id
               }).`,
-              userId: assignedUserId,
+              userId: createdById,
               date: new Date(change.value.created_time * 1000),
             },
           });

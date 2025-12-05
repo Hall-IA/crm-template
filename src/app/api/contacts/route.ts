@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
     const statusId = searchParams.get("statusId");
-    const assignedUserId = searchParams.get("assignedUserId");
+    const assignedCommercialId = searchParams.get("assignedCommercialId");
+    const assignedTeleproId = searchParams.get("assignedTeleproId");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
     const skip = (page - 1) * limit;
@@ -38,8 +39,12 @@ export async function GET(request: NextRequest) {
       where.statusId = statusId;
     }
 
-    if (assignedUserId) {
-      where.assignedUserId = assignedUserId;
+    if (assignedCommercialId) {
+      where.assignedCommercialId = assignedCommercialId;
+    }
+
+    if (assignedTeleproId) {
+      where.assignedTeleproId = assignedTeleproId;
     }
 
     const [contacts, total] = await Promise.all([
@@ -47,7 +52,10 @@ export async function GET(request: NextRequest) {
         where,
         include: {
           status: true,
-          assignedUser: {
+          assignedCommercial: {
+            select: { id: true, name: true, email: true },
+          },
+          assignedTelepro: {
             select: { id: true, name: true, email: true },
           },
           createdBy: {
@@ -103,7 +111,8 @@ export async function POST(request: NextRequest) {
       postalCode,
       origin,
       statusId,
-      assignedUserId,
+      assignedCommercialId,
+      assignedTeleproId,
     } = body;
 
     // Validation
@@ -113,9 +122,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Par défaut, assigner à l'utilisateur qui crée le contact
-    const finalAssignedUserId = assignedUserId || session.user.id;
 
     // Vérifier si c'est un doublon (nom, prénom ET email)
     const duplicateContactId = await handleContactDuplicate(
@@ -132,7 +138,10 @@ export async function POST(request: NextRequest) {
         where: { id: duplicateContactId },
         include: {
           status: true,
-          assignedUser: {
+          assignedCommercial: {
+            select: { id: true, name: true, email: true },
+          },
+          assignedTelepro: {
             select: { id: true, name: true, email: true },
           },
           createdBy: {
@@ -157,7 +166,8 @@ export async function POST(request: NextRequest) {
         postalCode: postalCode || null,
         origin: origin || null,
         statusId: statusId || null,
-        assignedUserId: finalAssignedUserId,
+        assignedCommercialId: assignedCommercialId || null,
+        assignedTeleproId: assignedTeleproId || null,
         createdById: session.user.id,
         interactions: {
           create: {
@@ -177,7 +187,10 @@ export async function POST(request: NextRequest) {
       },
       include: {
         status: true,
-        assignedUser: {
+        assignedCommercial: {
+          select: { id: true, name: true, email: true },
+        },
+        assignedTelepro: {
           select: { id: true, name: true, email: true },
         },
         createdBy: {

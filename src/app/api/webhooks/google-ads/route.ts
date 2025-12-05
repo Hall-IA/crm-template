@@ -75,24 +75,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    // Déterminer l'utilisateur assigné par défaut
-    let assignedUserId = config.defaultAssignedUserId || null;
-    if (!assignedUserId) {
+    // Déterminer l'utilisateur pour createdById (nécessaire pour créer le contact)
+    let createdById = config.defaultAssignedUserId || null;
+    if (!createdById) {
       const adminUser = await client.user.findFirst({
         where: { role: 'ADMIN' },
         orderBy: { createdAt: 'asc' },
       });
       if (adminUser) {
-        assignedUserId = adminUser.id;
+        createdById = adminUser.id;
       }
     }
 
-    if (!assignedUserId) {
+    if (!createdById) {
       console.warn(
-        'Lead Google Ads reçu mais aucun utilisateur assigné par défaut trouvé. Notification:',
+        'Lead Google Ads reçu mais aucun utilisateur pour créer le contact trouvé. Notification:',
         notification,
       );
       return NextResponse.json({ received: true });
+    }
+
+    // Déterminer l'assignation selon le rôle de l'utilisateur par défaut
+    let assignedCommercialId: string | null = null;
+    let assignedTeleproId: string | null = null;
+
+    if (config.defaultAssignedUserId) {
+      const defaultUser = await client.user.findUnique({
+        where: { id: config.defaultAssignedUserId },
+        select: { role: true },
+      });
+
+      if (defaultUser) {
+        if (defaultUser.role === 'COMMERCIAL' || defaultUser.role === 'ADMIN' || defaultUser.role === 'MANAGER') {
+          assignedCommercialId = config.defaultAssignedUserId;
+        } else if (defaultUser.role === 'TELEPRO') {
+          assignedTeleproId = config.defaultAssignedUserId;
+        }
+        // Sinon, on ne assigne pas (null pour les deux)
+      }
     }
 
     // Vérifier si c'est un doublon (nom, prénom ET email)
@@ -101,7 +121,7 @@ export async function POST(request: NextRequest) {
       lastName,
       email,
       `Google Ads - ${config.name}`,
-      assignedUserId
+      createdById
     );
 
     let contact;
@@ -135,8 +155,9 @@ export async function POST(request: NextRequest) {
             phone: phone || '',
             origin: `Google Ads - ${config.name}`,
             statusId: config.defaultStatusId || null,
-            assignedUserId,
-            createdById: assignedUserId,
+            assignedCommercialId: assignedCommercialId,
+            assignedTeleproId: assignedTeleproId,
+            createdById: createdById,
           },
         });
       } else {
@@ -148,7 +169,9 @@ export async function POST(request: NextRequest) {
             email: contact.email || (email ? email.toLowerCase() : null),
             origin: contact.origin || `Google Ads - ${config.name}`,
             statusId: contact.statusId || config.defaultStatusId || null,
-            assignedUserId: contact.assignedUserId || assignedUserId,
+            // Ne pas écraser les assignations existantes
+            assignedCommercialId: contact.assignedCommercialId || assignedCommercialId,
+            assignedTeleproId: contact.assignedTeleproId || assignedTeleproId,
           },
         });
       }
@@ -163,7 +186,7 @@ export async function POST(request: NextRequest) {
         content: `Lead importé automatiquement depuis Google Ads (${config.name}, client: ${
           notification.customerId || 'inconnu'
         }).`,
-        userId: assignedUserId,
+        userId: createdById,
         date: new Date(),
       },
     });

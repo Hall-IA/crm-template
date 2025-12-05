@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/lib/auth-client';
+import { useUserRole } from '@/hooks/use-user-role';
 import { PageHeader } from '@/components/page-header';
-import { Search, Plus, Edit, Trash2, Eye, Phone, Mail, MapPin, Upload, X } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Phone, Mail, MapPin, Upload, X, Filter } from 'lucide-react';
 import { ContactTableSkeleton } from '@/components/skeleton';
 
 interface Status {
@@ -17,6 +18,7 @@ interface User {
   id: string;
   name: string;
   email: string;
+  role?: string;
 }
 
 interface Contact {
@@ -33,8 +35,10 @@ interface Contact {
   origin: string | null;
   statusId: string | null;
   status: Status | null;
-  assignedUserId: string | null;
-  assignedUser: User | null;
+  assignedCommercialId: string | null;
+  assignedCommercial: User | null;
+  assignedTeleproId: string | null;
+  assignedTelepro: User | null;
   createdById: string;
   createdBy: User;
   createdAt: string;
@@ -44,6 +48,19 @@ interface Contact {
 export default function ContactsPage() {
   const router = useRouter();
   const { data: session } = useSession();
+  const { isAdmin } = useUserRole();
+
+  // Fonction pour formater les dates en français
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date);
+  };
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -64,7 +81,8 @@ export default function ContactsPage() {
   // Filtres
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [assignedUserFilter, setAssignedUserFilter] = useState<string>('');
+  const [assignedCommercialFilter, setAssignedCommercialFilter] = useState<string>('');
+  const [assignedTeleproFilter, setAssignedTeleproFilter] = useState<string>('');
 
   // Formulaire
   const [formData, setFormData] = useState({
@@ -79,7 +97,8 @@ export default function ContactsPage() {
     postalCode: '',
     origin: '',
     statusId: '',
-    assignedUserId: '',
+    assignedCommercialId: '',
+    assignedTeleproId: '',
   });
 
   // Synchronisation automatique Google Sheets
@@ -125,7 +144,7 @@ export default function ContactsPage() {
   // Charger les contacts
   useEffect(() => {
     fetchContacts();
-  }, [search, statusFilter, assignedUserFilter]);
+  }, [search, statusFilter, assignedCommercialFilter, assignedTeleproFilter]);
 
   const fetchContacts = async () => {
     try {
@@ -133,7 +152,8 @@ export default function ContactsPage() {
       const params = new URLSearchParams();
       if (search) params.append('search', search);
       if (statusFilter) params.append('statusId', statusFilter);
-      if (assignedUserFilter) params.append('assignedUserId', assignedUserFilter);
+      if (assignedCommercialFilter) params.append('assignedCommercialId', assignedCommercialFilter);
+      if (assignedTeleproFilter) params.append('assignedTeleproId', assignedTeleproFilter);
 
       const response = await fetch(`/api/contacts?${params.toString()}`);
       if (response.ok) {
@@ -170,7 +190,8 @@ export default function ContactsPage() {
         body: JSON.stringify({
           ...formData,
           civility: formData.civility || null,
-          assignedUserId: formData.assignedUserId || session?.user?.id || null,
+          assignedCommercialId: formData.assignedCommercialId || null,
+          assignedTeleproId: formData.assignedTeleproId || null,
         }),
       });
 
@@ -195,7 +216,8 @@ export default function ContactsPage() {
         postalCode: '',
         origin: '',
         statusId: '',
-        assignedUserId: '',
+        assignedCommercialId: '',
+        assignedTeleproId: '',
       });
       fetchContacts();
 
@@ -243,7 +265,8 @@ export default function ContactsPage() {
       postalCode: contact.postalCode || '',
       origin: contact.origin || '',
       statusId: contact.statusId || '',
-      assignedUserId: contact.assignedUserId || '',
+      assignedCommercialId: contact.assignedCommercialId || '',
+      assignedTeleproId: contact.assignedTeleproId || '',
     });
     setShowModal(true);
   };
@@ -262,7 +285,8 @@ export default function ContactsPage() {
       postalCode: '',
       origin: '',
       statusId: '',
-      assignedUserId: session?.user?.id || '',
+      assignedCommercialId: '',
+      assignedTeleproId: '',
     });
     setShowModal(true);
     setError('');
@@ -499,14 +523,36 @@ export default function ContactsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Assigné à</label>
+              <label className="block text-sm font-medium text-gray-700">Commercial</label>
               <select
-                value={assignedUserFilter}
-                onChange={(e) => setAssignedUserFilter(e.target.value)}
+                value={assignedCommercialFilter}
+                onChange={(e) => setAssignedCommercialFilter(e.target.value)}
                 className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               >
-                <option value="">Tous les utilisateurs</option>
-                {users.map((user) => (
+                <option value="">Tous les commerciaux</option>
+                {(isAdmin
+                  ? users.filter((u) => u.role !== 'USER')
+                  : users.filter((u) => u.role === 'COMMERCIAL' || u.role === 'ADMIN' || u.role === 'MANAGER')
+                ).map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Télépro</label>
+              <select
+                value={assignedTeleproFilter}
+                onChange={(e) => setAssignedTeleproFilter(e.target.value)}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              >
+                <option value="">Tous les télépros</option>
+                {(isAdmin
+                  ? users.filter((u) => u.role !== 'USER')
+                  : users.filter((u) => u.role === 'TELEPRO' || u.role === 'ADMIN' || u.role === 'MANAGER')
+                ).map((user) => (
                   <option key={user.id} value={user.id}>
                     {user.name}
                   </option>
@@ -526,11 +572,11 @@ export default function ContactsPage() {
               Aucun contact trouvé
             </h2>
             <p className="mt-2 text-sm text-gray-600 sm:text-base">
-              {search || statusFilter || assignedUserFilter
+              {search || statusFilter || assignedCommercialFilter || assignedTeleproFilter
                 ? 'Aucun contact ne correspond à vos critères'
                 : 'Commencez par ajouter votre premier contact'}
             </p>
-            {!search && !statusFilter && !assignedUserFilter && (
+            {!search && !statusFilter && !assignedCommercialFilter && !assignedTeleproFilter && (
               <button
                 onClick={handleNewContact}
                 className="mt-6 cursor-pointer rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:text-base"
@@ -557,7 +603,22 @@ export default function ContactsPage() {
                     Statut
                   </th>
                   <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                    Assigné à
+                    <div className="flex items-center gap-1">
+                      COMMERCIAL
+                      <Filter className="h-3 w-3 text-gray-400" />
+                    </div>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                    <div className="flex items-center gap-1">
+                      TÉLÉPRO
+                      <Filter className="h-3 w-3 text-gray-400" />
+                    </div>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                    Créé le
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                    Modifié le
                   </th>
                   <th className="px-3 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
                     Actions
@@ -625,12 +686,33 @@ export default function ContactsPage() {
                         <span className="text-gray-400">-</span>
                       )}
                     </td>
-                    <td className="px-3 py-4 text-sm whitespace-nowrap sm:px-6">
-                      {contact.assignedUser ? (
-                        <span className="text-gray-900">{contact.assignedUser.name}</span>
+                    <td className="px-3 py-4 whitespace-nowrap sm:px-6 flex justify-center">
+                      {contact.assignedCommercial ? (
+                        <span className="text-sm text-gray-900">
+                          {contact.assignedCommercial.name}
+                        </span>
                       ) : (
-                        <span className="text-gray-400">Non assigné</span>
+                        <span className="inline-flex rounded-full border border-orange-300 bg-orange-50 px-2 py-1 text-xs font-medium text-orange-800">
+                          Non Attribué
+                        </span>
                       )}
+                    </td>
+                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                      {contact.assignedTelepro ? (
+                        <span className="text-sm text-gray-900">
+                          {contact.assignedTelepro.name}
+                        </span>
+                      ) : (
+                        <span className="inline-flex rounded-full border border-orange-300 bg-orange-50 px-2 py-1 text-xs font-medium text-orange-800">
+                          Non Attribué
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-4 text-sm text-gray-500 whitespace-nowrap sm:px-6">
+                      {contact.createdAt ? formatDate(contact.createdAt) : '-'}
+                    </td>
+                    <td className="px-3 py-4 text-sm text-gray-500 whitespace-nowrap sm:px-6">
+                      {contact.updatedAt ? formatDate(contact.updatedAt) : '-'}
                     </td>
                     <td className="px-3 py-4 text-right text-sm font-medium whitespace-nowrap sm:px-6">
                       <div className="flex items-center justify-end gap-2">
@@ -862,14 +944,36 @@ export default function ContactsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Assigné à</label>
+                    <label className="block text-sm font-medium text-gray-700">Commercial</label>
                     <select
-                      value={formData.assignedUserId}
-                      onChange={(e) => setFormData({ ...formData, assignedUserId: e.target.value })}
+                      value={formData.assignedCommercialId}
+                      onChange={(e) => setFormData({ ...formData, assignedCommercialId: e.target.value })}
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     >
                       <option value="">Non assigné</option>
-                      {users.map((user) => (
+                      {(isAdmin
+                        ? users.filter((u) => u.role !== 'USER')
+                        : users.filter((u) => u.role === 'COMMERCIAL' || u.role === 'ADMIN' || u.role === 'MANAGER')
+                      ).map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Télépro</label>
+                    <select
+                      value={formData.assignedTeleproId}
+                      onChange={(e) => setFormData({ ...formData, assignedTeleproId: e.target.value })}
+                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    >
+                      <option value="">Non assigné</option>
+                      {(isAdmin
+                        ? users.filter((u) => u.role !== 'USER')
+                        : users.filter((u) => u.role === 'TELEPRO' || u.role === 'ADMIN' || u.role === 'MANAGER')
+                      ).map((user) => (
                         <option key={user.id} value={user.id}>
                           {user.name}
                         </option>

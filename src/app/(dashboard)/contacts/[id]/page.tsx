@@ -38,6 +38,7 @@ interface User {
   id: string;
   name: string;
   email: string;
+  role?: string;
 }
 
 interface Interaction {
@@ -66,8 +67,10 @@ interface Contact {
   origin: string | null;
   statusId: string | null;
   status: Status | null;
-  assignedUserId: string | null;
-  assignedUser: User | null;
+  assignedCommercialId: string | null;
+  assignedCommercial: User | null;
+  assignedTeleproId: string | null;
+  assignedTelepro: User | null;
   createdById: string;
   createdBy: User;
   createdAt: string;
@@ -113,7 +116,8 @@ export default function ContactDetailPage() {
     postalCode: '',
     origin: '',
     statusId: '',
-    assignedUserId: '',
+    assignedCommercialId: '',
+    assignedTeleproId: '',
   });
 
   // Formulaire d'interaction
@@ -137,7 +141,8 @@ export default function ContactDetailPage() {
     description: '',
     priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
     scheduledAt: '',
-    assignedUserId: '',
+    assignedCommercialId: '',
+    assignedTeleproId: '',
     reminderMinutesBefore: null as number | null,
   });
 
@@ -240,7 +245,8 @@ export default function ContactDetailPage() {
           postalCode: data.postalCode || '',
           origin: data.origin || '',
           statusId: data.statusId || '',
-          assignedUserId: data.assignedUserId || '',
+          assignedCommercialId: data.assignedCommercialId || '',
+          assignedTeleproId: data.assignedTeleproId || '',
         });
       } else {
         setError('Contact non trouvé');
@@ -524,7 +530,8 @@ export default function ContactDetailPage() {
         description: '',
         priority: 'MEDIUM',
         scheduledAt: '',
-        assignedUserId: '',
+        assignedCommercialId: '',
+    assignedTeleproId: '',
         reminderMinutesBefore: null,
       });
       setSuccess('Tâche créée avec succès !');
@@ -1181,19 +1188,45 @@ export default function ContactDetailPage() {
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Commercial</label>
                   <select
-                    value={formData.assignedUserId || ''}
-                    onChange={(e) => setFormData({ ...formData, assignedUserId: e.target.value })}
+                    value={formData.assignedCommercialId || ''}
+                    onChange={(e) => setFormData({ ...formData, assignedCommercialId: e.target.value })}
                     className="w-full cursor-pointer rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   >
                     <option value="">N/A Non Attribué</option>
-                    {users.map((user) => (
+                    {(isAdmin
+                      ? users.filter((u) => u.role !== 'USER')
+                      : users.filter((u) => u.role === 'COMMERCIAL' || u.role === 'ADMIN' || u.role === 'MANAGER')
+                    ).map((user) => (
                       <option key={user.id} value={user.id}>
                         {user.name}
                       </option>
                     ))}
                   </select>
-                  {!formData.assignedUserId && (
+                  {!formData.assignedCommercialId && (
                     <p className="mt-1 text-sm text-gray-500">Aucun commercial assigné</p>
+                  )}
+                </div>
+
+                {/* Télépro */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Télépro</label>
+                  <select
+                    value={formData.assignedTeleproId || ''}
+                    onChange={(e) => setFormData({ ...formData, assignedTeleproId: e.target.value })}
+                    className="w-full cursor-pointer rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  >
+                    <option value="">N/A Non Attribué</option>
+                    {(isAdmin
+                      ? users.filter((u) => u.role !== 'USER')
+                      : users.filter((u) => u.role === 'TELEPRO' || u.role === 'ADMIN' || u.role === 'MANAGER')
+                    ).map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                  </select>
+                  {!formData.assignedTeleproId && (
+                    <p className="mt-1 text-sm text-gray-500">Aucun télépro assigné</p>
                   )}
                 </div>
 

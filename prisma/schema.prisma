@@ -16,6 +16,10 @@ datasource db {
 enum Role {
   USER
   ADMIN
+  MANAGER
+  COMMERCIAL
+  TELEPRO
+  COMPTABLE
 }
 
 model User {
@@ -32,7 +36,8 @@ model User {
   accounts                       Account[]
   smtpConfig                     SmtpConfig?
   contactsCreated                Contact[]               @relation("ContactCreatedBy")
-  contactsAssigned               Contact[]               @relation("ContactAssignedTo")
+  contactsAssignedAsCommercial   Contact[]               @relation("ContactAssignedCommercial")
+  contactsAssignedAsTelepro      Contact[]               @relation("ContactAssignedTelepro")
   interactions                   Interaction[]
   tasksAssigned                  Task[]                  @relation("TaskAssignedTo")
   tasksCreated                   Task[]                  @relation("TaskCreatedBy")
@@ -187,11 +192,13 @@ model Contact {
   city           String?
   postalCode     String?
   origin         String? // Origine du contact
-  statusId       String?
-  status         Status?       @relation(fields: [statusId], references: [id], onDelete: SetNull)
-  assignedUserId String? // Utilisateur assigné
-  assignedUser   User?         @relation("ContactAssignedTo", fields: [assignedUserId], references: [id], onDelete: SetNull)
-  createdById    String // Utilisateur qui a créé le contact
+  statusId              String?
+  status                Status?       @relation(fields: [statusId], references: [id], onDelete: SetNull)
+  assignedCommercialId  String? // Commercial assigné
+  assignedCommercial    User?         @relation("ContactAssignedCommercial", fields: [assignedCommercialId], references: [id], onDelete: SetNull)
+  assignedTeleproId     String? // Télépro assigné
+  assignedTelepro       User?         @relation("ContactAssignedTelepro", fields: [assignedTeleproId], references: [id], onDelete: SetNull)
+  createdById           String // Utilisateur qui a créé le contact
   createdBy      User          @relation("ContactCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
@@ -199,7 +206,8 @@ model Contact {
   tasks          Task[]
 
   @@index([statusId])
-  @@index([assignedUserId])
+  @@index([assignedCommercialId])
+  @@index([assignedTeleproId])
   @@index([createdById])
   @@map("contact")
 }

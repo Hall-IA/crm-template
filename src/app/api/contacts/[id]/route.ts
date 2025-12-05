@@ -22,7 +22,10 @@ export async function GET(
       where: { id },
       include: {
         status: true,
-        assignedUser: {
+        assignedCommercial: {
+          select: { id: true, name: true, email: true },
+        },
+        assignedTelepro: {
           select: { id: true, name: true, email: true },
         },
         createdBy: {
@@ -84,7 +87,8 @@ export async function PUT(
       postalCode,
       origin,
       statusId,
-      assignedUserId,
+      assignedCommercialId,
+      assignedTeleproId,
     } = body;
 
     // Validation
@@ -121,11 +125,15 @@ export async function PUT(
         postalCode: postalCode || null,
         origin: origin || null,
         statusId: statusId || null,
-        assignedUserId: assignedUserId || null,
+        assignedCommercialId: assignedCommercialId || null,
+        assignedTeleproId: assignedTeleproId || null,
       },
       include: {
         status: true,
-        assignedUser: {
+        assignedCommercial: {
+          select: { id: true, name: true, email: true },
+        },
+        assignedTelepro: {
           select: { id: true, name: true, email: true },
         },
         createdBy: {

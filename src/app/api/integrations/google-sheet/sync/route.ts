@@ -185,6 +185,26 @@ export async function POST(request: NextRequest) {
           const origin =
             originIdx !== null ? row[originIdx]?.trim() || 'Google Sheets' : 'Google Sheets';
 
+          // Déterminer l'assignation selon le rôle de l'utilisateur par défaut
+          let assignedCommercialId: string | null = null;
+          let assignedTeleproId: string | null = null;
+
+          if (config.defaultAssignedUserId) {
+            const defaultUser = await client.user.findUnique({
+              where: { id: config.defaultAssignedUserId },
+              select: { role: true },
+            });
+
+            if (defaultUser) {
+              if (defaultUser.role === 'COMMERCIAL' || defaultUser.role === 'ADMIN' || defaultUser.role === 'MANAGER') {
+                assignedCommercialId = config.defaultAssignedUserId;
+              } else if (defaultUser.role === 'TELEPRO') {
+                assignedTeleproId = config.defaultAssignedUserId;
+              }
+              // Sinon, on ne assigne pas (null pour les deux)
+            }
+          }
+
           // Vérifier si c'est un doublon (nom, prénom ET email)
           const duplicateContactId = await handleContactDuplicate(
             firstName,
@@ -225,7 +245,8 @@ export async function POST(request: NextRequest) {
                   postalCode: postalCode || null,
                   origin,
                   statusId: config.defaultStatusId || null,
-                  assignedUserId: config.defaultAssignedUserId,
+                  assignedCommercialId: assignedCommercialId,
+                  assignedTeleproId: assignedTeleproId,
                   createdById: config.defaultAssignedUserId,
                 },
               });
@@ -241,7 +262,9 @@ export async function POST(request: NextRequest) {
                   postalCode: contact.postalCode || postalCode || null,
                   origin: contact.origin || origin,
                   statusId: contact.statusId || config.defaultStatusId || null,
-                  assignedUserId: contact.assignedUserId || config.defaultAssignedUserId,
+                  // Ne pas écraser les assignations existantes
+                  assignedCommercialId: contact.assignedCommercialId || assignedCommercialId,
+                  assignedTeleproId: contact.assignedTeleproId || assignedTeleproId,
                 },
               });
               updated++;
