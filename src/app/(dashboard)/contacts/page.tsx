@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/lib/auth-client';
 import { PageHeader } from '@/components/page-header';
-import { Search, Plus, Edit, Trash2, Eye, Phone, Mail, MapPin } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Eye, Phone, Mail, MapPin, Upload, X } from 'lucide-react';
 import { ContactTableSkeleton } from '@/components/skeleton';
 
 interface Status {
@@ -52,6 +52,14 @@ export default function ContactsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<any[]>([]);
+  const [importHeaders, setImportHeaders] = useState<string[]>([]);
+  const [importMapping, setImportMapping] = useState<{ [key: string]: string }>({});
+  const [importSkipFirstRow, setImportSkipFirstRow] = useState(true);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
 
   // Filtres
   const [search, setSearch] = useState('');
@@ -261,19 +269,192 @@ export default function ContactsPage() {
     setSuccess('');
   };
 
+  // Fonctions d'import
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportFile(file);
+    setImportResult(null);
+    setError('');
+
+    try {
+      // Parser le fichier pour obtenir les en-têtes et un aperçu
+      const fileName = file.name.toLowerCase();
+      const fileExtension = fileName.split('.').pop();
+
+      if (fileExtension === 'csv') {
+        const text = await file.text();
+        const lines = text.split('\n').filter((line) => line.trim() !== '');
+        if (lines.length === 0) {
+          setError('Le fichier est vide');
+          return;
+        }
+
+        const delimiter = lines[0].includes(';') ? ';' : ',';
+        const headers = lines[0].split(delimiter).map((h) => h.trim().replace(/^"|"$/g, ''));
+        setImportHeaders(headers);
+
+        // Prévisualiser les 5 premières lignes
+        const preview: any[] = [];
+        for (let i = 1; i < Math.min(6, lines.length); i++) {
+          const values = lines[i].split(delimiter).map((v) => v.trim().replace(/^"|"$/g, ''));
+          const row: any = {};
+          headers.forEach((header, index) => {
+            row[header] = values[index] || '';
+          });
+          preview.push(row);
+        }
+        setImportPreview(preview);
+      } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+        // Pour Excel, on a besoin de xlsx
+        try {
+          const XLSX = require('xlsx');
+          const buffer = await file.arrayBuffer();
+          const workbook = XLSX.read(buffer, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const data = XLSX.utils.sheet_to_json(worksheet, { raw: false });
+
+          if (data.length === 0) {
+            setError('Le fichier est vide');
+            return;
+          }
+
+          const headers: any = Object.keys(data[0] as any);
+          setImportHeaders(headers);
+          setImportPreview(data.slice(0, 5));
+        } catch (error) {
+          setError(
+            'Erreur lors du parsing Excel. Assurez-vous que xlsx est installé (npm install xlsx)',
+          );
+        }
+      } else {
+        setError('Format de fichier non supporté. Utilisez CSV ou Excel (.xlsx, .xls)');
+        return;
+      }
+
+      // Initialiser le mapping avec des suggestions automatiques
+      const autoMapping: { [key: string]: string } = {};
+      importHeaders.forEach((header: string) => {
+        const lowerHeader = header.toLowerCase();
+        if (
+          lowerHeader.includes('téléphone') ||
+          lowerHeader.includes('telephone') ||
+          lowerHeader.includes('phone')
+        ) {
+          autoMapping.phone = header;
+        } else if (
+          lowerHeader.includes('prénom') ||
+          lowerHeader.includes('prenom') ||
+          lowerHeader.includes('firstname') ||
+          lowerHeader.includes('first')
+        ) {
+          autoMapping.firstName = header;
+        } else if (
+          lowerHeader.includes('nom') ||
+          lowerHeader.includes('lastname') ||
+          lowerHeader.includes('last')
+        ) {
+          autoMapping.lastName = header;
+        } else if (lowerHeader.includes('email') || lowerHeader.includes('mail')) {
+          autoMapping.email = header;
+        } else if (
+          lowerHeader.includes('civilité') ||
+          lowerHeader.includes('civilite') ||
+          lowerHeader.includes('civility')
+        ) {
+          autoMapping.civility = header;
+        } else if (lowerHeader.includes('adresse') || lowerHeader.includes('address')) {
+          autoMapping.address = header;
+        } else if (lowerHeader.includes('ville') || lowerHeader.includes('city')) {
+          autoMapping.city = header;
+        } else if (lowerHeader.includes('code postal') || lowerHeader.includes('postal')) {
+          autoMapping.postalCode = header;
+        } else if (lowerHeader.includes('origine') || lowerHeader.includes('origin')) {
+          autoMapping.origin = header;
+        }
+      });
+      setImportMapping(autoMapping);
+    } catch (error: any) {
+      setError(`Erreur lors de la lecture du fichier: ${error.message}`);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!importFile) {
+      setError('Veuillez sélectionner un fichier');
+      return;
+    }
+
+    if (!importMapping.phone) {
+      setError('Le mapping du téléphone est obligatoire');
+      return;
+    }
+
+    setImporting(true);
+    setError('');
+    setImportResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      formData.append('mapping', JSON.stringify(importMapping));
+      formData.append('skipFirstRow', importSkipFirstRow.toString());
+
+      const response = await fetch('/api/contacts/import', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Erreur lors de l'import");
+      }
+
+      setImportResult(result);
+      setSuccess(`Import réussi: ${result.imported} contact(s) importé(s)`);
+      fetchContacts();
+
+      // Fermeture de la modal
+      setShowImportModal(false);
+      setImportFile(null);
+      setImportPreview([]);
+      setImportHeaders([]);
+      setImportMapping({});
+      setImportResult(null);
+      setSuccess('');
+      
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="h-full">
       <PageHeader
         title="Contacts"
         description="Gérez tous vos contacts en un seul endroit"
         action={
-          <button
-            onClick={handleNewContact}
-            className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
-          >
-            <Plus className="mr-2 inline h-4 w-4" />
-            Nouveau contact
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="w-full cursor-pointer rounded-lg border border-indigo-600 bg-white px-4 py-2 text-sm font-medium text-indigo-600 transition-colors hover:bg-indigo-50 sm:w-auto"
+            >
+              <Upload className="mr-2 inline h-4 w-4" />
+              Importer
+            </button>
+            <button
+              onClick={handleNewContact}
+              className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
+            >
+              <Plus className="mr-2 inline h-4 w-4" />
+              Nouveau contact
+            </button>
+          </div>
         }
       />
 
@@ -726,6 +907,250 @@ export default function ContactsPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'import */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg bg-white shadow-xl">
+            {/* En-tête */}
+            <div className="shrink-0 border-b border-gray-100 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">Importer des contacts</h2>
+                <button
+                  onClick={() => {
+                    setShowImportModal(false);
+                    setImportFile(null);
+                    setImportPreview([]);
+                    setImportHeaders([]);
+                    setImportMapping({});
+                    setImportResult(null);
+                    setError('');
+                  }}
+                  className="cursor-pointer rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {!importFile ? (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Sélectionner un fichier (CSV ou Excel)
+                  </label>
+                  <div className="mt-1 flex justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-10">
+                    <div className="text-center">
+                      <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                      <div className="mt-4 flex text-sm leading-6 text-gray-600">
+                        <label className="relative cursor-pointer rounded-md bg-white font-semibold text-indigo-600 focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-offset-2 focus-within:outline-none hover:text-indigo-500">
+                          <span>Téléverser un fichier</span>
+                          <input
+                            type="file"
+                            accept=".csv,.xlsx,.xls"
+                            onChange={handleFileSelect}
+                            className="sr-only"
+                          />
+                        </label>
+                        <p className="pl-1">ou glissez-déposez</p>
+                      </div>
+                      <p className="text-xs leading-5 text-gray-600">
+                        CSV, XLSX ou XLS jusqu'à 10MB
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Fichier sélectionné */}
+                  <div className="rounded-lg border border-gray-200 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{importFile.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {(importFile.size / 1024).toFixed(2)} KB
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setImportFile(null);
+                          setImportPreview([]);
+                          setImportHeaders([]);
+                          setImportMapping({});
+                          setImportResult(null);
+                        }}
+                        className="cursor-pointer rounded-lg p-1 text-gray-400 transition-colors hover:text-gray-600"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Options */}
+                  <div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={importSkipFirstRow}
+                        onChange={(e) => setImportSkipFirstRow(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-sm text-gray-700">
+                        La première ligne contient les en-têtes
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Mapping des colonnes */}
+                  {importHeaders.length > 0 && (
+                    <div>
+                      <h3 className="mb-3 text-sm font-semibold text-gray-900">
+                        Mapper les colonnes
+                      </h3>
+                      <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+                        {[
+                          { key: 'phone', label: 'Téléphone', required: true },
+                          { key: 'firstName', label: 'Prénom', required: false },
+                          { key: 'lastName', label: 'Nom', required: false },
+                          { key: 'email', label: 'Email', required: false },
+                          { key: 'civility', label: 'Civilité', required: false },
+                          { key: 'secondaryPhone', label: 'Téléphone secondaire', required: false },
+                          { key: 'address', label: 'Adresse', required: false },
+                          { key: 'city', label: 'Ville', required: false },
+                          { key: 'postalCode', label: 'Code postal', required: false },
+                          { key: 'origin', label: 'Origine', required: false },
+                        ].map((field) => (
+                          <div key={field.key} className="flex items-center gap-3">
+                            <label className="w-40 text-sm text-gray-700">
+                              {field.label}
+                              {field.required && <span className="text-red-500">*</span>}
+                            </label>
+                            <select
+                              value={importMapping[field.key] || ''}
+                              onChange={(e) =>
+                                setImportMapping({ ...importMapping, [field.key]: e.target.value })
+                              }
+                              className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            >
+                              <option value="">-- Sélectionner une colonne --</option>
+                              {importHeaders.map((header) => (
+                                <option key={header} value={header}>
+                                  {header}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Prévisualisation */}
+                  {importPreview.length > 0 && (
+                    <div>
+                      <h3 className="mb-3 text-sm font-semibold text-gray-900">
+                        Aperçu (5 premières lignes)
+                      </h3>
+                      <div className="overflow-x-auto rounded-lg border border-gray-200">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              {importHeaders.map((header) => (
+                                <th
+                                  key={header}
+                                  className="px-4 py-2 text-left text-xs font-medium text-gray-700"
+                                >
+                                  {header}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200 bg-white">
+                            {importPreview.map((row, idx) => (
+                              <tr key={idx}>
+                                {importHeaders.map((header) => (
+                                  <td
+                                    key={header}
+                                    className="px-4 py-2 text-xs whitespace-nowrap text-gray-900"
+                                  >
+                                    {row[header] || '-'}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Résultat de l'import */}
+                  {importResult && (
+                    <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                      <h3 className="mb-2 text-sm font-semibold text-green-900">
+                        Résultat de l'import
+                      </h3>
+                      <ul className="space-y-1 text-sm text-green-800">
+                        <li>✓ {importResult.imported} contact(s) importé(s)</li>
+                        {importResult.skipped > 0 && (
+                          <li className="text-yellow-700">
+                            ⚠ {importResult.skipped} ligne(s) ignorée(s)
+                          </li>
+                        )}
+                        {importResult.duplicates > 0 && (
+                          <li className="text-orange-700">
+                            ⚠ {importResult.duplicates} doublon(s) détecté(s)
+                          </li>
+                        )}
+                        {importResult.errors > 0 && (
+                          <li className="text-red-700">✗ {importResult.errors} erreur(s)</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
+                  {error && (
+                    <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Pied de modal */}
+            {importFile && (
+              <div className="shrink-0 border-t border-gray-100 px-6 py-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowImportModal(false);
+                      setImportFile(null);
+                      setImportPreview([]);
+                      setImportHeaders([]);
+                      setImportMapping({});
+                      setImportResult(null);
+                      setError('');
+                    }}
+                    className="w-full cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                    disabled={importing}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleImport}
+                    disabled={importing || !importMapping.phone}
+                    className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                  >
+                    {importing ? 'Import en cours...' : 'Importer'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

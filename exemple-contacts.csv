@@ -1,0 +1,11 @@
+Civilité,Prénom,Nom,Téléphone,Téléphone secondaire,Email,Adresse,Ville,Code postal,Origine
+M,Jean,Dupont,0612345678,0698765432,jean.dupont@example.com,123 Rue de la République,Paris,75001,Google Ads
+MME,Marie,Martin,0623456789,,marie.martin@example.com,45 Avenue des Champs,Paris,75008,Facebook
+M,Pierre,Bernard,0634567890,0645678901,pierre.bernard@example.com,78 Boulevard Saint-Germain,Lyon,69001,LinkedIn
+MME,Sophie,Dubois,0645678901,,sophie.dubois@example.com,12 Place Bellecour,Lyon,69002,Recommandation
+M,Thomas,Moreau,0656789012,0667890123,thomas.moreau@example.com,56 Rue de la Paix,Marseille,13001,Google Ads
+MME,Julie,Lefebvre,0667890123,,julie.lefebvre@example.com,89 Cours Mirabeau,Marseille,13002,Facebook
+M,Michel,Petit,0678901234,,michel.petit@example.com,34 Rue du Commerce,Toulouse,31000,LinkedIn
+MME,Isabelle,Roux,0689012345,0690123456,isabelle.roux@example.com,67 Avenue Jean Jaurès,Toulouse,31001,Recommandation
+M,David,Simon,0690123456,,david.simon@example.com,23 Place du Capitole,Bordeaux,33000,Google Ads
+MME,Claire,Laurent,0612345679,,claire.laurent@example.com,45 Rue Sainte-Catherine,Bordeaux,33001,Facebook
