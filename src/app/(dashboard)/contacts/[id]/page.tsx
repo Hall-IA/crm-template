@@ -141,8 +141,7 @@ export default function ContactDetailPage() {
     description: '',
     priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
     scheduledAt: '',
-    assignedCommercialId: '',
-    assignedTeleproId: '',
+    assignedUserId: '',
     reminderMinutesBefore: null as number | null,
   });
 
@@ -530,8 +529,7 @@ export default function ContactDetailPage() {
         description: '',
         priority: 'MEDIUM',
         scheduledAt: '',
-        assignedCommercialId: '',
-    assignedTeleproId: '',
+        assignedUserId: '',
         reminderMinutesBefore: null,
       });
       setSuccess('Tâche créée avec succès !');
@@ -1189,13 +1187,18 @@ export default function ContactDetailPage() {
                   <label className="mb-1 block text-sm font-medium text-gray-700">Commercial</label>
                   <select
                     value={formData.assignedCommercialId || ''}
-                    onChange={(e) => setFormData({ ...formData, assignedCommercialId: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, assignedCommercialId: e.target.value })
+                    }
                     className="w-full cursor-pointer rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   >
                     <option value="">N/A Non Attribué</option>
                     {(isAdmin
                       ? users.filter((u) => u.role !== 'USER')
-                      : users.filter((u) => u.role === 'COMMERCIAL' || u.role === 'ADMIN' || u.role === 'MANAGER')
+                      : users.filter(
+                          (u) =>
+                            u.role === 'COMMERCIAL' || u.role === 'ADMIN' || u.role === 'MANAGER',
+                        )
                     ).map((user) => (
                       <option key={user.id} value={user.id}>
                         {user.name}
@@ -1212,13 +1215,17 @@ export default function ContactDetailPage() {
                   <label className="mb-1 block text-sm font-medium text-gray-700">Télépro</label>
                   <select
                     value={formData.assignedTeleproId || ''}
-                    onChange={(e) => setFormData({ ...formData, assignedTeleproId: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, assignedTeleproId: e.target.value })
+                    }
                     className="w-full cursor-pointer rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   >
                     <option value="">N/A Non Attribué</option>
                     {(isAdmin
                       ? users.filter((u) => u.role !== 'USER')
-                      : users.filter((u) => u.role === 'TELEPRO' || u.role === 'ADMIN' || u.role === 'MANAGER')
+                      : users.filter(
+                          (u) => u.role === 'TELEPRO' || u.role === 'ADMIN' || u.role === 'MANAGER',
+                        )
                     ).map((user) => (
                       <option key={user.id} value={user.id}>
                         {user.name}
@@ -1729,21 +1736,6 @@ export default function ContactDetailPage() {
                       {statuses.map((status) => (
                         <option key={status.id} value={status.id}>
                           {status.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Assigné à</label>
-                    <select
-                      value={formData.assignedUserId}
-                      onChange={(e) => setFormData({ ...formData, assignedUserId: e.target.value })}
-                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    >
-                      <option value="">Non assigné</option>
-                      {users.map((user) => (
-                        <option key={user.id} value={user.id}>
-                          {user.name}
                         </option>
                       ))}
                     </select>
