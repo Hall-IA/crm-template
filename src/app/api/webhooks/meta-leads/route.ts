@@ -222,18 +222,20 @@ export async function POST(request: NextRequest) {
           }
 
           // Créer une interaction "Lead Meta"
-          await prisma.interaction.create({
-            data: {
-              contactId: contact.id,
-              type: 'NOTE',
-              title: `Lead Meta Lead Ads - ${config.name}`,
-              content: `Lead importé automatiquement depuis Meta Lead Ads (${config.name}, formulaire: ${
-                change.value.form_id
-              }).`,
-              userId: createdById,
-              date: new Date(change.value.created_time * 1000),
-            },
-          });
+          if (contact) {
+            await prisma.interaction.create({
+              data: {
+                contactId: contact.id,
+                type: 'NOTE',
+                title: `Lead Meta Lead Ads - ${config.name}`,
+                content: `Lead importé automatiquement depuis Meta Lead Ads (${config.name}, formulaire: ${
+                  change.value.form_id
+                }).`,
+                userId: createdById,
+                date: new Date(change.value.created_time * 1000),
+              },
+            });
+          }
         } catch (err: any) {
           console.error('Erreur lors du traitement du lead Meta:', err);
         }
