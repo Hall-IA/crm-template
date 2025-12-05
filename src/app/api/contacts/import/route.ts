@@ -212,7 +212,10 @@ export async function POST(request: NextRequest) {
           },
           include: {
             status: true,
-            assignedUser: {
+            assignedCommercial: {
+              select: { id: true, name: true, email: true },
+            },
+            assignedTelepro: {
               select: { id: true, name: true, email: true },
             },
             createdBy: {
