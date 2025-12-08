@@ -25,7 +25,7 @@ export async function createInteraction(params: CreateInteractionParams) {
       content,
       userId,
       date: date || null,
-      metadata: metadata ? metadata : null,
+      metadata: metadata || undefined,
     },
   });
 }
