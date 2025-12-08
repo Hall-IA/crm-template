@@ -686,7 +686,7 @@ export default function ContactsPage() {
                         <span className="text-gray-400">-</span>
                       )}
                     </td>
-                    <td className="px-3 py-4 whitespace-nowrap sm:px-6 flex justify-center">
+                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
                       {contact.assignedCommercial ? (
                         <span className="text-sm text-gray-900">
                           {contact.assignedCommercial.name}

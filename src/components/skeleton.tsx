@@ -30,7 +30,16 @@ export function ContactTableSkeleton() {
               Statut
             </th>
             <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-              Assigné à
+              COMMERCIAL
+            </th>
+            <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+              TÉLÉPRO
+            </th>
+            <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+              Créé le
+            </th>
+            <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+              Modifié le
             </th>
             <th className="px-3 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
               Actions
@@ -59,11 +68,19 @@ export function ContactTableSkeleton() {
                 <Skeleton className="h-6 w-20 rounded-full" />
               </td>
               <td className="px-3 py-4 whitespace-nowrap sm:px-6">
-                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-5 w-24 rounded-full" />
+              </td>
+              <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                <Skeleton className="h-5 w-24 rounded-full" />
+              </td>
+              <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                <Skeleton className="h-4 w-32" />
+              </td>
+              <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                <Skeleton className="h-4 w-32" />
               </td>
               <td className="px-3 py-4 text-right text-sm font-medium whitespace-nowrap sm:px-6">
                 <div className="flex items-center justify-end gap-2">
-                  <Skeleton className="h-8 w-8 rounded-lg" />
                   <Skeleton className="h-8 w-8 rounded-lg" />
                   <Skeleton className="h-8 w-8 rounded-lg" />
                 </div>
