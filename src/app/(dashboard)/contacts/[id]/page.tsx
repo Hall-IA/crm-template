@@ -22,6 +22,8 @@ import {
   Settings,
   Plus,
   MoreVertical,
+  Tag,
+  Edit,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Editor, type DefaultTemplateRef } from '@/components/editor';
@@ -43,9 +45,10 @@ interface User {
 
 interface Interaction {
   id: string;
-  type: 'CALL' | 'SMS' | 'EMAIL' | 'MEETING' | 'NOTE';
+  type: 'CALL' | 'SMS' | 'EMAIL' | 'MEETING' | 'NOTE' | 'STATUS_CHANGE' | 'CONTACT_UPDATE' | 'APPOINTMENT_CREATED' | 'ASSIGNMENT_CHANGE';
   title: string | null;
   content: string;
+  metadata: any | null;
   date: string | null;
   userId: string;
   user: User;
@@ -654,17 +657,25 @@ export default function ContactDetailPage() {
   const getInteractionIcon = (type: string) => {
     switch (type) {
       case 'CALL':
-        return <PhoneCall className="h-5 w-5" />;
+        return <PhoneCall className="h-5 w-5 text-green-600" />;
       case 'SMS':
-        return <MessageSquare className="h-5 w-5" />;
+        return <MessageSquare className="h-5 w-5 text-blue-600" />;
       case 'EMAIL':
-        return <MailIcon className="h-5 w-5" />;
+        return <MailIcon className="h-5 w-5 text-blue-600" />;
       case 'MEETING':
-        return <CalendarIcon className="h-5 w-5" />;
+        return <CalendarIcon className="h-5 w-5 text-yellow-600" />;
       case 'NOTE':
-        return <FileText className="h-5 w-5" />;
+        return <FileText className="h-5 w-5 text-gray-600" />;
+      case 'STATUS_CHANGE':
+        return <Tag className="h-5 w-5 text-purple-600" />;
+      case 'CONTACT_UPDATE':
+        return <Edit className="h-5 w-5 text-indigo-600" />;
+      case 'APPOINTMENT_CREATED':
+        return <CalendarIcon className="h-5 w-5 text-orange-600" />;
+      case 'ASSIGNMENT_CHANGE':
+        return <User className="h-5 w-5 text-teal-600" />;
       default:
-        return <FileText className="h-5 w-5" />;
+        return <FileText className="h-5 w-5 text-gray-600" />;
     }
   };
 
@@ -680,8 +691,16 @@ export default function ContactDetailPage() {
         return 'RDV';
       case 'NOTE':
         return 'Note';
+      case 'STATUS_CHANGE':
+        return 'Changement de statut';
+      case 'CONTACT_UPDATE':
+        return 'Modification';
+      case 'APPOINTMENT_CREATED':
+        return 'Rendez-vous créé';
+      case 'ASSIGNMENT_CHANGE':
+        return 'Changement d\'assignation';
       default:
-        return 'Note';
+        return 'Interaction';
     }
   };
 
@@ -1327,10 +1346,20 @@ export default function ContactDetailPage() {
                                       return 'bg-blue-50 border-blue-200';
                                     case 'CALL':
                                       return 'bg-green-50 border-green-200';
+                                    case 'SMS':
+                                      return 'bg-blue-50 border-blue-200';
                                     case 'NOTE':
-                                      return 'bg-red-50 border-red-200';
+                                      return 'bg-gray-50 border-gray-200';
                                     case 'MEETING':
                                       return 'bg-yellow-50 border-yellow-200';
+                                    case 'STATUS_CHANGE':
+                                      return 'bg-purple-50 border-purple-200';
+                                    case 'CONTACT_UPDATE':
+                                      return 'bg-indigo-50 border-indigo-200';
+                                    case 'APPOINTMENT_CREATED':
+                                      return 'bg-orange-50 border-orange-200';
+                                    case 'ASSIGNMENT_CHANGE':
+                                      return 'bg-teal-50 border-teal-200';
                                     default:
                                       return 'bg-gray-50 border-gray-200';
                                   }

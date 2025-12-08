@@ -164,6 +164,10 @@ enum InteractionType {
   EMAIL
   MEETING
   NOTE
+  STATUS_CHANGE
+  CONTACT_UPDATE
+  APPOINTMENT_CREATED
+  ASSIGNMENT_CHANGE
 }
 
 enum TaskType {
@@ -181,29 +185,29 @@ enum TaskPriority {
 }
 
 model Contact {
-  id             String        @id @default(cuid())
-  civility       Civility?
-  firstName      String?
-  lastName       String?
-  phone          String // Obligatoire
-  secondaryPhone String?
-  email          String?
-  address        String?
-  city           String?
-  postalCode     String?
-  origin         String? // Origine du contact
-  statusId              String?
-  status                Status?       @relation(fields: [statusId], references: [id], onDelete: SetNull)
-  assignedCommercialId  String? // Commercial assigné
-  assignedCommercial    User?         @relation("ContactAssignedCommercial", fields: [assignedCommercialId], references: [id], onDelete: SetNull)
-  assignedTeleproId     String? // Télépro assigné
-  assignedTelepro       User?         @relation("ContactAssignedTelepro", fields: [assignedTeleproId], references: [id], onDelete: SetNull)
-  createdById           String // Utilisateur qui a créé le contact
-  createdBy      User          @relation("ContactCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  interactions   Interaction[]
-  tasks          Task[]
+  id                   String        @id @default(cuid())
+  civility             Civility?
+  firstName            String?
+  lastName             String?
+  phone                String // Obligatoire
+  secondaryPhone       String?
+  email                String?
+  address              String?
+  city                 String?
+  postalCode           String?
+  origin               String? // Origine du contact
+  statusId             String?
+  status               Status?       @relation(fields: [statusId], references: [id], onDelete: SetNull)
+  assignedCommercialId String? // Commercial assigné
+  assignedCommercial   User?         @relation("ContactAssignedCommercial", fields: [assignedCommercialId], references: [id], onDelete: SetNull)
+  assignedTeleproId    String? // Télépro assigné
+  assignedTelepro      User?         @relation("ContactAssignedTelepro", fields: [assignedTeleproId], references: [id], onDelete: SetNull)
+  createdById          String // Utilisateur qui a créé le contact
+  createdBy            User          @relation("ContactCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  interactions         Interaction[]
+  tasks                Task[]
 
   @@index([statusId])
   @@index([assignedCommercialId])
@@ -219,6 +223,7 @@ model Interaction {
   type      InteractionType
   title     String?
   content   String // Contenu de l'interaction
+  metadata  Json? // Métadonnées pour stocker les détails des changements (ancienne valeur, nouvelle valeur, etc.)
   userId    String // Utilisateur qui a créé l'interaction
   user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   date      DateTime? // Date de l'interaction (pour RDV, appels, etc.)
@@ -276,7 +281,7 @@ model UserGoogleAccount {
 
 model MetaLeadConfig {
   id                    String   @id @default(cuid())
-  name                  String   // Nom de la configuration (ex: "Campagne Facebook Q4")
+  name                  String // Nom de la configuration (ex: "Campagne Facebook Q4")
   pageId                String
   accessToken           String // Jeton d'accès de la page ou du système (chiffré)
   verifyToken           String // Token de vérification pour le webhook
@@ -293,7 +298,7 @@ model MetaLeadConfig {
 
 model GoogleAdsLeadConfig {
   id                    String   @id @default(cuid())
-  name                  String   // Nom de la configuration (ex: "Campagne Google Ads Produits")
+  name                  String // Nom de la configuration (ex: "Campagne Google Ads Produits")
   webhookKey            String // Clé secrète partagée pour sécuriser le webhook
   active                Boolean  @default(true)
   defaultStatusId       String?
@@ -308,7 +313,7 @@ model GoogleAdsLeadConfig {
 
 model GoogleSheetSyncConfig {
   id                    String   @id @default(cuid())
-  name                  String   // Nom de la configuration (ex: "Contacts Ventes")
+  name                  String // Nom de la configuration (ex: "Contacts Ventes")
   ownerUserId           String
   ownerUser             User     @relation("GoogleSheetOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
   spreadsheetId         String

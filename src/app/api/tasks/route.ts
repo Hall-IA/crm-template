@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { logAppointmentCreated, createInteraction } from '@/lib/contact-interactions';
 
 // GET /api/tasks - Récupérer les tâches de l'utilisateur
 export async function GET(request: NextRequest) {
@@ -198,23 +199,37 @@ export async function POST(request: NextRequest) {
 
     // Si la tâche est liée à un contact, créer aussi une interaction
     if (contactId) {
-      const interactionTypeMap: Record<string, string> = {
-        CALL: 'CALL',
-        MEETING: 'MEETING',
-        EMAIL: 'EMAIL',
-        OTHER: 'NOTE',
-      };
+      try {
+        if (type === 'MEETING') {
+          // Pour les rendez-vous, utiliser la fonction spécialisée
+          await logAppointmentCreated(
+            contactId,
+            task.id,
+            new Date(scheduledAt),
+            title,
+            session.user.id
+          );
+        } else {
+          // Pour les autres types de tâches, créer une interaction standard
+          const interactionTypeMap: Record<string, string> = {
+            CALL: 'CALL',
+            EMAIL: 'EMAIL',
+            OTHER: 'NOTE',
+          };
 
-      await prisma.interaction.create({
-        data: {
-          contactId,
-          type: (interactionTypeMap[type] || 'NOTE') as any,
-          title: title || `Tâche ${type}`,
-          content: description,
-          userId: session.user.id,
-          date: new Date(scheduledAt),
-        },
-      });
+          await createInteraction({
+            contactId,
+            type: (interactionTypeMap[type] || 'NOTE') as any,
+            title: title || `Tâche ${type}`,
+            content: description,
+            userId: session.user.id,
+            date: new Date(scheduledAt),
+          });
+        }
+      } catch (error) {
+        // Ne pas faire échouer la création de la tâche si l'interaction échoue
+        console.error('Erreur lors de la création de l\'interaction:', error);
+      }
     }
 
     return NextResponse.json(task, { status: 201 });

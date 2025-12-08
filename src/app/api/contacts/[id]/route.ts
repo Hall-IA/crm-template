@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  logStatusChange,
+  logContactUpdate,
+  logAssignmentChange,
+} from "@/lib/contact-interactions";
 
 // GET /api/contacts/[id] - Récupérer un contact spécifique avec ses interactions
 export async function GET(
@@ -99,9 +104,18 @@ export async function PUT(
       );
     }
 
-    // Vérifier que le contact existe
+    // Vérifier que le contact existe avec toutes les relations nécessaires
     const existing = await prisma.contact.findUnique({
       where: { id },
+      include: {
+        status: true,
+        assignedCommercial: {
+          select: { id: true, name: true, email: true },
+        },
+        assignedTelepro: {
+          select: { id: true, name: true, email: true },
+        },
+      },
     });
 
     if (!existing) {
@@ -111,23 +125,76 @@ export async function PUT(
       );
     }
 
+    // Préparer les données de mise à jour
+    const updateData: any = {
+      civility: civility !== undefined ? civility || null : existing.civility,
+      firstName:
+        firstName !== undefined ? firstName || null : existing.firstName,
+      lastName: lastName !== undefined ? lastName || null : existing.lastName,
+      phone: phone || existing.phone,
+      secondaryPhone:
+        secondaryPhone !== undefined
+          ? secondaryPhone || null
+          : existing.secondaryPhone,
+      email: email !== undefined ? email || null : existing.email,
+      address: address !== undefined ? address || null : existing.address,
+      city: city !== undefined ? city || null : existing.city,
+      postalCode:
+        postalCode !== undefined ? postalCode || null : existing.postalCode,
+      origin: origin !== undefined ? origin || null : existing.origin,
+      statusId: statusId !== undefined ? statusId || null : existing.statusId,
+      assignedCommercialId:
+        assignedCommercialId !== undefined
+          ? assignedCommercialId || null
+          : existing.assignedCommercialId,
+      assignedTeleproId:
+        assignedTeleproId !== undefined
+          ? assignedTeleproId || null
+          : existing.assignedTeleproId,
+    };
+
+    // Détecter les changements pour créer les interactions
+    const changes: Record<string, { old: any; new: any }> = {};
+
+    // Changements de champs de contact
+    if (civility !== undefined && civility !== existing.civility) {
+      changes.civility = { old: existing.civility, new: civility };
+    }
+    if (firstName !== undefined && firstName !== existing.firstName) {
+      changes.firstName = { old: existing.firstName, new: firstName };
+    }
+    if (lastName !== undefined && lastName !== existing.lastName) {
+      changes.lastName = { old: existing.lastName, new: lastName };
+    }
+    if (phone !== undefined && phone !== existing.phone) {
+      changes.phone = { old: existing.phone, new: phone };
+    }
+    if (
+      secondaryPhone !== undefined &&
+      secondaryPhone !== existing.secondaryPhone
+    ) {
+      changes.secondaryPhone = { old: existing.secondaryPhone, new: secondaryPhone };
+    }
+    if (email !== undefined && email !== existing.email) {
+      changes.email = { old: existing.email, new: email };
+    }
+    if (address !== undefined && address !== existing.address) {
+      changes.address = { old: existing.address, new: address };
+    }
+    if (city !== undefined && city !== existing.city) {
+      changes.city = { old: existing.city, new: city };
+    }
+    if (postalCode !== undefined && postalCode !== existing.postalCode) {
+      changes.postalCode = { old: existing.postalCode, new: postalCode };
+    }
+    if (origin !== undefined && origin !== existing.origin) {
+      changes.origin = { old: existing.origin, new: origin };
+    }
+
+    // Mettre à jour le contact
     const contact = await prisma.contact.update({
       where: { id },
-      data: {
-        civility: civility || null,
-        firstName: firstName || null,
-        lastName: lastName || null,
-        phone,
-        secondaryPhone: secondaryPhone || null,
-        email: email || null,
-        address: address || null,
-        city: city || null,
-        postalCode: postalCode || null,
-        origin: origin || null,
-        statusId: statusId || null,
-        assignedCommercialId: assignedCommercialId || null,
-        assignedTeleproId: assignedTeleproId || null,
-      },
+      data: updateData,
       include: {
         status: true,
         assignedCommercial: {
@@ -141,6 +208,64 @@ export async function PUT(
         },
       },
     });
+
+    // Créer les interactions pour les changements détectés
+    try {
+      // Changement de statut
+      if (
+        statusId !== undefined &&
+        statusId !== existing.statusId
+      ) {
+        await logStatusChange(
+          id,
+          existing.statusId,
+          statusId,
+          session.user.id,
+          existing.status?.name || null,
+          contact.status?.name || null
+        );
+      }
+
+      // Changement d'assignation Commercial
+      if (
+        assignedCommercialId !== undefined &&
+        assignedCommercialId !== existing.assignedCommercialId
+      ) {
+        await logAssignmentChange(
+          id,
+          "COMMERCIAL",
+          existing.assignedCommercialId,
+          assignedCommercialId,
+          session.user.id,
+          existing.assignedCommercial?.name || null,
+          contact.assignedCommercial?.name || null
+        );
+      }
+
+      // Changement d'assignation Télépro
+      if (
+        assignedTeleproId !== undefined &&
+        assignedTeleproId !== existing.assignedTeleproId
+      ) {
+        await logAssignmentChange(
+          id,
+          "TELEPRO",
+          existing.assignedTeleproId,
+          assignedTeleproId,
+          session.user.id,
+          existing.assignedTelepro?.name || null,
+          contact.assignedTelepro?.name || null
+        );
+      }
+
+      // Changements de champs de contact
+      if (Object.keys(changes).length > 0) {
+        await logContactUpdate(id, changes, session.user.id);
+      }
+    } catch (error) {
+      // Ne pas faire échouer la mise à jour si l'enregistrement de l'interaction échoue
+      console.error("Erreur lors de la création des interactions:", error);
+    }
 
     return NextResponse.json(contact);
   } catch (error: any) {
