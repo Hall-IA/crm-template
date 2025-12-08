@@ -8,7 +8,7 @@ import { useMemo } from 'react';
 import { useUserRole } from '@/hooks/use-user-role';
 import { useMobileMenuContext } from '@/contexts/mobile-menu-context';
 import { useSidebarContext } from '@/contexts/sidebar-context';
-import { LayoutDashboard, Users, UserCog, Settings, Calendar as CalendarIcon, Pin, PinOff } from 'lucide-react';
+import { LayoutDashboard, Users, UserCog, Settings, Calendar as CalendarIcon, Pin, PinOff, FileText } from 'lucide-react';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -25,6 +25,7 @@ export function Sidebar() {
       { name: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard },
       { name: 'Agenda', href: '/agenda', icon: CalendarIcon },
       { name: 'Contacts', href: '/contacts', icon: Users },
+      { name: 'Templates', href: '/templates', icon: FileText },
       { name: 'Paramètres', href: '/settings', icon: Settings },
     ];
 

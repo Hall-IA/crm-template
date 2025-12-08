@@ -37,7 +37,7 @@ import {
 } from '@lexkit/editor';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import { LexicalEditor } from 'lexical';
+import { LexicalEditor, $getSelection, $isRangeSelection, $insertNodes, $createTextNode } from 'lexical';
 import {
   Bold,
   Italic,
@@ -127,6 +127,7 @@ type ExtensionNames = (typeof extensions)[number]['name'];
 export interface DefaultTemplateRef {
   injectMarkdown: (content: string) => void;
   injectHTML: (content: string) => void;
+  insertText: (text: string) => void;
   getMarkdown: () => string;
   getHTML: () => string;
 }
@@ -860,6 +861,20 @@ function EditorContent({
             });
           }
         }, 100);
+      },
+      insertText: (text: string) => {
+        if (editor) {
+          editor.update(() => {
+            const selection = $getSelection();
+            if ($isRangeSelection(selection)) {
+              selection.insertText(text);
+            } else {
+              // Si pas de sélection, insérer à la position du curseur
+              const textNode = $createTextNode(text);
+              $insertNodes([textNode]);
+            }
+          });
+        }
       },
       getMarkdown: () => commandsRef.current.exportToMarkdown(),
       getHTML: () => commandsRef.current.exportToHTML(),

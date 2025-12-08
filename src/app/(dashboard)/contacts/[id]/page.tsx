@@ -14,14 +14,9 @@ import {
   Video,
   ExternalLink,
   Activity,
-  Star,
-  Lock,
-  Search,
-  Download,
   RefreshCw,
   Settings,
   Plus,
-  MoreVertical,
   Tag,
   Edit,
 } from 'lucide-react';
@@ -29,6 +24,7 @@ import Link from 'next/link';
 import { Editor, type DefaultTemplateRef } from '@/components/editor';
 import { useUserRole } from '@/hooks/use-user-role';
 import { useMobileMenuContext } from '@/contexts/mobile-menu-context';
+import { replaceTemplateVariables } from '@/lib/template-variables';
 
 interface Status {
   id: string;
@@ -106,6 +102,8 @@ export default function ContactDetailPage() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
+  const [emailTemplates, setEmailTemplates] = useState<any[]>([]);
+  const [noteTemplates, setNoteTemplates] = useState<any[]>([]);
   const emailEditorRef = useRef<DefaultTemplateRef | null>(null);
   const taskEditorRef = useRef<DefaultTemplateRef | null>(null);
   const interactionEditorRef = useRef<DefaultTemplateRef | null>(null);
@@ -215,6 +213,7 @@ export default function ContactDetailPage() {
       fetchStatuses();
       fetchUsers();
       fetchCompanies();
+      fetchTemplates();
       fetchTasks();
     }
   }, [contactId]);
@@ -303,6 +302,27 @@ export default function ContactDetailPage() {
       }
     } catch (error) {
       console.error('Erreur lors du chargement des entreprises:', error);
+    }
+  };
+
+  const fetchTemplates = async () => {
+    try {
+      const [emailResponse, noteResponse] = await Promise.all([
+        fetch('/api/templates?type=EMAIL'),
+        fetch('/api/templates?type=NOTE'),
+      ]);
+
+      if (emailResponse.ok) {
+        const emailData = await emailResponse.json();
+        setEmailTemplates(emailData);
+      }
+
+      if (noteResponse.ok) {
+        const noteData = await noteResponse.json();
+        setNoteTemplates(noteData);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des templates:', error);
     }
   };
 
@@ -999,6 +1019,26 @@ export default function ContactDetailPage() {
               <Plus className="mr-1 inline h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Créer une tâche</span>
               <span className="sm:hidden">Tâche</span>
+            </button>
+            <button
+              onClick={() => {
+                setShowMeetModal(true);
+                setMeetData({
+                  title: '',
+                  description: '',
+                  scheduledAt: '',
+                  durationMinutes: 30,
+                  attendees: [],
+                  reminderMinutesBefore: null,
+                });
+                setError('');
+                setSuccess('');
+              }}
+              className="cursor-pointer rounded-lg bg-indigo-600 px-2 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700 sm:px-4 sm:py-2 sm:text-sm"
+            >
+              <Video className="mr-1 inline h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Google Meet</span>
+              <span className="sm:hidden">Meet</span>
             </button>
           </div>
         </div>
@@ -1809,6 +1849,60 @@ export default function ContactDetailPage() {
                 </select>
               </div>
 
+              {interactionData.type === 'NOTE' && noteTemplates.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Utiliser un template
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      const templateId = e.target.value;
+                      if (templateId && contact) {
+                        const template = noteTemplates.find((t) => t.id === templateId);
+                        if (template) {
+                          // Remplacer les variables dans le contenu
+                          const variables = {
+                            firstName: contact.firstName,
+                            lastName: contact.lastName,
+                            civility: contact.civility,
+                            email: contact.email,
+                            phone: contact.phone,
+                            secondaryPhone: contact.secondaryPhone,
+                            address: contact.address,
+                            city: contact.city,
+                            postalCode: contact.postalCode,
+                            companyName: contact.company
+                              ? `${contact.company.firstName || ''} ${contact.company.lastName || ''}`.trim()
+                              : null,
+                          };
+
+                          const processedContent = replaceTemplateVariables(
+                            template.content,
+                            variables
+                          );
+
+                          setInteractionData({
+                            ...interactionData,
+                            content: processedContent,
+                          });
+                          if (interactionEditorRef.current) {
+                            interactionEditorRef.current.injectHTML(processedContent);
+                          }
+                        }
+                      }
+                    }}
+                    className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  >
+                    <option value="">Sélectionner un template...</option>
+                    {noteTemplates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700">Titre</label>
                 <input
@@ -1925,6 +2019,65 @@ export default function ContactDetailPage() {
                   <span className="font-medium">À :</span> {contact.email}
                 </p>
               </div>
+
+              {emailTemplates.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Utiliser un template
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      const templateId = e.target.value;
+                      if (templateId && contact) {
+                        const template = emailTemplates.find((t) => t.id === templateId);
+                        if (template) {
+                          // Remplacer les variables dans le sujet et le contenu
+                          const variables = {
+                            firstName: contact.firstName,
+                            lastName: contact.lastName,
+                            civility: contact.civility,
+                            email: contact.email,
+                            phone: contact.phone,
+                            secondaryPhone: contact.secondaryPhone,
+                            address: contact.address,
+                            city: contact.city,
+                            postalCode: contact.postalCode,
+                            companyName: contact.company
+                              ? `${contact.company.firstName || ''} ${contact.company.lastName || ''}`.trim()
+                              : null,
+                          };
+
+                          const processedSubject = replaceTemplateVariables(
+                            template.subject || '',
+                            variables
+                          );
+                          const processedContent = replaceTemplateVariables(
+                            template.content,
+                            variables
+                          );
+
+                          setEmailData({
+                            subject: processedSubject,
+                            content: processedContent,
+                          });
+                          if (emailEditorRef.current) {
+                            emailEditorRef.current.injectHTML(processedContent);
+                          }
+                        }
+                      }
+                    }}
+                    className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  >
+                    <option value="">Sélectionner un template...</option>
+                    {emailTemplates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700">Sujet *</label>
                 <input
