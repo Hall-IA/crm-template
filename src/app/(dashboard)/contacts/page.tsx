@@ -222,6 +222,8 @@ export default function ContactsPage() {
         city: '',
         postalCode: '',
         origin: '',
+        isCompany: false,
+        companyId: '',
         statusId: '',
         assignedCommercialId: '',
         assignedTeleproId: '',
