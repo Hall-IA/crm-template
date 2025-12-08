@@ -626,7 +626,7 @@ export async function DELETE(
     // Récupérer les invités depuis Google Calendar AVANT suppression pour l'email
     let allRecipients: string[] = [];
     if (task.googleEventId && taskWithContact?.contact?.email) {
-      allRecipients.push(taskWithContact.contact.email);
+      allRecipients.push(taskWithContact.contact.email!);
 
       try {
         const googleAccount = await prisma.userGoogleAccount.findUnique({
@@ -729,7 +729,7 @@ export async function DELETE(
           });
 
           const contactName =
-            `${taskWithContact.contact.firstName || ''} ${taskWithContact.contact.lastName || ''}`.trim() ||
+            `${taskWithContact?.contact?.firstName || ''} ${taskWithContact?.contact?.lastName || ''}`.trim() ||
             'Cher client';
           const organizerName = organizer?.name || session.user.name || 'Organisateur';
 
