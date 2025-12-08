@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { InteractionType } from "@prisma/client";
+import { InteractionType } from "../../generated/prisma/client";
 
 interface CreateInteractionParams {
   contactId: string;
