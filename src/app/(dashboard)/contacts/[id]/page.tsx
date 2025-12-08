@@ -68,6 +68,9 @@ interface Contact {
   city: string | null;
   postalCode: string | null;
   origin: string | null;
+  isCompany: boolean;
+  companyId: string | null;
+  company: Contact | null;
   statusId: string | null;
   status: Status | null;
   assignedCommercialId: string | null;
@@ -99,6 +102,7 @@ export default function ContactDetailPage() {
   const [editingInteraction, setEditingInteraction] = useState<Interaction | null>(null);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [companies, setCompanies] = useState<Contact[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
@@ -118,6 +122,8 @@ export default function ContactDetailPage() {
     city: '',
     postalCode: '',
     origin: '',
+    isCompany: false,
+    companyId: '',
     statusId: '',
     assignedCommercialId: '',
     assignedTeleproId: '',
@@ -208,6 +214,7 @@ export default function ContactDetailPage() {
       fetchContact();
       fetchStatuses();
       fetchUsers();
+      fetchCompanies();
       fetchTasks();
     }
   }, [contactId]);
@@ -246,6 +253,8 @@ export default function ContactDetailPage() {
           city: data.city || '',
           postalCode: data.postalCode || '',
           origin: data.origin || '',
+          isCompany: data.isCompany || false,
+          companyId: data.companyId || '',
           statusId: data.statusId || '',
           assignedCommercialId: data.assignedCommercialId || '',
           assignedTeleproId: data.assignedTeleproId || '',
@@ -285,6 +294,18 @@ export default function ContactDetailPage() {
     }
   };
 
+  const fetchCompanies = async () => {
+    try {
+      const response = await fetch('/api/contacts?isCompany=true');
+      if (response.ok) {
+        const data = await response.json();
+        setCompanies(data.contacts || []);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des entreprises:', error);
+    }
+  };
+
   const fetchTasks = async () => {
     try {
       const response = await fetch(`/api/tasks?contactId=${contactId}`);
@@ -313,6 +334,13 @@ export default function ContactDetailPage() {
         body: JSON.stringify({
           ...formData,
           civility: formData.civility || null,
+          secondaryPhone: formData.secondaryPhone || null,
+          address: formData.address || null,
+          city: formData.city || null,
+          postalCode: formData.postalCode || null,
+          origin: formData.origin || null,
+          isCompany: formData.isCompany || false,
+          companyId: formData.companyId || null,
         }),
       });
 
@@ -943,10 +971,11 @@ export default function ContactDetailPage() {
               <h2 className="truncate text-base font-bold text-gray-900 sm:text-lg">
                 {contactName}
               </h2>
-              <p className="mt-1 truncate text-xs text-gray-500 sm:text-sm">
-                {/* TODO: Ajouter un champ titre/fonction */}
-                Entreprise A
-              </p>
+              {contact.company && (
+                <p className="mt-1 truncate text-xs text-gray-500 sm:text-sm">
+                  {contact.company.firstName || contact.company.lastName || 'Entreprise sans nom'}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -1053,19 +1082,6 @@ export default function ContactDetailPage() {
                   />
                 </div>
 
-                {/* Entreprise Client */}
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Entreprise Client
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Non renseigné"
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    disabled
-                  />
-                </div>
-
                 {/* Email */}
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
@@ -1079,39 +1095,106 @@ export default function ContactDetailPage() {
 
                 {/* Téléphone */}
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Téléphone</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Téléphone *</label>
                   <input
                     type="tel"
+                    required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
 
-                {/* Adresse */}
+                {/* Téléphone secondaire - Affiché seulement si présent */}
+                {contact?.secondaryPhone && (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                      Téléphone secondaire
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.secondaryPhone}
+                      onChange={(e) => setFormData({ ...formData, secondaryPhone: e.target.value })}
+                      className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                )}
+
+                {/* Adresse - Toujours affichée si présente */}
+                {(contact?.address || contact?.city || contact?.postalCode) && (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Adresse</label>
+                    <div className="space-y-2">
+                      {contact?.address && (
+                        <input
+                          type="text"
+                          value={formData.address || ''}
+                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                          placeholder="Adresse"
+                          className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        />
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        {contact?.city && (
+                          <input
+                            type="text"
+                            value={formData.city || ''}
+                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                            placeholder="Ville"
+                            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          />
+                        )}
+                        {contact?.postalCode && (
+                          <input
+                            type="text"
+                            value={formData.postalCode || ''}
+                            onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                            placeholder="Code postal"
+                            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Campagne d'origine - Toujours affichée */}
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Adresse</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Campagne d'origine
+                  </label>
                   <input
                     type="text"
-                    value={formData.address || ''}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="..."
+                    value={formData.origin || ''}
+                    onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
+                    placeholder="Origine du contact"
                     className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
 
-                {/* Code postal */}
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Code postal
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.postalCode || ''}
-                    onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  />
-                </div>
+                {/* Entreprise - Affichée seulement si le contact est une entreprise ou a une entreprise associée */}
+                {(contact?.isCompany || contact?.company) && (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                      {contact?.isCompany ? 'Entreprise' : 'Entreprise Client'}
+                    </label>
+                    {contact?.isCompany ? (
+                      <input
+                        type="text"
+                        value={`${contact.firstName || ''} ${contact.lastName || ''}`.trim() || 'Entreprise'}
+                        className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 bg-gray-50"
+                        disabled
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={contact?.company ? `${contact.company.firstName || ''} ${contact.company.lastName || ''}`.trim() : 'Non renseigné'}
+                        className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 bg-gray-50"
+                        disabled
+                      />
+                    )}
+                  </div>
+                )}
 
                 {/* Statut */}
                 <div>
@@ -1142,65 +1225,6 @@ export default function ContactDetailPage() {
                   </select>
                 </div>
 
-                {/* Motif de fermeture */}
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Motif de fermeture
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Non renseigné"
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    disabled
-                  />
-                </div>
-
-                {/* Campagne d'origine */}
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Campagne d'origine
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.origin || ''}
-                    onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  />
-                </div>
-
-                {/* Data MADA */}
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Data MADA</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    disabled
-                  />
-                </div>
-
-                {/* Plateforme leads */}
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Plateforme leads
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Non renseigné"
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    disabled
-                  />
-                </div>
-
-                {/* Société */}
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Société</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    disabled
-                  />
-                </div>
-
                 {/* Commercial */}
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Commercial</label>
@@ -1211,7 +1235,7 @@ export default function ContactDetailPage() {
                     }
                     className="w-full cursor-pointer rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   >
-                    <option value="">N/A Non Attribué</option>
+                    <option value="">Non attribué</option>
                     {(isAdmin
                       ? users.filter((u) => u.role !== 'USER')
                       : users.filter(
@@ -1224,9 +1248,6 @@ export default function ContactDetailPage() {
                       </option>
                     ))}
                   </select>
-                  {!formData.assignedCommercialId && (
-                    <p className="mt-1 text-sm text-gray-500">Aucun commercial assigné</p>
-                  )}
                 </div>
 
                 {/* Télépro */}
@@ -1239,7 +1260,7 @@ export default function ContactDetailPage() {
                     }
                     className="w-full cursor-pointer rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   >
-                    <option value="">N/A Non Attribué</option>
+                    <option value="">Non attribué</option>
                     {(isAdmin
                       ? users.filter((u) => u.role !== 'USER')
                       : users.filter(
@@ -1251,21 +1272,6 @@ export default function ContactDetailPage() {
                       </option>
                     ))}
                   </select>
-                  {!formData.assignedTeleproId && (
-                    <p className="mt-1 text-sm text-gray-500">Aucun télépro assigné</p>
-                  )}
-                </div>
-
-                {/* Télépro */}
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Télépro</label>
-                  <select
-                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    disabled
-                  >
-                    <option>N/A Non Attribué</option>
-                  </select>
-                  <p className="mt-1 text-sm text-gray-500">Aucun télépro assigné</p>
                 </div>
 
                 {/* Bouton Enregistrer */}
@@ -1683,17 +1689,6 @@ export default function ContactDetailPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Téléphone secondaire
-                    </label>
-                    <input
-                      type="tel"
-                      value={formData.secondaryPhone}
-                      onChange={(e) => setFormData({ ...formData, secondaryPhone: e.target.value })}
-                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700">Email</label>
                     <input
                       type="email"
@@ -1706,54 +1701,8 @@ export default function ContactDetailPage() {
               </div>
 
               <div>
-                <h3 className="mb-4 text-lg font-semibold text-gray-900">Adresse</h3>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <div className="md:col-span-3">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Adresse complète
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Ville</label>
-                    <input
-                      type="text"
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Code postal</label>
-                    <input
-                      type="text"
-                      value={formData.postalCode}
-                      onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
-                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="mb-4 text-lg font-semibold text-gray-900">Autres informations</h3>
+                <h3 className="mb-4 text-lg font-semibold text-gray-900">Assignation</h3>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Origine du contact
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.origin}
-                      onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
-                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
-                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Statut</label>
                     <select

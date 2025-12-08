@@ -33,6 +33,9 @@ interface Contact {
   city: string | null;
   postalCode: string | null;
   origin: string | null;
+  isCompany: boolean;
+  companyId: string | null;
+  company: Contact | null;
   statusId: string | null;
   status: Status | null;
   assignedCommercialId: string | null;
@@ -96,6 +99,8 @@ export default function ContactsPage() {
     city: '',
     postalCode: '',
     origin: '',
+    isCompany: false,
+    companyId: '',
     statusId: '',
     assignedCommercialId: '',
     assignedTeleproId: '',
@@ -190,6 +195,8 @@ export default function ContactsPage() {
         body: JSON.stringify({
           ...formData,
           civility: formData.civility || null,
+          isCompany: formData.isCompany || false,
+          companyId: formData.companyId || null,
           assignedCommercialId: formData.assignedCommercialId || null,
           assignedTeleproId: formData.assignedTeleproId || null,
         }),
@@ -264,6 +271,8 @@ export default function ContactsPage() {
       city: contact.city || '',
       postalCode: contact.postalCode || '',
       origin: contact.origin || '',
+      isCompany: contact.isCompany || false,
+      companyId: contact.companyId || '',
       statusId: contact.statusId || '',
       assignedCommercialId: contact.assignedCommercialId || '',
       assignedTeleproId: contact.assignedTeleproId || '',
@@ -284,6 +293,8 @@ export default function ContactsPage() {
       city: '',
       postalCode: '',
       origin: '',
+      isCompany: false,
+      companyId: '',
       statusId: '',
       assignedCommercialId: '',
       assignedTeleproId: '',
@@ -541,7 +552,7 @@ export default function ContactsPage() {
               </select>
             </div>
 
-            <div>
+          <div>
               <label className="block text-sm font-medium text-gray-700">Télépro</label>
               <select
                 value={assignedTeleproFilter}
@@ -635,13 +646,29 @@ export default function ContactsPage() {
                     <td className="px-3 py-4 whitespace-nowrap sm:px-6">
                       <div className="flex items-center">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
-                          {(contact.firstName?.[0] || contact.lastName?.[0] || '?').toUpperCase()}
+                          {contact.isCompany ? (
+                            <span className="text-xs font-bold">🏢</span>
+                          ) : (
+                            (contact.firstName?.[0] || contact.lastName?.[0] || '?').toUpperCase()
+                          )}
                         </div>
                         <div className="ml-3 min-w-0 sm:ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {contact.civility && `${contact.civility}. `}
-                            {contact.firstName} {contact.lastName}
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900">
+                              {contact.civility && `${contact.civility}. `}
+                              {contact.firstName} {contact.lastName}
+                            </span>
+                            {contact.isCompany && (
+                              <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                                Entreprise
+                              </span>
+                            )}
                           </div>
+                          {contact.company && (
+                            <div className="text-xs text-gray-500">
+                              Entreprise: {contact.company.firstName || contact.company.lastName || 'Sans nom'}
+                            </div>
+                          )}
                           {contact.city && (
                             <div className="flex items-center text-xs text-gray-500">
                               <MapPin className="mr-1 h-3 w-3" />
@@ -735,8 +762,8 @@ export default function ContactsPage() {
                           title="Supprimer"
                         >
                           <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+          </button>
+        </div>
                     </td>
                   </tr>
                 ))}
@@ -755,7 +782,7 @@ export default function ContactsPage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
                   {editingContact ? 'Modifier le contact' : 'Nouveau contact'}
-                </h2>
+          </h2>
                 <button
                   type="button"
                   onClick={() => {
@@ -910,6 +937,47 @@ export default function ContactsPage() {
                 </div>
               </div>
 
+              {/* Entreprise */}
+              <div>
+                <h3 className="mb-4 text-lg font-semibold text-gray-900">Entreprise</h3>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="isCompany"
+                      checked={formData.isCompany}
+                      onChange={(e) => setFormData({ ...formData, isCompany: e.target.checked, companyId: e.target.checked ? formData.companyId : '' })}
+                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <label htmlFor="isCompany" className="ml-2 text-sm font-medium text-gray-700">
+                      Ce contact est une entreprise
+                    </label>
+                  </div>
+
+                  {!formData.isCompany && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Entreprise associée
+                      </label>
+                      <select
+                        value={formData.companyId}
+                        onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      >
+                        <option value="">Aucune entreprise</option>
+                        {contacts
+                          .filter((c) => c.isCompany)
+                          .map((company) => (
+                            <option key={company.id} value={company.id}>
+                              {company.firstName || company.lastName || 'Entreprise sans nom'}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Autres informations */}
               <div>
                 <h3 className="mb-4 text-lg font-semibold text-gray-900">Autres informations</h3>
@@ -1008,9 +1076,9 @@ export default function ContactsPage() {
                   className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
                 >
                   {editingContact ? 'Modifier' : 'Créer'}
-                </button>
-              </div>
-            </div>
+          </button>
+        </div>
+      </div>
           </div>
         </div>
       )}

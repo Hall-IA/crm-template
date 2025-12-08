@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     const statusId = searchParams.get("statusId");
     const assignedCommercialId = searchParams.get("assignedCommercialId");
     const assignedTeleproId = searchParams.get("assignedTeleproId");
+    const isCompany = searchParams.get("isCompany");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
     const skip = (page - 1) * limit;
@@ -47,11 +48,18 @@ export async function GET(request: NextRequest) {
       where.assignedTeleproId = assignedTeleproId;
     }
 
+    if (isCompany === "true") {
+      where.isCompany = true;
+    }
+
     const [contacts, total] = await Promise.all([
       prisma.contact.findMany({
         where,
         include: {
           status: true,
+          company: {
+            select: { id: true, firstName: true, lastName: true, isCompany: true },
+          },
           assignedCommercial: {
             select: { id: true, name: true, email: true },
           },
@@ -110,6 +118,8 @@ export async function POST(request: NextRequest) {
       city,
       postalCode,
       origin,
+      isCompany,
+      companyId,
       statusId,
       assignedCommercialId,
       assignedTeleproId,
@@ -138,6 +148,9 @@ export async function POST(request: NextRequest) {
         where: { id: duplicateContactId },
         include: {
           status: true,
+          company: {
+            select: { id: true, firstName: true, lastName: true, isCompany: true },
+          },
           assignedCommercial: {
             select: { id: true, name: true, email: true },
           },
@@ -165,6 +178,8 @@ export async function POST(request: NextRequest) {
         city: city || null,
         postalCode: postalCode || null,
         origin: origin || null,
+        isCompany: isCompany === true,
+        companyId: companyId || null,
         statusId: statusId || null,
         assignedCommercialId: assignedCommercialId || null,
         assignedTeleproId: assignedTeleproId || null,
@@ -187,6 +202,9 @@ export async function POST(request: NextRequest) {
       },
       include: {
         status: true,
+        company: {
+          select: { id: true, firstName: true, lastName: true, isCompany: true },
+        },
         assignedCommercial: {
           select: { id: true, name: true, email: true },
         },

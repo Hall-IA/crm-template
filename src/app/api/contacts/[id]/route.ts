@@ -27,6 +27,12 @@ export async function GET(
       where: { id },
       include: {
         status: true,
+        company: {
+          select: { id: true, firstName: true, lastName: true, isCompany: true },
+        },
+        contacts: {
+          select: { id: true, firstName: true, lastName: true, isCompany: true },
+        },
         assignedCommercial: {
           select: { id: true, name: true, email: true },
         },
@@ -91,6 +97,8 @@ export async function PUT(
       city,
       postalCode,
       origin,
+      isCompany,
+      companyId,
       statusId,
       assignedCommercialId,
       assignedTeleproId,
@@ -109,6 +117,9 @@ export async function PUT(
       where: { id },
       include: {
         status: true,
+        company: {
+          select: { id: true, firstName: true, lastName: true, isCompany: true },
+        },
         assignedCommercial: {
           select: { id: true, name: true, email: true },
         },
@@ -142,6 +153,8 @@ export async function PUT(
       postalCode:
         postalCode !== undefined ? postalCode || null : existing.postalCode,
       origin: origin !== undefined ? origin || null : existing.origin,
+      isCompany: isCompany !== undefined ? isCompany === true : existing.isCompany,
+      companyId: companyId !== undefined ? companyId || null : existing.companyId,
       statusId: statusId !== undefined ? statusId || null : existing.statusId,
       assignedCommercialId:
         assignedCommercialId !== undefined
