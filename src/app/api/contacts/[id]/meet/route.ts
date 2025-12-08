@@ -23,10 +23,7 @@ function htmlToText(html: string): string {
  * POST /api/contacts/[id]/meet
  * Crée un Google Meet depuis un contact
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
@@ -49,10 +46,7 @@ export async function POST(
 
     // Validation
     if (!title || !scheduledAt) {
-      return NextResponse.json(
-        { error: 'Le titre et la date/heure sont requis' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Le titre et la date/heure sont requis' }, { status: 400 });
     }
 
     // Vérifier que le contact existe
@@ -73,7 +67,7 @@ export async function POST(
     if (!googleAccount) {
       return NextResponse.json(
         { error: 'Veuillez connecter votre compte Google dans les paramètres' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -81,7 +75,7 @@ export async function POST(
     const accessToken = await getValidAccessToken(
       googleAccount.accessToken,
       googleAccount.refreshToken,
-      googleAccount.tokenExpiresAt
+      googleAccount.tokenExpiresAt,
     );
 
     // Mettre à jour le token si nécessaire
@@ -142,7 +136,7 @@ export async function POST(
     // Créer la tâche dans le CRM
     const task = await prisma.task.create({
       data: {
-        type: 'MEETING',
+        type: 'VIDEO_CONFERENCE',
         title,
         description: description || '',
         priority: 'MEDIUM',
@@ -188,7 +182,8 @@ export async function POST(
         contactId,
         type: 'MEETING',
         title: `Google Meet: ${title}`,
-        content: description || `Réunion Google Meet programmée${meetLink ? `\n\nLien: ${meetLink}` : ''}`,
+        content:
+          description || `Réunion Google Meet programmée${meetLink ? `\n\nLien: ${meetLink}` : ''}`,
         userId: session.user.id,
         date: startDate,
       },
@@ -228,7 +223,8 @@ export async function POST(
             select: { name: true },
           });
 
-          const contactName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || 'Cher client';
+          const contactName =
+            `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || 'Cher client';
           const organizerName = organizer?.name || session.user.name || 'Organisateur';
 
           const formatDate = (date: Date) => {
@@ -276,12 +272,16 @@ export async function POST(
                   <div style="margin-bottom: 10px;"><strong>Heure :</strong> ${formatTime(startDate)}</div>
                   <div style="margin-bottom: 10px;"><strong>Durée :</strong> ${formatDuration(durationMinutes)}</div>
                   <div style="margin-bottom: 10px;"><strong>Organisateur :</strong> ${organizerName}</div>
-                  ${description ? `
+                  ${
+                    description
+                      ? `
                     <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
                       <strong>Description :</strong>
                       <div style="margin-top: 10px;">${description}</div>
                     </div>
-                  ` : ''}
+                  `
+                      : ''
+                  }
                 </div>
                 <div style="margin-bottom: 30px; text-align: center;">
                   <a href="${meetLink}" style="display: inline-block; background-color: #4285f4; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-size: 16px; font-weight: bold;">
@@ -294,11 +294,15 @@ export async function POST(
                     <a href="${meetLink}" style="color: #4285f4; word-break: break-all;">${meetLink}</a>
                   </p>
                 </div>
-                ${smtpConfig.signature ? `
+                ${
+                  smtpConfig.signature
+                    ? `
                   <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 14px;">
                     ${smtpConfig.signature}
                   </div>
-                ` : ''}
+                `
+                    : ''
+                }
                 <p style="font-size: 14px; color: #666; margin-top: 30px;">
                   Cordialement,<br>
                   ${organizerName}
@@ -309,52 +313,62 @@ export async function POST(
 
           // Générer le contenu texte de l'email
           const emailText = `
-Confirmation de rendez-vous
+            Confirmation de rendez-vous
 
-Bonjour ${contactName},
+            Bonjour ${contactName},
 
-Votre rendez-vous a été confirmé avec succès.
+            Votre rendez-vous a été confirmé avec succès.
 
-${title}
+            ${title}
 
-Date : ${formatDate(startDate)}
-Heure : ${formatTime(startDate)}
-Durée : ${formatDuration(durationMinutes)}
-Organisateur : ${organizerName}
+            Date : ${formatDate(startDate)}
+            Heure : ${formatTime(startDate)}
+            Durée : ${formatDuration(durationMinutes)}
+            Organisateur : ${organizerName}
 
-${description ? `Description :\n${htmlToText(description)}\n` : ''}
+            ${description ? `Description :\n${htmlToText(description)}\n` : ''}
 
-Lien de la réunion : ${meetLink}
+            Lien de la réunion : ${meetLink}
 
-Cordialement,
-${organizerName}
-${smtpConfig.signature ? `\n\n${htmlToText(smtpConfig.signature)}` : ''}
+            Cordialement,
+            ${organizerName}
+            ${smtpConfig.signature ? `\n\n${htmlToText(smtpConfig.signature)}` : ''}
           `.trim();
 
-          // Envoyer l'email
-          await transporter.sendMail({
-            from: smtpConfig.fromName
-              ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
-              : smtpConfig.fromEmail,
-            to: contact.email,
-            subject: `Confirmation de rendez-vous : ${title}`,
-            text: emailText,
-            html: emailHtml,
+          // Construire la liste de tous les destinataires (contact + invités additionnels)
+          const allRecipients: string[] = [];
+          if (contact.email) {
+            allRecipients.push(contact.email);
+          }
+          // Ajouter les autres invités
+          attendees.forEach((email: string) => {
+            if (email && email.trim() !== '' && email !== contact.email) {
+              allRecipients.push(email.trim());
+            }
           });
+
+          // Envoyer l'email à tous les destinataires
+          if (allRecipients.length > 0) {
+            await transporter.sendMail({
+              from: smtpConfig.fromName
+                ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
+                : smtpConfig.fromEmail,
+              to: allRecipients.join(', '),
+              subject: `Confirmation de rendez-vous : ${title}`,
+              text: emailText,
+              html: emailHtml,
+            });
+          }
         }
       } catch (emailError: any) {
         // Ne pas faire échouer la création du Meet si l'email échoue
-        console.error('Erreur lors de l\'envoi de l\'email de confirmation:', emailError);
+        console.error("Erreur lors de l'envoi de l'email de confirmation:", emailError);
       }
     }
 
     return NextResponse.json(task, { status: 201 });
   } catch (error: any) {
     console.error('Erreur lors de la création du Google Meet:', error);
-    return NextResponse.json(
-      { error: error.message || 'Erreur serveur' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-

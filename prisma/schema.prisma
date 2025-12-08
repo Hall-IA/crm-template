@@ -175,6 +175,7 @@ enum TaskType {
   CALL
   MEETING
   EMAIL
+  VIDEO_CONFERENCE
   OTHER
 }
 

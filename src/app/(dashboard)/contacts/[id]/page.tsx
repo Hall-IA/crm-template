@@ -19,6 +19,7 @@ import {
   Plus,
   Tag,
   Edit,
+  Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Editor, type DefaultTemplateRef } from '@/components/editor';
@@ -41,7 +42,16 @@ interface User {
 
 interface Interaction {
   id: string;
-  type: 'CALL' | 'SMS' | 'EMAIL' | 'MEETING' | 'NOTE' | 'STATUS_CHANGE' | 'CONTACT_UPDATE' | 'APPOINTMENT_CREATED' | 'ASSIGNMENT_CHANGE';
+  type:
+    | 'CALL'
+    | 'SMS'
+    | 'EMAIL'
+    | 'MEETING'
+    | 'NOTE'
+    | 'STATUS_CHANGE'
+    | 'CONTACT_UPDATE'
+    | 'APPOINTMENT_CREATED'
+    | 'ASSIGNMENT_CHANGE';
   title: string | null;
   content: string;
   metadata: any | null;
@@ -143,13 +153,15 @@ export default function ContactDetailPage() {
 
   // Formulaire de tâche
   const [taskData, setTaskData] = useState({
-    type: 'CALL' as 'CALL' | 'MEETING' | 'EMAIL' | 'OTHER',
+    type: 'CALL' as 'CALL' | 'MEETING' | 'EMAIL' | 'VIDEO_CONFERENCE' | 'NOTE',
     title: '',
     description: '',
     priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
     scheduledAt: '',
     assignedUserId: '',
     reminderMinutesBefore: null as number | null,
+    durationMinutes: 30,
+    attendees: [] as string[],
   });
 
   // Modal Google Meet
@@ -172,17 +184,42 @@ export default function ContactDetailPage() {
   const [editMeetData, setEditMeetData] = useState<{
     scheduledAt: string;
     durationMinutes: number;
+    attendees: string[];
   }>({
     scheduledAt: '',
     durationMinutes: 30,
+    attendees: [],
   });
   const [editMeetLoading, setEditMeetLoading] = useState(false);
   const [editMeetError, setEditMeetError] = useState('');
+  const [deleteMeetLoading, setDeleteMeetLoading] = useState(false);
+
+  // Modal d'édition RDV
+  const [showEditAppointmentModal, setShowEditAppointmentModal] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState<any | null>(null);
+  const [editAppointmentData, setEditAppointmentData] = useState<{
+    title: string;
+    description: string;
+    scheduledAt: string;
+    priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+    assignedUserId: string;
+    reminderMinutesBefore: number | null;
+  }>({
+    title: '',
+    description: '',
+    scheduledAt: '',
+    priority: 'MEDIUM',
+    assignedUserId: '',
+    reminderMinutesBefore: null,
+  });
+  const [editAppointmentLoading, setEditAppointmentLoading] = useState(false);
+  const [editAppointmentError, setEditAppointmentError] = useState('');
+  const editAppointmentEditorRef = useRef<DefaultTemplateRef | null>(null);
 
   // État pour les onglets
-  const [activeTab, setActiveTab] = useState<'activities' | 'notes' | 'calls' | 'files' | 'email'>(
-    'activities',
-  );
+  const [activeTab, setActiveTab] = useState<
+    'activities' | 'notes' | 'calls' | 'files' | 'email' | 'appointments'
+  >('activities');
 
   // Grouper les interactions par date (doit être avant les useEffect)
   const groupedInteractions = useMemo(() => {
@@ -552,6 +589,65 @@ export default function ContactDetailPage() {
         return;
       }
 
+      // Si c'est une visio-conférence, créer un Google Meet
+      if (taskData.type === 'VIDEO_CONFERENCE') {
+        // Vérifier que Google est connecté
+        if (!googleAccountConnected) {
+          setError(
+            'Veuillez connecter votre compte Google dans les paramètres pour créer une visio-conférence',
+          );
+          setCreatingTask(false);
+          return;
+        }
+
+        // Pour Google Meet, le titre est requis
+        if (!taskData.title || taskData.title.trim() === '') {
+          setError('Le titre est requis pour créer une visio-conférence');
+          setCreatingTask(false);
+          return;
+        }
+
+        // Créer le Google Meet
+        const meetResponse = await fetch(`/api/contacts/${contactId}/meet`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: taskData.title || 'Visio-conférence',
+            description: htmlContent || '',
+            scheduledAt: taskData.scheduledAt,
+            durationMinutes: taskData.durationMinutes || 30,
+            attendees: taskData.attendees.filter((email) => email.trim() !== ''),
+            reminderMinutesBefore: taskData.reminderMinutesBefore,
+          }),
+        });
+
+        const meetData = await meetResponse.json();
+
+        if (!meetResponse.ok) {
+          throw new Error(meetData.error || 'Erreur lors de la création de la visio-conférence');
+        }
+
+        setShowTaskModal(false);
+        setTaskData({
+          type: 'CALL',
+          title: '',
+          description: '',
+          priority: 'MEDIUM',
+          scheduledAt: '',
+          assignedUserId: '',
+          reminderMinutesBefore: null,
+          durationMinutes: 30,
+          attendees: [],
+        });
+        setSuccess('Visio-conférence créée avec succès !');
+        fetchContact();
+        fetchTasks();
+
+        setTimeout(() => setSuccess(''), 5000);
+        return;
+      }
+
+      // Créer une tâche normale
       const response = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -582,6 +678,8 @@ export default function ContactDetailPage() {
         scheduledAt: '',
         assignedUserId: '',
         reminderMinutesBefore: null,
+        durationMinutes: 30,
+        attendees: [],
       });
       setSuccess('Tâche créée avec succès !');
       fetchContact(); // Recharger pour afficher la nouvelle interaction
@@ -674,12 +772,18 @@ export default function ContactDetailPage() {
         return;
       }
 
+      // Convertir la date locale en ISO string pour l'API
+      const scheduledDate = new Date(editMeetData.scheduledAt);
+      const isoString = scheduledDate.toISOString();
+
+      // Mettre à jour via l'API tasks (les Google Meets sont des tâches de type VIDEO_CONFERENCE)
       const response = await fetch(`/api/tasks/${editingMeetTask.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          scheduledAt: editMeetData.scheduledAt,
+          scheduledAt: isoString,
           durationMinutes: editMeetData.durationMinutes,
+          attendees: editMeetData.attendees.filter((email) => email.trim() !== ''),
         }),
       });
 
@@ -690,6 +794,11 @@ export default function ContactDetailPage() {
 
       setShowEditMeetModal(false);
       setEditingMeetTask(null);
+      setEditMeetData({
+        scheduledAt: '',
+        durationMinutes: 30,
+        attendees: [],
+      });
       setSuccess('Google Meet modifié avec succès !');
       fetchContact();
       fetchTasks();
@@ -699,6 +808,106 @@ export default function ContactDetailPage() {
       setEditMeetError(err.message);
     } finally {
       setEditMeetLoading(false);
+    }
+  };
+
+  const handleDeleteMeet = async () => {
+    if (!editingMeetTask) return;
+
+    // Demander confirmation
+    if (
+      !confirm(
+        'Êtes-vous sûr de vouloir supprimer ce Google Meet ? Le contact sera automatiquement informé par email.',
+      )
+    ) {
+      return;
+    }
+
+    setDeleteMeetLoading(true);
+    setEditMeetError('');
+
+    try {
+      const response = await fetch(`/api/tasks/${editingMeetTask.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la suppression du Google Meet');
+      }
+
+      setShowEditMeetModal(false);
+      setEditingMeetTask(null);
+      setEditMeetData({
+        scheduledAt: '',
+        durationMinutes: 30,
+        attendees: [],
+      });
+      setSuccess('Google Meet supprimé avec succès ! Le contact a été informé par email.');
+      fetchContact();
+      fetchTasks();
+
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err: any) {
+      setEditMeetError(err.message);
+    } finally {
+      setDeleteMeetLoading(false);
+    }
+  };
+
+  const handleUpdateAppointment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditAppointmentError('');
+    setEditAppointmentLoading(true);
+
+    try {
+      if (!editingAppointment) {
+        throw new Error('Rendez-vous non trouvé');
+      }
+
+      if (!editAppointmentEditorRef.current) {
+        throw new Error("L'éditeur n'est pas prêt");
+      }
+
+      const htmlContent = await editAppointmentEditorRef.current.getHTML();
+
+      const response = await fetch(`/api/tasks/${editingAppointment.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editAppointmentData.title || null,
+          description: htmlContent || '',
+          scheduledAt: editAppointmentData.scheduledAt,
+          priority: editAppointmentData.priority,
+          assignedUserId: editAppointmentData.assignedUserId || undefined,
+          reminderMinutesBefore: editAppointmentData.reminderMinutesBefore,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la modification');
+      }
+
+      setShowEditAppointmentModal(false);
+      setEditingAppointment(null);
+      setEditAppointmentData({
+        title: '',
+        description: '',
+        scheduledAt: '',
+        priority: 'MEDIUM',
+        assignedUserId: '',
+        reminderMinutesBefore: null,
+      });
+      setSuccess('Rendez-vous modifié avec succès !');
+      fetchContact();
+      fetchTasks();
+
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err: any) {
+      setEditAppointmentError(err.message);
+    } finally {
+      setEditAppointmentLoading(false);
     }
   };
 
@@ -746,7 +955,7 @@ export default function ContactDetailPage() {
       case 'APPOINTMENT_CREATED':
         return 'Rendez-vous créé';
       case 'ASSIGNMENT_CHANGE':
-        return 'Changement d\'assignation';
+        return "Changement d'assignation";
       default:
         return 'Interaction';
     }
@@ -1010,6 +1219,8 @@ export default function ContactDetailPage() {
                   scheduledAt: '',
                   assignedUserId: '',
                   reminderMinutesBefore: null,
+                  durationMinutes: 30,
+                  attendees: [],
                 });
                 setError('');
                 setSuccess('');
@@ -1135,7 +1346,9 @@ export default function ContactDetailPage() {
 
                 {/* Téléphone */}
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Téléphone *</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Téléphone *
+                  </label>
                   <input
                     type="tel"
                     required
@@ -1188,7 +1401,9 @@ export default function ContactDetailPage() {
                           <input
                             type="text"
                             value={formData.postalCode || ''}
-                            onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                            onChange={(e) =>
+                              setFormData({ ...formData, postalCode: e.target.value })
+                            }
                             placeholder="Code postal"
                             className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                           />
@@ -1221,15 +1436,22 @@ export default function ContactDetailPage() {
                     {contact?.isCompany ? (
                       <input
                         type="text"
-                        value={`${contact.firstName || ''} ${contact.lastName || ''}`.trim() || 'Entreprise'}
-                        className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 bg-gray-50"
+                        value={
+                          `${contact.firstName || ''} ${contact.lastName || ''}`.trim() ||
+                          'Entreprise'
+                        }
+                        className="w-full rounded-lg border border-gray-300 bg-gray-50 px-2 py-1.5 text-sm text-gray-500"
                         disabled
                       />
                     ) : (
                       <input
                         type="text"
-                        value={contact?.company ? `${contact.company.firstName || ''} ${contact.company.lastName || ''}`.trim() : 'Non renseigné'}
-                        className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-500 bg-gray-50"
+                        value={
+                          contact?.company
+                            ? `${contact.company.firstName || ''} ${contact.company.lastName || ''}`.trim()
+                            : 'Non renseigné'
+                        }
+                        className="w-full rounded-lg border border-gray-300 bg-gray-50 px-2 py-1.5 text-sm text-gray-500"
                         disabled
                       />
                     )}
@@ -1340,6 +1562,7 @@ export default function ContactDetailPage() {
                 <nav className="flex flex-wrap" aria-label="Tabs">
                   {[
                     { id: 'activities' as const, label: 'Activités', icon: Activity },
+                    { id: 'appointments' as const, label: 'RDV', icon: CalendarIcon },
                     { id: 'notes' as const, label: 'Notes', icon: FileText },
                     { id: 'calls' as const, label: 'Appels', icon: PhoneCall },
                     { id: 'files' as const, label: 'Fichiers', icon: FileText },
@@ -1450,6 +1673,174 @@ export default function ContactDetailPage() {
                           </div>
                         ))
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'appointments' && (
+                  <div>
+                    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <h2 className="text-lg font-semibold text-gray-900">Rendez-vous</h2>
+                    </div>
+                    <div className="space-y-4">
+                      {(() => {
+                        // Filtrer les tâches pour ne garder que les RDV (MEETING et VIDEO_CONFERENCE)
+                        const appointments = tasks.filter(
+                          (task) => task.type === 'MEETING' || task.type === 'VIDEO_CONFERENCE',
+                        );
+
+                        if (appointments.length === 0) {
+                          return (
+                            <p className="py-8 text-center text-sm text-gray-500">
+                              Aucun rendez-vous
+                            </p>
+                          );
+                        }
+
+                        // Trier par date (plus récent en premier)
+                        const sortedAppointments = [...appointments].sort(
+                          (a, b) =>
+                            new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime(),
+                        );
+
+                        return sortedAppointments.map((appointment) => {
+                          const scheduledDate = new Date(appointment.scheduledAt);
+                          const isPast = scheduledDate < new Date();
+                          const isVideoConference = appointment.type === 'VIDEO_CONFERENCE';
+
+                          return (
+                            <div
+                              key={appointment.id}
+                              className={`cursor-pointer rounded-lg border p-4 transition-colors hover:bg-gray-50 ${
+                                isPast
+                                  ? 'border-gray-200 bg-gray-50'
+                                  : 'border-gray-200 bg-white shadow-sm'
+                              }`}
+                              onClick={() => {
+                                // Ouvrir le modal de modification
+                                if (isVideoConference) {
+                                  // Pour Google Meet, utiliser le modal existant
+                                  setEditingMeetTask(appointment);
+                                  // Convertir la date en heure locale (sans conversion UTC)
+                                  const scheduledDate = new Date(appointment.scheduledAt);
+                                  const year = scheduledDate.getFullYear();
+                                  const month = String(scheduledDate.getMonth() + 1).padStart(
+                                    2,
+                                    '0',
+                                  );
+                                  const day = String(scheduledDate.getDate()).padStart(2, '0');
+                                  const hours = String(scheduledDate.getHours()).padStart(2, '0');
+                                  const minutes = String(scheduledDate.getMinutes()).padStart(
+                                    2,
+                                    '0',
+                                  );
+                                  const localDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+                                  // Récupérer les invités depuis Google Calendar si disponible
+                                  const fetchAttendees = async () => {
+                                    let attendeesList: string[] = [];
+                                    if (appointment.googleEventId) {
+                                      try {
+                                        const response = await fetch(
+                                          `/api/tasks/${appointment.id}/attendees`,
+                                        );
+                                        if (response.ok) {
+                                          const data = await response.json();
+                                          attendeesList = data.attendees || [];
+                                        }
+                                      } catch (error) {
+                                        console.error(
+                                          'Erreur lors de la récupération des invités:',
+                                          error,
+                                        );
+                                      }
+                                    }
+
+                                    setEditMeetData({
+                                      scheduledAt: localDateTime,
+                                      durationMinutes: appointment.durationMinutes || 30,
+                                      attendees: attendeesList,
+                                    });
+                                    setShowEditMeetModal(true);
+                                  };
+
+                                  fetchAttendees();
+                                } else {
+                                  // Pour les RDV normaux, ouvrir un nouveau modal
+                                  setEditingAppointment(appointment);
+                                  setEditAppointmentData({
+                                    title: appointment.title || '',
+                                    description: appointment.description || '',
+                                    scheduledAt: appointment.scheduledAt
+                                      ? new Date(appointment.scheduledAt).toISOString().slice(0, 16)
+                                      : '',
+                                    priority: appointment.priority || 'MEDIUM',
+                                    assignedUserId: appointment.assignedUserId || '',
+                                    reminderMinutesBefore:
+                                      appointment.reminderMinutesBefore || null,
+                                  });
+                                  setShowEditAppointmentModal(true);
+                                }
+                              }}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    {isVideoConference ? (
+                                      <Video className="h-5 w-5 text-indigo-600" />
+                                    ) : (
+                                      <CalendarIcon className="h-5 w-5 text-yellow-600" />
+                                    )}
+                                    <h3 className="text-sm font-semibold text-gray-900">
+                                      {appointment.title || 'Rendez-vous'}
+                                    </h3>
+                                    <span
+                                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                                        isVideoConference
+                                          ? 'bg-indigo-100 text-indigo-700'
+                                          : 'bg-yellow-100 text-yellow-700'
+                                      }`}
+                                    >
+                                      {isVideoConference ? 'Google Meet' : 'RDV physique'}
+                                    </span>
+                                  </div>
+                                  <p className="mt-1 text-xs text-gray-500">
+                                    {scheduledDate.toLocaleDateString('fr-FR', {
+                                      weekday: 'long',
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric',
+                                    })}{' '}
+                                    à{' '}
+                                    {scheduledDate.toLocaleTimeString('fr-FR', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                                  </p>
+                                  {appointment.description && (
+                                    <p className="mt-2 line-clamp-2 text-sm text-gray-600">
+                                      {appointment.description.replace(/<[^>]+>/g, '')}
+                                    </p>
+                                  )}
+                                  {isVideoConference && appointment.googleMeetLink && (
+                                    <a
+                                      href={appointment.googleMeetLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="mt-2 inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700"
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                      Rejoindre la réunion
+                                    </a>
+                                  )}
+                                </div>
+                                <Edit className="h-4 w-4 text-gray-400" />
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                   </div>
                 )}
@@ -1792,6 +2183,214 @@ export default function ContactDetailPage() {
         </div>
       )}
 
+      {/* Modal d'édition de RDV */}
+      {showEditAppointmentModal && editingAppointment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
+            {/* En-tête fixe */}
+            <div className="shrink-0 border-b border-gray-100 pb-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                  Modifier le rendez-vous
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditAppointmentModal(false);
+                    setEditingAppointment(null);
+                    setEditAppointmentError('');
+                  }}
+                  className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu scrollable */}
+            <form
+              id="edit-appointment-form"
+              onSubmit={handleUpdateAppointment}
+              className="flex-1 space-y-6 overflow-y-auto pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Titre *</label>
+                <input
+                  type="text"
+                  required
+                  value={editAppointmentData.title}
+                  onChange={(e) =>
+                    setEditAppointmentData({ ...editAppointmentData, title: e.target.value })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Ex : RDV avec le client"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Date & heure *</label>
+                <div className="mt-1 grid grid-cols-[3fr,2fr] gap-2">
+                  <input
+                    type="date"
+                    required
+                    value={
+                      editAppointmentData.scheduledAt
+                        ? editAppointmentData.scheduledAt.split('T')[0]
+                        : new Date(editingAppointment.scheduledAt).toISOString().split('T')[0]
+                    }
+                    onChange={(e) => {
+                      const time =
+                        editAppointmentData.scheduledAt &&
+                        editAppointmentData.scheduledAt.includes('T')
+                          ? editAppointmentData.scheduledAt.split('T')[1]
+                          : new Date(editingAppointment.scheduledAt)
+                              .toISOString()
+                              .split('T')[1]
+                              .slice(0, 5);
+                      setEditAppointmentData({
+                        ...editAppointmentData,
+                        scheduledAt: `${e.target.value}T${time || '09:00'}`,
+                      });
+                    }}
+                    className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                  <input
+                    type="time"
+                    required
+                    value={
+                      editAppointmentData.scheduledAt &&
+                      editAppointmentData.scheduledAt.includes('T')
+                        ? editAppointmentData.scheduledAt.split('T')[1].slice(0, 5)
+                        : new Date(editingAppointment.scheduledAt)
+                            .toISOString()
+                            .split('T')[1]
+                            .slice(0, 5)
+                    }
+                    onChange={(e) => {
+                      const datePart =
+                        editAppointmentData.scheduledAt &&
+                        editAppointmentData.scheduledAt.includes('T')
+                          ? editAppointmentData.scheduledAt.split('T')[0]
+                          : new Date(editingAppointment.scheduledAt).toISOString().split('T')[0];
+                      setEditAppointmentData({
+                        ...editAppointmentData,
+                        scheduledAt: `${datePart}T${e.target.value || '09:00'}`,
+                      });
+                    }}
+                    className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Priorité</label>
+                <select
+                  value={editAppointmentData.priority}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      priority: e.target.value as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="LOW">Basse</option>
+                  <option value="MEDIUM">Moyenne</option>
+                  <option value="HIGH">Haute</option>
+                  <option value="URGENT">Urgente</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Rappel</label>
+                <select
+                  value={editAppointmentData.reminderMinutesBefore ?? ''}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      reminderMinutesBefore: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Aucun rappel</option>
+                  <option value="5">5 minutes avant</option>
+                  <option value="15">15 minutes avant</option>
+                  <option value="30">30 minutes avant</option>
+                  <option value="60">1 heure avant</option>
+                  <option value="120">2 heures avant</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Attribuer à</label>
+                <select
+                  value={editAppointmentData.assignedUserId}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      assignedUserId: e.target.value,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Moi-même ({session?.user?.name || 'Utilisateur'})</option>
+                  {isAdmin &&
+                    users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <Editor ref={editAppointmentEditorRef} />
+              </div>
+
+              {editAppointmentError && (
+                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                  {editAppointmentError}
+                </div>
+              )}
+            </form>
+
+            {/* Pied de modal fixe */}
+            <div className="shrink-0 border-t border-gray-100 pt-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditAppointmentModal(false);
+                    setEditingAppointment(null);
+                    setEditAppointmentError('');
+                  }}
+                  className="w-full cursor-pointer rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  form="edit-appointment-form"
+                  disabled={editAppointmentLoading}
+                  className="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                >
+                  {editAppointmentLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal d'interaction */}
       {showInteractionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
@@ -1878,7 +2477,7 @@ export default function ContactDetailPage() {
 
                           const processedContent = replaceTemplateVariables(
                             template.content,
-                            variables
+                            variables,
                           );
 
                           setInteractionData({
@@ -1979,6 +2578,214 @@ export default function ContactDetailPage() {
         </div>
       )}
 
+      {/* Modal d'édition de RDV */}
+      {showEditAppointmentModal && editingAppointment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
+            {/* En-tête fixe */}
+            <div className="shrink-0 border-b border-gray-100 pb-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                  Modifier le rendez-vous
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditAppointmentModal(false);
+                    setEditingAppointment(null);
+                    setEditAppointmentError('');
+                  }}
+                  className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu scrollable */}
+            <form
+              id="edit-appointment-form"
+              onSubmit={handleUpdateAppointment}
+              className="flex-1 space-y-6 overflow-y-auto pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Titre *</label>
+                <input
+                  type="text"
+                  required
+                  value={editAppointmentData.title}
+                  onChange={(e) =>
+                    setEditAppointmentData({ ...editAppointmentData, title: e.target.value })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Ex : RDV avec le client"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Date & heure *</label>
+                <div className="mt-1 grid grid-cols-[3fr,2fr] gap-2">
+                  <input
+                    type="date"
+                    required
+                    value={
+                      editAppointmentData.scheduledAt
+                        ? editAppointmentData.scheduledAt.split('T')[0]
+                        : new Date(editingAppointment.scheduledAt).toISOString().split('T')[0]
+                    }
+                    onChange={(e) => {
+                      const time =
+                        editAppointmentData.scheduledAt &&
+                        editAppointmentData.scheduledAt.includes('T')
+                          ? editAppointmentData.scheduledAt.split('T')[1]
+                          : new Date(editingAppointment.scheduledAt)
+                              .toISOString()
+                              .split('T')[1]
+                              .slice(0, 5);
+                      setEditAppointmentData({
+                        ...editAppointmentData,
+                        scheduledAt: `${e.target.value}T${time || '09:00'}`,
+                      });
+                    }}
+                    className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                  <input
+                    type="time"
+                    required
+                    value={
+                      editAppointmentData.scheduledAt &&
+                      editAppointmentData.scheduledAt.includes('T')
+                        ? editAppointmentData.scheduledAt.split('T')[1].slice(0, 5)
+                        : new Date(editingAppointment.scheduledAt)
+                            .toISOString()
+                            .split('T')[1]
+                            .slice(0, 5)
+                    }
+                    onChange={(e) => {
+                      const datePart =
+                        editAppointmentData.scheduledAt &&
+                        editAppointmentData.scheduledAt.includes('T')
+                          ? editAppointmentData.scheduledAt.split('T')[0]
+                          : new Date(editingAppointment.scheduledAt).toISOString().split('T')[0];
+                      setEditAppointmentData({
+                        ...editAppointmentData,
+                        scheduledAt: `${datePart}T${e.target.value || '09:00'}`,
+                      });
+                    }}
+                    className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Priorité</label>
+                <select
+                  value={editAppointmentData.priority}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      priority: e.target.value as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="LOW">Basse</option>
+                  <option value="MEDIUM">Moyenne</option>
+                  <option value="HIGH">Haute</option>
+                  <option value="URGENT">Urgente</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Rappel</label>
+                <select
+                  value={editAppointmentData.reminderMinutesBefore ?? ''}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      reminderMinutesBefore: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Aucun rappel</option>
+                  <option value="5">5 minutes avant</option>
+                  <option value="15">15 minutes avant</option>
+                  <option value="30">30 minutes avant</option>
+                  <option value="60">1 heure avant</option>
+                  <option value="120">2 heures avant</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Attribuer à</label>
+                <select
+                  value={editAppointmentData.assignedUserId}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      assignedUserId: e.target.value,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Moi-même ({session?.user?.name || 'Utilisateur'})</option>
+                  {isAdmin &&
+                    users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <Editor ref={editAppointmentEditorRef} />
+              </div>
+
+              {editAppointmentError && (
+                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                  {editAppointmentError}
+                </div>
+              )}
+            </form>
+
+            {/* Pied de modal fixe */}
+            <div className="shrink-0 border-t border-gray-100 pt-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditAppointmentModal(false);
+                    setEditingAppointment(null);
+                    setEditAppointmentError('');
+                  }}
+                  className="w-full cursor-pointer rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  form="edit-appointment-form"
+                  disabled={editAppointmentLoading}
+                  className="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                >
+                  {editAppointmentLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal d'envoi d'email */}
       {showEmailModal && contact && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
@@ -2049,11 +2856,11 @@ export default function ContactDetailPage() {
 
                           const processedSubject = replaceTemplateVariables(
                             template.subject || '',
-                            variables
+                            variables,
                           );
                           const processedContent = replaceTemplateVariables(
                             template.content,
-                            variables
+                            variables,
                           );
 
                           setEmailData({
@@ -2133,6 +2940,214 @@ export default function ContactDetailPage() {
         </div>
       )}
 
+      {/* Modal d'édition de RDV */}
+      {showEditAppointmentModal && editingAppointment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
+            {/* En-tête fixe */}
+            <div className="shrink-0 border-b border-gray-100 pb-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                  Modifier le rendez-vous
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditAppointmentModal(false);
+                    setEditingAppointment(null);
+                    setEditAppointmentError('');
+                  }}
+                  className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu scrollable */}
+            <form
+              id="edit-appointment-form"
+              onSubmit={handleUpdateAppointment}
+              className="flex-1 space-y-6 overflow-y-auto pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Titre *</label>
+                <input
+                  type="text"
+                  required
+                  value={editAppointmentData.title}
+                  onChange={(e) =>
+                    setEditAppointmentData({ ...editAppointmentData, title: e.target.value })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Ex : RDV avec le client"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Date & heure *</label>
+                <div className="mt-1 grid grid-cols-[3fr,2fr] gap-2">
+                  <input
+                    type="date"
+                    required
+                    value={
+                      editAppointmentData.scheduledAt
+                        ? editAppointmentData.scheduledAt.split('T')[0]
+                        : new Date(editingAppointment.scheduledAt).toISOString().split('T')[0]
+                    }
+                    onChange={(e) => {
+                      const time =
+                        editAppointmentData.scheduledAt &&
+                        editAppointmentData.scheduledAt.includes('T')
+                          ? editAppointmentData.scheduledAt.split('T')[1]
+                          : new Date(editingAppointment.scheduledAt)
+                              .toISOString()
+                              .split('T')[1]
+                              .slice(0, 5);
+                      setEditAppointmentData({
+                        ...editAppointmentData,
+                        scheduledAt: `${e.target.value}T${time || '09:00'}`,
+                      });
+                    }}
+                    className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                  <input
+                    type="time"
+                    required
+                    value={
+                      editAppointmentData.scheduledAt &&
+                      editAppointmentData.scheduledAt.includes('T')
+                        ? editAppointmentData.scheduledAt.split('T')[1].slice(0, 5)
+                        : new Date(editingAppointment.scheduledAt)
+                            .toISOString()
+                            .split('T')[1]
+                            .slice(0, 5)
+                    }
+                    onChange={(e) => {
+                      const datePart =
+                        editAppointmentData.scheduledAt &&
+                        editAppointmentData.scheduledAt.includes('T')
+                          ? editAppointmentData.scheduledAt.split('T')[0]
+                          : new Date(editingAppointment.scheduledAt).toISOString().split('T')[0];
+                      setEditAppointmentData({
+                        ...editAppointmentData,
+                        scheduledAt: `${datePart}T${e.target.value || '09:00'}`,
+                      });
+                    }}
+                    className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Priorité</label>
+                <select
+                  value={editAppointmentData.priority}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      priority: e.target.value as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="LOW">Basse</option>
+                  <option value="MEDIUM">Moyenne</option>
+                  <option value="HIGH">Haute</option>
+                  <option value="URGENT">Urgente</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Rappel</label>
+                <select
+                  value={editAppointmentData.reminderMinutesBefore ?? ''}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      reminderMinutesBefore: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Aucun rappel</option>
+                  <option value="5">5 minutes avant</option>
+                  <option value="15">15 minutes avant</option>
+                  <option value="30">30 minutes avant</option>
+                  <option value="60">1 heure avant</option>
+                  <option value="120">2 heures avant</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Attribuer à</label>
+                <select
+                  value={editAppointmentData.assignedUserId}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      assignedUserId: e.target.value,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Moi-même ({session?.user?.name || 'Utilisateur'})</option>
+                  {isAdmin &&
+                    users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <Editor ref={editAppointmentEditorRef} />
+              </div>
+
+              {editAppointmentError && (
+                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                  {editAppointmentError}
+                </div>
+              )}
+            </form>
+
+            {/* Pied de modal fixe */}
+            <div className="shrink-0 border-t border-gray-100 pt-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditAppointmentModal(false);
+                    setEditingAppointment(null);
+                    setEditAppointmentError('');
+                  }}
+                  className="w-full cursor-pointer rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  form="edit-appointment-form"
+                  disabled={editAppointmentLoading}
+                  className="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                >
+                  {editAppointmentLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de création de tâche */}
       {showTaskModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-6 backdrop-blur-sm sm:p-8">
@@ -2163,6 +3178,8 @@ export default function ContactDetailPage() {
                       scheduledAt: '',
                       assignedUserId: '',
                       reminderMinutesBefore: null,
+                      durationMinutes: 30,
+                      attendees: [],
                     });
                     setError('');
                   }}
@@ -2191,7 +3208,7 @@ export default function ContactDetailPage() {
               {/* Titre */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Titre de la tâche *
+                  Titre de la tâche {taskData.type === 'VIDEO_CONFERENCE' ? '*' : '(optionnel)'}
                 </label>
                 <input
                   type="text"
@@ -2199,7 +3216,7 @@ export default function ContactDetailPage() {
                   onChange={(e) => setTaskData({ ...taskData, title: e.target.value })}
                   className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   placeholder="Ex : Appeler le client pour devis"
-                  required
+                  required={taskData.type === 'VIDEO_CONFERENCE'}
                 />
               </div>
 
@@ -2219,6 +3236,11 @@ export default function ContactDetailPage() {
                       icon: <CalendarIcon className="h-5 w-5" />,
                     },
                     {
+                      value: 'VIDEO_CONFERENCE' as const,
+                      label: 'Google Meet',
+                      icon: <Video className="h-5 w-5" />,
+                    },
+                    {
                       value: 'EMAIL' as const,
                       label: 'Email',
                       icon: <MailIcon className="h-5 w-5" />,
@@ -2227,11 +3249,6 @@ export default function ContactDetailPage() {
                       value: 'NOTE' as const,
                       label: 'Suivi',
                       icon: <FileText className="h-5 w-5" />,
-                    },
-                    {
-                      value: 'OTHER' as const,
-                      label: 'Autre',
-                      icon: <User className="h-5 w-5" />,
                     },
                   ].map((option) => {
                     const isActive = taskData.type === option.value;
@@ -2242,10 +3259,7 @@ export default function ContactDetailPage() {
                         onClick={() =>
                           setTaskData({
                             ...taskData,
-                            type:
-                              option.value === 'NOTE'
-                                ? ('OTHER' as 'CALL' | 'MEETING' | 'EMAIL' | 'OTHER')
-                                : option.value,
+                            type: option.value,
                           })
                         }
                         className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border px-3 py-3 text-xs font-medium transition-colors sm:text-sm ${
@@ -2371,6 +3385,92 @@ export default function ContactDetailPage() {
                 </select>
               </div>
 
+              {/* Champs Google Meet - Affichés seulement si type VIDEO_CONFERENCE */}
+              {taskData.type === 'VIDEO_CONFERENCE' && (
+                <>
+                  {!googleAccountConnected && (
+                    <div className="rounded-lg bg-yellow-50 p-3 text-sm text-yellow-800">
+                      ⚠️ Veuillez connecter votre compte Google dans les paramètres pour créer une
+                      visio-conférence
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Durée (minutes) *
+                    </label>
+                    <select
+                      value={taskData.durationMinutes}
+                      onChange={(e) =>
+                        setTaskData({
+                          ...taskData,
+                          durationMinutes: Number(e.target.value),
+                        })
+                      }
+                      className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      required
+                    >
+                      <option value={15}>15 minutes</option>
+                      <option value={30}>30 minutes</option>
+                      <option value={45}>45 minutes</option>
+                      <option value={60}>1 heure</option>
+                      <option value={90}>1h30</option>
+                      <option value={120}>2 heures</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Invités additionnels (optionnel)
+                    </label>
+                    <div className="mt-1 space-y-2">
+                      {taskData.attendees.map((email, index) => (
+                        <div key={index} className="flex gap-2">
+                          <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => {
+                              const newAttendees = [...taskData.attendees];
+                              newAttendees[index] = e.target.value;
+                              setTaskData({ ...taskData, attendees: newAttendees });
+                            }}
+                            placeholder="email@exemple.com"
+                            className="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newAttendees = taskData.attendees.filter((_, i) => i !== index);
+                              setTaskData({ ...taskData, attendees: newAttendees });
+                            }}
+                            className="cursor-pointer rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTaskData({
+                            ...taskData,
+                            attendees: [...taskData.attendees, ''],
+                          });
+                        }}
+                        className="cursor-pointer rounded-xl border border-dashed border-gray-300 px-4 py-2 text-sm text-gray-600 transition-colors hover:border-indigo-500 hover:text-indigo-600"
+                      >
+                        + Ajouter un invité
+                      </button>
+                    </div>
+                    {contact.email && (
+                      <p className="mt-2 text-xs text-gray-500">
+                        Le contact ({contact.email}) sera automatiquement invité
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+
               {/* Attribution */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">Attribuer à</label>
@@ -2419,6 +3519,8 @@ export default function ContactDetailPage() {
                       scheduledAt: '',
                       assignedUserId: '',
                       reminderMinutesBefore: null,
+                      durationMinutes: 30,
+                      attendees: [],
                     });
                     setError('');
                   }}
@@ -2432,7 +3534,221 @@ export default function ContactDetailPage() {
                   disabled={creatingTask}
                   className="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
-                  {creatingTask ? 'Création...' : 'Créer la tâche'}
+                  {creatingTask
+                    ? taskData.type === 'VIDEO_CONFERENCE'
+                      ? 'Création de la visio-conférence...'
+                      : 'Création...'
+                    : taskData.type === 'VIDEO_CONFERENCE'
+                      ? 'Créer la visio-conférence'
+                      : 'Créer la tâche'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'édition de RDV */}
+      {showEditAppointmentModal && editingAppointment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
+            {/* En-tête fixe */}
+            <div className="shrink-0 border-b border-gray-100 pb-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                  Modifier le rendez-vous
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditAppointmentModal(false);
+                    setEditingAppointment(null);
+                    setEditAppointmentError('');
+                  }}
+                  className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu scrollable */}
+            <form
+              id="edit-appointment-form"
+              onSubmit={handleUpdateAppointment}
+              className="flex-1 space-y-6 overflow-y-auto pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Titre *</label>
+                <input
+                  type="text"
+                  required
+                  value={editAppointmentData.title}
+                  onChange={(e) =>
+                    setEditAppointmentData({ ...editAppointmentData, title: e.target.value })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Ex : RDV avec le client"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Date & heure *</label>
+                <div className="mt-1 grid grid-cols-[3fr,2fr] gap-2">
+                  <input
+                    type="date"
+                    required
+                    value={
+                      editAppointmentData.scheduledAt
+                        ? editAppointmentData.scheduledAt.split('T')[0]
+                        : new Date(editingAppointment.scheduledAt).toISOString().split('T')[0]
+                    }
+                    onChange={(e) => {
+                      const time =
+                        editAppointmentData.scheduledAt &&
+                        editAppointmentData.scheduledAt.includes('T')
+                          ? editAppointmentData.scheduledAt.split('T')[1]
+                          : new Date(editingAppointment.scheduledAt)
+                              .toISOString()
+                              .split('T')[1]
+                              .slice(0, 5);
+                      setEditAppointmentData({
+                        ...editAppointmentData,
+                        scheduledAt: `${e.target.value}T${time || '09:00'}`,
+                      });
+                    }}
+                    className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                  <input
+                    type="time"
+                    required
+                    value={
+                      editAppointmentData.scheduledAt &&
+                      editAppointmentData.scheduledAt.includes('T')
+                        ? editAppointmentData.scheduledAt.split('T')[1].slice(0, 5)
+                        : new Date(editingAppointment.scheduledAt)
+                            .toISOString()
+                            .split('T')[1]
+                            .slice(0, 5)
+                    }
+                    onChange={(e) => {
+                      const datePart =
+                        editAppointmentData.scheduledAt &&
+                        editAppointmentData.scheduledAt.includes('T')
+                          ? editAppointmentData.scheduledAt.split('T')[0]
+                          : new Date(editingAppointment.scheduledAt).toISOString().split('T')[0];
+                      setEditAppointmentData({
+                        ...editAppointmentData,
+                        scheduledAt: `${datePart}T${e.target.value || '09:00'}`,
+                      });
+                    }}
+                    className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Priorité</label>
+                <select
+                  value={editAppointmentData.priority}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      priority: e.target.value as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="LOW">Basse</option>
+                  <option value="MEDIUM">Moyenne</option>
+                  <option value="HIGH">Haute</option>
+                  <option value="URGENT">Urgente</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Rappel</label>
+                <select
+                  value={editAppointmentData.reminderMinutesBefore ?? ''}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      reminderMinutesBefore: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Aucun rappel</option>
+                  <option value="5">5 minutes avant</option>
+                  <option value="15">15 minutes avant</option>
+                  <option value="30">30 minutes avant</option>
+                  <option value="60">1 heure avant</option>
+                  <option value="120">2 heures avant</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Attribuer à</label>
+                <select
+                  value={editAppointmentData.assignedUserId}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      assignedUserId: e.target.value,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Moi-même ({session?.user?.name || 'Utilisateur'})</option>
+                  {isAdmin &&
+                    users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <Editor ref={editAppointmentEditorRef} />
+              </div>
+
+              {editAppointmentError && (
+                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                  {editAppointmentError}
+                </div>
+              )}
+            </form>
+
+            {/* Pied de modal fixe */}
+            <div className="shrink-0 border-t border-gray-100 pt-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditAppointmentModal(false);
+                    setEditingAppointment(null);
+                    setEditAppointmentError('');
+                  }}
+                  className="w-full cursor-pointer rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  form="edit-appointment-form"
+                  disabled={editAppointmentLoading}
+                  className="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                >
+                  {editAppointmentLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
                 </button>
               </div>
             </div>
@@ -2657,9 +3973,231 @@ export default function ContactDetailPage() {
         </div>
       )}
 
+      {/* Modal d'édition de RDV */}
+      {showEditAppointmentModal && editingAppointment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
+            {/* En-tête fixe */}
+            <div className="shrink-0 border-b border-gray-100 pb-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                  Modifier le rendez-vous
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditAppointmentModal(false);
+                    setEditingAppointment(null);
+                    setEditAppointmentError('');
+                  }}
+                  className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu scrollable */}
+            <form
+              id="edit-appointment-form"
+              onSubmit={handleUpdateAppointment}
+              className="flex-1 space-y-6 overflow-y-auto pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Titre *</label>
+                <input
+                  type="text"
+                  required
+                  value={editAppointmentData.title}
+                  onChange={(e) =>
+                    setEditAppointmentData({ ...editAppointmentData, title: e.target.value })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Ex : RDV avec le client"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Date & heure *</label>
+                <div className="mt-1 grid grid-cols-[3fr,2fr] gap-2">
+                  <input
+                    type="date"
+                    required
+                    value={
+                      editAppointmentData.scheduledAt
+                        ? editAppointmentData.scheduledAt.split('T')[0]
+                        : new Date(editingAppointment.scheduledAt).toISOString().split('T')[0]
+                    }
+                    onChange={(e) => {
+                      const time =
+                        editAppointmentData.scheduledAt &&
+                        editAppointmentData.scheduledAt.includes('T')
+                          ? editAppointmentData.scheduledAt.split('T')[1]
+                          : new Date(editingAppointment.scheduledAt)
+                              .toISOString()
+                              .split('T')[1]
+                              .slice(0, 5);
+                      setEditAppointmentData({
+                        ...editAppointmentData,
+                        scheduledAt: `${e.target.value}T${time || '09:00'}`,
+                      });
+                    }}
+                    className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                  <input
+                    type="time"
+                    required
+                    value={
+                      editAppointmentData.scheduledAt &&
+                      editAppointmentData.scheduledAt.includes('T')
+                        ? editAppointmentData.scheduledAt.split('T')[1].slice(0, 5)
+                        : new Date(editingAppointment.scheduledAt)
+                            .toISOString()
+                            .split('T')[1]
+                            .slice(0, 5)
+                    }
+                    onChange={(e) => {
+                      const datePart =
+                        editAppointmentData.scheduledAt &&
+                        editAppointmentData.scheduledAt.includes('T')
+                          ? editAppointmentData.scheduledAt.split('T')[0]
+                          : new Date(editingAppointment.scheduledAt).toISOString().split('T')[0];
+                      setEditAppointmentData({
+                        ...editAppointmentData,
+                        scheduledAt: `${datePart}T${e.target.value || '09:00'}`,
+                      });
+                    }}
+                    className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Priorité</label>
+                <select
+                  value={editAppointmentData.priority}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      priority: e.target.value as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="LOW">Basse</option>
+                  <option value="MEDIUM">Moyenne</option>
+                  <option value="HIGH">Haute</option>
+                  <option value="URGENT">Urgente</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Rappel</label>
+                <select
+                  value={editAppointmentData.reminderMinutesBefore ?? ''}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      reminderMinutesBefore: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Aucun rappel</option>
+                  <option value="5">5 minutes avant</option>
+                  <option value="15">15 minutes avant</option>
+                  <option value="30">30 minutes avant</option>
+                  <option value="60">1 heure avant</option>
+                  <option value="120">2 heures avant</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Attribuer à</label>
+                <select
+                  value={editAppointmentData.assignedUserId}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      assignedUserId: e.target.value,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Moi-même ({session?.user?.name || 'Utilisateur'})</option>
+                  {isAdmin &&
+                    users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <Editor ref={editAppointmentEditorRef} />
+              </div>
+
+              {editAppointmentError && (
+                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                  {editAppointmentError}
+                </div>
+              )}
+            </form>
+
+            {/* Pied de modal fixe */}
+            <div className="shrink-0 border-t border-gray-100 pt-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditAppointmentModal(false);
+                    setEditingAppointment(null);
+                    setEditAppointmentError('');
+                  }}
+                  className="w-full cursor-pointer rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  form="edit-appointment-form"
+                  disabled={editAppointmentLoading}
+                  className="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                >
+                  {editAppointmentLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal d'édition de Google Meet */}
       {showEditMeetModal && editingMeetTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowEditMeetModal(false);
+              setEditingMeetTask(null);
+              setEditMeetError('');
+              setEditMeetData({
+                scheduledAt: '',
+                durationMinutes: 30,
+                attendees: [],
+              });
+            }
+          }}
+        >
           <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
             {/* En-tête fixe */}
             <div className="shrink-0 border-b border-gray-100 pb-4">
@@ -2669,10 +4207,17 @@ export default function ContactDetailPage() {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     setShowEditMeetModal(false);
                     setEditingMeetTask(null);
                     setEditMeetError('');
+                    setEditMeetData({
+                      scheduledAt: '',
+                      durationMinutes: 30,
+                      attendees: [],
+                    });
                   }}
                   className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
                 >
@@ -2708,16 +4253,26 @@ export default function ContactDetailPage() {
                     value={
                       editMeetData.scheduledAt
                         ? editMeetData.scheduledAt.split('T')[0]
-                        : new Date(editingMeetTask.scheduledAt).toISOString().split('T')[0]
+                        : (() => {
+                            // Utiliser l'heure locale sans conversion UTC
+                            const scheduledDate = new Date(editingMeetTask.scheduledAt);
+                            const year = scheduledDate.getFullYear();
+                            const month = String(scheduledDate.getMonth() + 1).padStart(2, '0');
+                            const day = String(scheduledDate.getDate()).padStart(2, '0');
+                            return `${year}-${month}-${day}`;
+                          })()
                     }
                     onChange={(e) => {
                       const time =
                         editMeetData.scheduledAt && editMeetData.scheduledAt.includes('T')
                           ? editMeetData.scheduledAt.split('T')[1]
-                          : new Date(editingMeetTask.scheduledAt)
-                              .toISOString()
-                              .split('T')[1]
-                              .slice(0, 5);
+                          : (() => {
+                              // Utiliser l'heure locale sans conversion UTC
+                              const scheduledDate = new Date(editingMeetTask.scheduledAt);
+                              const hours = String(scheduledDate.getHours()).padStart(2, '0');
+                              const minutes = String(scheduledDate.getMinutes()).padStart(2, '0');
+                              return `${hours}:${minutes}`;
+                            })();
                       setEditMeetData({
                         ...editMeetData,
                         scheduledAt: `${e.target.value}T${time || '09:00'}`,
@@ -2731,16 +4286,26 @@ export default function ContactDetailPage() {
                     value={
                       editMeetData.scheduledAt && editMeetData.scheduledAt.includes('T')
                         ? editMeetData.scheduledAt.split('T')[1].slice(0, 5)
-                        : new Date(editingMeetTask.scheduledAt)
-                            .toISOString()
-                            .split('T')[1]
-                            .slice(0, 5)
+                        : (() => {
+                            // Utiliser l'heure locale sans conversion UTC
+                            const scheduledDate = new Date(editingMeetTask.scheduledAt);
+                            const hours = String(scheduledDate.getHours()).padStart(2, '0');
+                            const minutes = String(scheduledDate.getMinutes()).padStart(2, '0');
+                            return `${hours}:${minutes}`;
+                          })()
                     }
                     onChange={(e) => {
                       const datePart =
                         editMeetData.scheduledAt && editMeetData.scheduledAt.includes('T')
                           ? editMeetData.scheduledAt.split('T')[0]
-                          : new Date(editingMeetTask.scheduledAt).toISOString().split('T')[0];
+                          : (() => {
+                              // Utiliser l'heure locale sans conversion UTC
+                              const scheduledDate = new Date(editingMeetTask.scheduledAt);
+                              const year = scheduledDate.getFullYear();
+                              const month = String(scheduledDate.getMonth() + 1).padStart(2, '0');
+                              const day = String(scheduledDate.getDate()).padStart(2, '0');
+                              return `${year}-${month}-${day}`;
+                            })();
                       setEditMeetData({
                         ...editMeetData,
                         scheduledAt: `${datePart}T${e.target.value || '09:00'}`,
@@ -2772,6 +4337,64 @@ export default function ContactDetailPage() {
                 </select>
               </div>
 
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Invités additionnels (optionnel)
+                </label>
+                <div className="space-y-2">
+                  {editMeetData.attendees.map((email, index) => (
+                    <div key={index} className="flex gap-2">
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                          const newAttendees = [...editMeetData.attendees];
+                          newAttendees[index] = e.target.value;
+                          setEditMeetData({ ...editMeetData, attendees: newAttendees });
+                        }}
+                        placeholder="email@exemple.com"
+                        className="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newAttendees = editMeetData.attendees.filter((_, i) => i !== index);
+                          setEditMeetData({ ...editMeetData, attendees: newAttendees });
+                        }}
+                        className="cursor-pointer rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditMeetData({
+                        ...editMeetData,
+                        attendees: [...editMeetData.attendees, ''],
+                      });
+                    }}
+                    className="cursor-pointer rounded-xl border border-dashed border-gray-300 px-4 py-2 text-sm text-gray-600 transition-colors hover:border-indigo-500 hover:text-indigo-600"
+                  >
+                    + Ajouter un invité
+                  </button>
+                </div>
+                {contact.email && (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-xs text-gray-500">
+                      Le contact ({contact.email}) sera automatiquement invité
+                    </p>
+                    {/* Afficher le contact dans la liste des invités s'il est présent dans Google Calendar */}
+                    {editMeetData.attendees.some((email) => email === contact.email) && (
+                      <div className="flex items-center gap-2 rounded-lg bg-blue-50 p-2">
+                        <span className="text-xs text-blue-700">{contact.email}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {editingMeetTask.googleMeetLink && (
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-gray-700">Lien Google Meet</p>
@@ -2795,13 +4418,246 @@ export default function ContactDetailPage() {
 
             {/* Pied de modal fixe */}
             <div className="shrink-0 border-t border-gray-100 pt-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+                <button
+                  type="button"
+                  onClick={handleDeleteMeet}
+                  disabled={deleteMeetLoading || editMeetLoading}
+                  className="w-full cursor-pointer rounded-xl border border-red-300 bg-white px-4 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                >
+                  {deleteMeetLoading ? (
+                    'Suppression...'
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Trash2 className="h-4 w-4" />
+                      Supprimer
+                    </span>
+                  )}
+                </button>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowEditMeetModal(false);
+                      setEditingMeetTask(null);
+                      setEditMeetError('');
+                      setEditMeetData({
+                        scheduledAt: '',
+                        durationMinutes: 30,
+                        attendees: [],
+                      });
+                    }}
+                    disabled={deleteMeetLoading || editMeetLoading}
+                    className="w-full cursor-pointer rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    form="edit-meet-form"
+                    disabled={editMeetLoading || deleteMeetLoading}
+                    className="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                  >
+                    {editMeetLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'édition de RDV */}
+      {showEditAppointmentModal && editingAppointment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
+            {/* En-tête fixe */}
+            <div className="shrink-0 border-b border-gray-100 pb-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                  Modifier le rendez-vous
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditAppointmentModal(false);
+                    setEditingAppointment(null);
+                    setEditAppointmentError('');
+                  }}
+                  className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu scrollable */}
+            <form
+              id="edit-appointment-form"
+              onSubmit={handleUpdateAppointment}
+              className="flex-1 space-y-6 overflow-y-auto pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Titre *</label>
+                <input
+                  type="text"
+                  required
+                  value={editAppointmentData.title}
+                  onChange={(e) =>
+                    setEditAppointmentData({ ...editAppointmentData, title: e.target.value })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Ex : RDV avec le client"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Date & heure *</label>
+                <div className="mt-1 grid grid-cols-[3fr,2fr] gap-2">
+                  <input
+                    type="date"
+                    required
+                    value={
+                      editAppointmentData.scheduledAt
+                        ? editAppointmentData.scheduledAt.split('T')[0]
+                        : new Date(editingAppointment.scheduledAt).toISOString().split('T')[0]
+                    }
+                    onChange={(e) => {
+                      const time =
+                        editAppointmentData.scheduledAt &&
+                        editAppointmentData.scheduledAt.includes('T')
+                          ? editAppointmentData.scheduledAt.split('T')[1]
+                          : new Date(editingAppointment.scheduledAt)
+                              .toISOString()
+                              .split('T')[1]
+                              .slice(0, 5);
+                      setEditAppointmentData({
+                        ...editAppointmentData,
+                        scheduledAt: `${e.target.value}T${time || '09:00'}`,
+                      });
+                    }}
+                    className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                  <input
+                    type="time"
+                    required
+                    value={
+                      editAppointmentData.scheduledAt &&
+                      editAppointmentData.scheduledAt.includes('T')
+                        ? editAppointmentData.scheduledAt.split('T')[1].slice(0, 5)
+                        : new Date(editingAppointment.scheduledAt)
+                            .toISOString()
+                            .split('T')[1]
+                            .slice(0, 5)
+                    }
+                    onChange={(e) => {
+                      const datePart =
+                        editAppointmentData.scheduledAt &&
+                        editAppointmentData.scheduledAt.includes('T')
+                          ? editAppointmentData.scheduledAt.split('T')[0]
+                          : new Date(editingAppointment.scheduledAt).toISOString().split('T')[0];
+                      setEditAppointmentData({
+                        ...editAppointmentData,
+                        scheduledAt: `${datePart}T${e.target.value || '09:00'}`,
+                      });
+                    }}
+                    className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Priorité</label>
+                <select
+                  value={editAppointmentData.priority}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      priority: e.target.value as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="LOW">Basse</option>
+                  <option value="MEDIUM">Moyenne</option>
+                  <option value="HIGH">Haute</option>
+                  <option value="URGENT">Urgente</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Rappel</label>
+                <select
+                  value={editAppointmentData.reminderMinutesBefore ?? ''}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      reminderMinutesBefore: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Aucun rappel</option>
+                  <option value="5">5 minutes avant</option>
+                  <option value="15">15 minutes avant</option>
+                  <option value="30">30 minutes avant</option>
+                  <option value="60">1 heure avant</option>
+                  <option value="120">2 heures avant</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Attribuer à</label>
+                <select
+                  value={editAppointmentData.assignedUserId}
+                  onChange={(e) =>
+                    setEditAppointmentData({
+                      ...editAppointmentData,
+                      assignedUserId: e.target.value,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Moi-même ({session?.user?.name || 'Utilisateur'})</option>
+                  {isAdmin &&
+                    users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <Editor ref={editAppointmentEditorRef} />
+              </div>
+
+              {editAppointmentError && (
+                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                  {editAppointmentError}
+                </div>
+              )}
+            </form>
+
+            {/* Pied de modal fixe */}
+            <div className="shrink-0 border-t border-gray-100 pt-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={() => {
-                    setShowEditMeetModal(false);
-                    setEditingMeetTask(null);
-                    setEditMeetError('');
+                    setShowEditAppointmentModal(false);
+                    setEditingAppointment(null);
+                    setEditAppointmentError('');
                   }}
                   className="w-full cursor-pointer rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
                 >
@@ -2809,11 +4665,11 @@ export default function ContactDetailPage() {
                 </button>
                 <button
                   type="submit"
-                  form="edit-meet-form"
-                  disabled={editMeetLoading}
+                  form="edit-appointment-form"
+                  disabled={editAppointmentLoading}
                   className="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
-                  {editMeetLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                  {editAppointmentLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
                 </button>
               </div>
             </div>

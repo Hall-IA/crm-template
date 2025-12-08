@@ -173,3 +173,41 @@ export async function logAppointmentCreated(
   });
 }
 
+/**
+ * Crée une interaction pour l'annulation d'un rendez-vous
+ */
+export async function logAppointmentCancelled(
+  contactId: string,
+  taskId: string,
+  scheduledAt: Date,
+  title: string | null,
+  userId: string,
+  isGoogleMeet: boolean = false
+) {
+  const formattedDate = scheduledAt.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const appointmentType = isGoogleMeet ? "Google Meet" : "Rendez-vous";
+  const appointmentTitle = title || appointmentType;
+
+  return await createInteraction({
+    contactId,
+    type: "MEETING",
+    title: `${appointmentType} annulé : ${appointmentTitle}`,
+    content: `${appointmentType} prévu le ${formattedDate} a été annulé.`,
+    userId,
+    date: scheduledAt,
+    metadata: {
+      taskId,
+      scheduledAt: scheduledAt.toISOString(),
+      cancelled: true,
+      isGoogleMeet,
+    },
+  });
+}
+

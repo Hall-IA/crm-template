@@ -6,9 +6,11 @@ import {
   updateGoogleCalendarEvent,
   extractMeetLink,
   deleteGoogleCalendarEvent,
+  getGoogleCalendarEvent,
 } from '@/lib/google-calendar';
 import nodemailer from 'nodemailer';
 import { decrypt } from '@/lib/encryption';
+import { logAppointmentCancelled } from '@/lib/contact-interactions';
 
 function htmlToText(html: string): string {
   if (!html) return '';
@@ -106,6 +108,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       completed,
       reminderMinutesBefore,
       durationMinutes,
+      attendees,
     } = body;
 
     // Vérifier que la tâche existe
@@ -198,6 +201,31 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             };
           }
 
+          // Mettre à jour les invités si fournis
+          if (attendees !== undefined && Array.isArray(attendees)) {
+            // Récupérer le contact pour l'inclure dans la liste
+            const contact = existingTask.contactId
+              ? await prisma.contact.findUnique({
+                  where: { id: existingTask.contactId },
+                  select: { email: true },
+                })
+              : null;
+
+            // Construire la liste des invités (contact + invités additionnels)
+            const allAttendees = [];
+            if (contact?.email) {
+              allAttendees.push({ email: contact.email });
+            }
+            // Ajouter les autres invités (exclure le contact s'il est déjà dans la liste)
+            attendees.forEach((email: string) => {
+              if (email && email.trim() !== '' && email !== contact?.email) {
+                allAttendees.push({ email: email.trim() });
+              }
+            });
+
+            googleUpdate.attendees = allAttendees.length > 0 ? allAttendees : undefined;
+          }
+
           // Mettre à jour l'évènement Google Calendar
           const updatedGoogleEvent = await updateGoogleCalendarEvent(
             accessToken,
@@ -270,6 +298,38 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         });
 
         if (smtpConfig && task.googleMeetLink) {
+          // Récupérer les invités depuis Google Calendar
+          let allRecipients: string[] = [];
+          if (task.contact.email) {
+            allRecipients.push(task.contact.email);
+          }
+
+          try {
+            const googleAccount = await prisma.userGoogleAccount.findUnique({
+              where: { userId: session.user.id },
+            });
+
+            if (googleAccount && existingTask.googleEventId) {
+              const accessToken = await getValidAccessToken(
+                googleAccount.accessToken,
+                googleAccount.refreshToken,
+                googleAccount.tokenExpiresAt,
+              );
+
+              const googleEvent = await getGoogleCalendarEvent(accessToken, existingTask.googleEventId);
+              if (googleEvent.attendees) {
+                googleEvent.attendees.forEach((attendee) => {
+                  if (attendee.email && !allRecipients.includes(attendee.email)) {
+                    allRecipients.push(attendee.email);
+                  }
+                });
+              }
+            }
+          } catch (googleError: any) {
+            console.error('Erreur lors de la récupération des invités:', googleError);
+            // On continue avec au moins le contact
+          }
+
           // Déchiffrer le mot de passe SMTP
           let password: string;
           try {
@@ -473,16 +533,18 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             ${smtpConfig.signature ? `\n\n${htmlToText(smtpConfig.signature)}` : ''}
           `.trim();
 
-          // Envoyer l'email
-          await transporter.sendMail({
-            from: smtpConfig.fromName
-              ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
-              : smtpConfig.fromEmail,
-            to: task.contact.email,
-            subject: `Modification de rendez-vous : ${task.title || 'Rendez-vous'}`,
-            text: emailText,
-            html: emailHtml,
-          });
+          // Envoyer l'email à tous les destinataires
+          if (allRecipients.length > 0) {
+            await transporter.sendMail({
+              from: smtpConfig.fromName
+                ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
+                : smtpConfig.fromEmail,
+              to: allRecipients.join(', '),
+              subject: `Modification de rendez-vous : ${task.title || 'Rendez-vous'}`,
+              text: emailText,
+              html: emailHtml,
+            });
+          }
         }
       } catch (emailError: any) {
         // Ne pas faire échouer la mise à jour si l'email échoue
@@ -561,8 +623,11 @@ export async function DELETE(
       },
     });
 
-    // Supprimer l'événement Google Calendar si c'est un Google Meet
-    if (task.googleEventId) {
+    // Récupérer les invités depuis Google Calendar AVANT suppression pour l'email
+    let allRecipients: string[] = [];
+    if (task.googleEventId && taskWithContact?.contact?.email) {
+      allRecipients.push(taskWithContact.contact.email);
+
       try {
         const googleAccount = await prisma.userGoogleAccount.findUnique({
           where: { userId: session.user.id },
@@ -588,6 +653,16 @@ export async function DELETE(
             });
           }
 
+          // Récupérer les invités AVANT de supprimer l'événement
+          const googleEvent = await getGoogleCalendarEvent(accessToken, task.googleEventId);
+          if (googleEvent.attendees) {
+            googleEvent.attendees.forEach((attendee) => {
+              if (attendee.email && !allRecipients.includes(attendee.email)) {
+                allRecipients.push(attendee.email);
+              }
+            });
+          }
+
           // Supprimer l'événement Google Calendar
           await deleteGoogleCalendarEvent(accessToken, task.googleEventId);
         }
@@ -597,13 +672,30 @@ export async function DELETE(
       }
     }
 
+    // Créer une interaction pour l'annulation si c'est un Google Meet ou un RDV
+    if (task.contactId && (task.type === 'VIDEO_CONFERENCE' || task.type === 'MEETING')) {
+      try {
+        await logAppointmentCancelled(
+          task.contactId,
+          task.id,
+          task.scheduledAt,
+          task.title,
+          session.user.id,
+          task.type === 'VIDEO_CONFERENCE',
+        );
+      } catch (interactionError: any) {
+        console.error('Erreur lors de la création de l\'interaction d\'annulation:', interactionError);
+        // On continue même si l'interaction échoue
+      }
+    }
+
     // Supprimer la tâche
     await prisma.task.delete({
       where: { id },
     });
 
-    // Envoyer un email d'annulation au contact si c'est un Google Meet
-    if (task.googleEventId && taskWithContact?.contact?.email && task.googleMeetLink) {
+    // Envoyer un email d'annulation à tous les invités si c'est un Google Meet
+    if (task.googleEventId && allRecipients.length > 0 && task.googleMeetLink) {
       try {
         // Récupérer la configuration SMTP
         const smtpConfig = await prisma.smtpConfig.findUnique({
@@ -739,16 +831,18 @@ ${organizerName}
 ${smtpConfig.signature ? `\n\n${htmlToText(smtpConfig.signature)}` : ''}
           `.trim();
 
-          // Envoyer l'email
-          await transporter.sendMail({
-            from: smtpConfig.fromName
-              ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
-              : smtpConfig.fromEmail,
-            to: taskWithContact.contact.email,
-            subject: `Annulation de rendez-vous : ${task.title || 'Rendez-vous'}`,
-            text: emailText,
-            html: emailHtml,
-          });
+          // Envoyer l'email à tous les destinataires
+          if (allRecipients.length > 0) {
+            await transporter.sendMail({
+              from: smtpConfig.fromName
+                ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
+                : smtpConfig.fromEmail,
+              to: allRecipients.join(', '),
+              subject: `Annulation de rendez-vous : ${task.title || 'Rendez-vous'}`,
+              text: emailText,
+              html: emailHtml,
+            });
+          }
         }
       } catch (emailError: any) {
         // Ne pas faire échouer la suppression si l'email échoue

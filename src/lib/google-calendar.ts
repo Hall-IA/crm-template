@@ -240,3 +240,29 @@ export function extractMeetLink(eventResponse: GoogleCalendarEventResponse): str
   return null;
 }
 
+/**
+ * Récupère un évènement Google Calendar
+ */
+export async function getGoogleCalendarEvent(
+  accessToken: string,
+  eventId: string
+): Promise<GoogleCalendarEventResponse> {
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+    {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Erreur lors de la récupération de l'évènement: ${error}`);
+  }
+
+  return response.json();
+}
+
