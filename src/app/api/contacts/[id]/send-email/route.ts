@@ -166,15 +166,31 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     await transporter.sendMail(mailOptions);
 
-    // Créer une interaction de type EMAIL (contenu en texte brut)
+    // Préparer les métadonnées pour les pièces jointes
+    const attachmentNames = attachments.map((att) => att.filename);
+    const metadata: any = {};
+    if (attachmentNames.length > 0) {
+      metadata.attachments = attachmentNames;
+    }
+    if (ccEmails.length > 0) {
+      metadata.cc = ccEmails;
+    }
+    if (bccEmails.length > 0) {
+      metadata.bcc = bccEmails;
+    }
+    metadata.to = toEmails;
+    metadata.htmlContent = `${baseHtml}${signatureHtml}`; // Stocker le HTML pour l'affichage
+
+    // Créer une interaction de type EMAIL (contenu HTML dans metadata, texte brut dans content)
     const interaction = await prisma.interaction.create({
       data: {
         contactId: id,
         type: 'EMAIL',
         title: subject,
-        content: baseText,
+        content: baseText, // Texte brut pour la recherche/affichage simple
         userId: session.user.id,
         date: new Date(),
+        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       },
       include: {
         user: {

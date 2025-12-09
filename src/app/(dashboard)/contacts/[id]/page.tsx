@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useSession } from '@/lib/auth-client';
 import {
   User,
@@ -26,6 +26,7 @@ import { Editor, type DefaultTemplateRef } from '@/components/editor';
 import { useUserRole } from '@/hooks/use-user-role';
 import { useMobileMenuContext } from '@/contexts/mobile-menu-context';
 import { replaceTemplateVariables } from '@/lib/template-variables';
+import { cn } from '@/lib/utils';
 
 interface Status {
   id: string;
@@ -74,9 +75,10 @@ interface Contact {
   city: string | null;
   postalCode: string | null;
   origin: string | null;
+  company: string | null;
   isCompany: boolean;
   companyId: string | null;
-  company: Contact | null;
+  companyRelation: Contact | null;
   statusId: string | null;
   status: Status | null;
   assignedCommercialId: string | null;
@@ -92,6 +94,7 @@ interface Contact {
 
 export default function ContactDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const { data: session } = useSession();
   const { isAdmin } = useUserRole();
   const { isOpen: isMobileMenuOpen, toggle: toggleMobileMenu } = useMobileMenuContext();
@@ -130,6 +133,7 @@ export default function ContactDetailPage() {
     city: '',
     postalCode: '',
     origin: '',
+    company: '',
     isCompany: false,
     companyId: '',
     statusId: '',
@@ -201,7 +205,7 @@ export default function ContactDetailPage() {
   const [editMeetError, setEditMeetError] = useState('');
   const [deleteMeetLoading, setDeleteMeetLoading] = useState(false);
 
-  // Modal d'édition RDV
+  // Modal d'édition Rendez-vous
   const [showEditAppointmentModal, setShowEditAppointmentModal] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<any | null>(null);
   const [editAppointmentData, setEditAppointmentData] = useState<{
@@ -222,6 +226,10 @@ export default function ContactDetailPage() {
   const [editAppointmentLoading, setEditAppointmentLoading] = useState(false);
   const [editAppointmentError, setEditAppointmentError] = useState('');
   const editAppointmentEditorRef = useRef<DefaultTemplateRef | null>(null);
+
+  // Modal de visualisation d'activité
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [viewingActivity, setViewingActivity] = useState<Interaction | null>(null);
 
   // Modals spécifiques pour chaque action
   const [showMeetingModal, setShowMeetingModal] = useState(false);
@@ -263,13 +271,110 @@ export default function ContactDetailPage() {
   >('activities');
 
   // Grouper les interactions par date (doit être avant les useEffect)
-  const groupedInteractions = useMemo(() => {
+  // Séparer les interactions en activités et fil d'actualités
+  const groupedActivities = useMemo(() => {
     if (!contact) return {};
-    const allInteractions = contact.interactions.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+    // Types d'activités : actions effectuées par l'utilisateur
+    const activityTypes = ['EMAIL', 'CALL', 'SMS', 'NOTE', 'MEETING', 'APPOINTMENT_CREATED'];
+    const activities = contact.interactions
+      .filter((interaction) => activityTypes.includes(interaction.type))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
     const groups: { [key: string]: Interaction[] } = {};
-    allInteractions.forEach((interaction) => {
+    activities.forEach((interaction) => {
+      const date = new Date(interaction.createdAt);
+      const dateKey = date.toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(interaction);
+    });
+    return groups;
+  }, [contact]);
+
+  // Grouper les notes par date
+  const groupedNotes = useMemo(() => {
+    if (!contact) return {};
+    const notes = contact.interactions
+      .filter((interaction) => interaction.type === 'NOTE')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const groups: { [key: string]: Interaction[] } = {};
+    notes.forEach((interaction) => {
+      const date = new Date(interaction.createdAt);
+      const dateKey = date.toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(interaction);
+    });
+    return groups;
+  }, [contact]);
+
+  // Grouper les appels par date
+  const groupedCalls = useMemo(() => {
+    if (!contact) return {};
+    const calls = contact.interactions
+      .filter((interaction) => interaction.type === 'CALL')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const groups: { [key: string]: Interaction[] } = {};
+    calls.forEach((interaction) => {
+      const date = new Date(interaction.createdAt);
+      const dateKey = date.toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(interaction);
+    });
+    return groups;
+  }, [contact]);
+
+  // Grouper les emails par date
+  const groupedEmails = useMemo(() => {
+    if (!contact) return {};
+    const emails = contact.interactions
+      .filter((interaction) => interaction.type === 'EMAIL')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const groups: { [key: string]: Interaction[] } = {};
+    emails.forEach((interaction) => {
+      const date = new Date(interaction.createdAt);
+      const dateKey = date.toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(interaction);
+    });
+    return groups;
+  }, [contact]);
+
+  const groupedNewsFeed = useMemo(() => {
+    if (!contact) return {};
+    // Types de fil d'actualités : modifications du contact
+    const newsFeedTypes = ['STATUS_CHANGE', 'CONTACT_UPDATE', 'ASSIGNMENT_CHANGE'];
+    const newsFeed = contact.interactions
+      .filter((interaction) => newsFeedTypes.includes(interaction.type))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const groups: { [key: string]: Interaction[] } = {};
+    newsFeed.forEach((interaction) => {
       const date = new Date(interaction.createdAt);
       const dateKey = date.toLocaleDateString('fr-FR', {
         day: 'numeric',
@@ -312,6 +417,20 @@ export default function ContactDetailPage() {
     checkGoogleConnection();
   }, []);
 
+  // Injecter la description dans l'éditeur lorsque la modal d'édition de rendez-vous s'ouvre
+  useEffect(() => {
+    if (showEditAppointmentModal && editingAppointment) {
+      // Attendre que l'éditeur soit monté avant d'injecter le contenu
+      const timer = setTimeout(() => {
+        if (editAppointmentEditorRef.current) {
+          const description = editingAppointment.description || '';
+          editAppointmentEditorRef.current.injectHTML(description);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [showEditAppointmentModal, editingAppointment]);
+
   const fetchContact = async () => {
     try {
       setLoading(true);
@@ -330,6 +449,7 @@ export default function ContactDetailPage() {
           city: data.city || '',
           postalCode: data.postalCode || '',
           origin: data.origin || '',
+          company: data.company || '',
           isCompany: data.isCompany || false,
           companyId: data.companyId || '',
           statusId: data.statusId || '',
@@ -437,6 +557,7 @@ export default function ContactDetailPage() {
           city: formData.city || null,
           postalCode: formData.postalCode || null,
           origin: formData.origin || null,
+          company: formData.company || null,
           isCompany: formData.isCompany || false,
           companyId: formData.companyId || null,
         }),
@@ -450,6 +571,37 @@ export default function ContactDetailPage() {
 
       setShowEditModal(false);
       fetchContact();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleDeleteContact = async () => {
+    // Vérifier que l'utilisateur est administrateur
+    if (!isAdmin) {
+      setError('Seuls les administrateurs peuvent supprimer un contact');
+      return;
+    }
+
+    if (
+      !confirm('Êtes-vous sûr de vouloir supprimer ce contact ? Cette action est irréversible.')
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/contacts/${contactId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la suppression');
+      }
+
+      // Rediriger vers la liste des contacts après suppression
+      router.push('/contacts');
     } catch (err: any) {
       setError(err.message);
     }
@@ -845,10 +997,11 @@ export default function ContactDetailPage() {
     e.preventDefault();
     setError('');
 
+    let htmlContent = '';
     let contentText = '';
     if (noteEditorRef.current) {
-      const html = noteEditorRef.current.getHTML() || '';
-      contentText = html
+      htmlContent = noteEditorRef.current.getHTML() || '';
+      contentText = htmlContent
         .replace(/<br\s*\/?>/gi, '\n')
         .replace(/<\/p>/gi, '\n')
         .replace(/<[^>]+>/g, '')
@@ -862,6 +1015,12 @@ export default function ContactDetailPage() {
     }
 
     try {
+      // Préparer les métadonnées avec le HTML
+      const metadata: any = {};
+      if (htmlContent) {
+        metadata.htmlContent = htmlContent;
+      }
+
       const response = await fetch(`/api/contacts/${contactId}/interactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -870,6 +1029,7 @@ export default function ContactDetailPage() {
           title: noteData.title || null,
           content: contentText,
           date: noteData.date || null,
+          metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
         }),
       });
 
@@ -1150,7 +1310,7 @@ export default function ContactDetailPage() {
       case 'EMAIL':
         return 'Email';
       case 'MEETING':
-        return 'RDV';
+        return 'Rendez-vous';
       case 'NOTE':
         return 'Note';
       case 'STATUS_CHANGE':
@@ -1360,15 +1520,15 @@ export default function ContactDetailPage() {
             >
               <RefreshCw className="h-5 w-5" />
             </button>
-            <button
-              onClick={() => {
-                return;
-              }}
-              className="cursor-pointer rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100"
-              title="Paramètres"
-            >
-              <Settings className="h-5 w-5" />
-            </button>
+            {isAdmin && (
+              <button
+                onClick={handleDeleteContact}
+                className="cursor-pointer rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50"
+                title="Supprimer le contact"
+              >
+                <Trash2 className="h-5 w-5" />
+              </button>
+            )}
           </div>
         </div>
         {/* Breadcrumbs */}
@@ -1407,7 +1567,12 @@ export default function ContactDetailPage() {
               </h2>
               {contact.company && (
                 <p className="mt-1 truncate text-xs text-gray-500 sm:text-sm">
-                  {contact.company.firstName || contact.company.lastName || 'Entreprise sans nom'}
+                  {contact.company}
+                </p>
+              )}
+              {!contact.company && contact.companyRelation && (
+                <p className="mt-1 truncate text-xs text-gray-500 sm:text-sm">
+                  {contact.companyRelation.firstName || contact.companyRelation.lastName || 'Entreprise sans nom'}
                 </p>
               )}
             </div>
@@ -1433,8 +1598,7 @@ export default function ContactDetailPage() {
               className="cursor-pointer rounded-lg bg-gray-900 px-2 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-800 sm:px-4 sm:py-2 sm:text-sm"
             >
               <Plus className="mr-1 inline h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Créer une tâche</span>
-              <span className="sm:hidden">Tâche</span>
+              <span className="hidden sm:inline">Tâche</span>
             </button>
             <button
               onClick={() => {
@@ -1451,10 +1615,10 @@ export default function ContactDetailPage() {
                 setSuccess('');
               }}
               className="cursor-pointer rounded-lg bg-blue-600 px-2 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 sm:px-4 sm:py-2 sm:text-sm"
-              title="Créer un RDV"
+              title="Créer un Rendez-vous"
             >
               <CalendarIcon className="mr-1 inline h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">RDV</span>
+              <span className="hidden sm:inline">Rendez-vous</span>
             </button>
             <button
               onClick={() => {
@@ -1475,7 +1639,7 @@ export default function ContactDetailPage() {
               title="Créer un Google Meet"
             >
               <Video className="mr-1 inline h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Google Meet</span>
+              <span className="hidden sm:inline">Visio-conférence</span>
               <span className="sm:hidden">Meet</span>
             </button>
             <Link
@@ -1544,8 +1708,8 @@ export default function ContactDetailPage() {
       {/* Contenu principal - Deux colonnes */}
       <div className="flex-1 overflow-y-auto">
         <div className="flex flex-col gap-6 p-4 lg:flex-row lg:p-6">
-          {/* Colonne gauche - Formulaire */}
-          <div className="w-full space-y-4 lg:w-1/3">
+          {/* Colonne gauche - Formulaire (sticky) */}
+          <div className="w-full space-y-4 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:w-1/3 lg:self-start lg:overflow-y-auto lg:pb-4">
             <div className="rounded-lg bg-white p-3 shadow sm:p-4">
               {/* Formulaire */}
               <form
@@ -1662,29 +1826,53 @@ export default function ContactDetailPage() {
                       )}
                       <div className="grid grid-cols-2 gap-2">
                         {contact?.city && (
-                          <input
-                            type="text"
-                            value={formData.city || ''}
-                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                            placeholder="Ville"
-                            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                          />
+                          <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                              Ville
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.city || ''}
+                              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                              placeholder="Ville"
+                              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            />
+                          </div>
                         )}
                         {contact?.postalCode && (
-                          <input
-                            type="text"
-                            value={formData.postalCode || ''}
-                            onChange={(e) =>
-                              setFormData({ ...formData, postalCode: e.target.value })
-                            }
-                            placeholder="Code postal"
-                            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                          />
+                          <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                              Code postal
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.postalCode || ''}
+                              onChange={(e) =>
+                                setFormData({ ...formData, postalCode: e.target.value })
+                              }
+                              placeholder="Code postal"
+                              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            />
+                          </div>
                         )}
                       </div>
                     </div>
                   </div>
                 )}
+
+                {/* Entreprise - Toujours affichée */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Entreprise
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.company || ''}
+                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                    placeholder="Nom de l'entreprise"
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
 
                 {/* Campagne d'origine - Toujours affichée */}
                 <div>
@@ -1700,36 +1888,6 @@ export default function ContactDetailPage() {
                   />
                 </div>
 
-                {/* Entreprise - Affichée seulement si le contact est une entreprise ou a une entreprise associée */}
-                {(contact?.isCompany || contact?.company) && (
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                      {contact?.isCompany ? 'Entreprise' : 'Entreprise Client'}
-                    </label>
-                    {contact?.isCompany ? (
-                      <input
-                        type="text"
-                        value={
-                          `${contact.firstName || ''} ${contact.lastName || ''}`.trim() ||
-                          'Entreprise'
-                        }
-                        className="w-full rounded-lg border border-gray-300 bg-gray-50 px-2 py-1.5 text-sm text-gray-500"
-                        disabled
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        value={
-                          contact?.company
-                            ? `${contact.company.firstName || ''} ${contact.company.lastName || ''}`.trim()
-                            : 'Non renseigné'
-                        }
-                        className="w-full rounded-lg border border-gray-300 bg-gray-50 px-2 py-1.5 text-sm text-gray-500"
-                        disabled
-                      />
-                    )}
-                  </div>
-                )}
 
                 {/* Statut */}
                 <div>
@@ -1835,7 +1993,7 @@ export default function ContactDetailPage() {
                 <nav className="flex flex-wrap" aria-label="Tabs">
                   {[
                     { id: 'activities' as const, label: 'Activités', icon: Activity },
-                    { id: 'appointments' as const, label: 'RDV', icon: CalendarIcon },
+                    { id: 'appointments' as const, label: 'Rendez-vous', icon: CalendarIcon },
                     { id: 'notes' as const, label: 'Notes', icon: FileText },
                     { id: 'calls' as const, label: 'Appels', icon: PhoneCall },
                     { id: 'files' as const, label: 'Fichiers', icon: FileText },
@@ -1863,89 +2021,175 @@ export default function ContactDetailPage() {
               {/* Contenu des onglets */}
               <div className="p-4 sm:p-6">
                 {activeTab === 'activities' && (
-                  <div>
-                    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <h2 className="text-lg font-semibold text-gray-900">Activités</h2>
-                      <select className="cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                        <option>Trier par</option>
-                        <option>Date (plus récent)</option>
-                        <option>Date (plus ancien)</option>
-                        <option>Type</option>
-                      </select>
-                    </div>
-                    <div className="space-y-6">
-                      {Object.keys(groupedInteractions).length === 0 ? (
-                        <p className="py-8 text-center text-sm text-gray-500">Aucune activité</p>
-                      ) : (
-                        Object.entries(groupedInteractions).map(([date, interactions]) => (
-                          <div key={date}>
-                            <h3 className="mb-4 text-sm font-semibold text-gray-700">{date}</h3>
-                            <div className="space-y-3">
-                              {interactions.map((interaction) => {
-                                const getCardColor = (type: string) => {
-                                  switch (type) {
-                                    case 'EMAIL':
-                                      return 'bg-blue-50 border-blue-200';
-                                    case 'CALL':
-                                      return 'bg-green-50 border-green-200';
-                                    case 'SMS':
-                                      return 'bg-blue-50 border-blue-200';
-                                    case 'NOTE':
-                                      return 'bg-gray-50 border-gray-200';
-                                    case 'MEETING':
-                                      return 'bg-yellow-50 border-yellow-200';
-                                    case 'STATUS_CHANGE':
-                                      return 'bg-purple-50 border-purple-200';
-                                    case 'CONTACT_UPDATE':
-                                      return 'bg-indigo-50 border-indigo-200';
-                                    case 'APPOINTMENT_CREATED':
-                                      return 'bg-orange-50 border-orange-200';
-                                    case 'ASSIGNMENT_CHANGE':
-                                      return 'bg-teal-50 border-teal-200';
-                                    default:
-                                      return 'bg-gray-50 border-gray-200';
-                                  }
-                                };
-                                return (
-                                  <div
-                                    key={interaction.id}
-                                    className={`rounded-lg border p-3 sm:p-4 ${getCardColor(interaction.type)}`}
-                                  >
-                                    <div className="flex items-start gap-2 sm:gap-3">
-                                      <div className="mt-0.5 shrink-0">
-                                        {getInteractionIcon(interaction.type)}
-                                      </div>
-                                      <div className="min-w-0 flex-1">
-                                        <p className="wrap-break-words text-sm font-medium text-gray-900">
-                                          {getInteractionLabel(interaction.type)}
-                                          {interaction.title && `: ${interaction.title}`}
-                                        </p>
-                                        {interaction.content && (
-                                          <p className="wrap-break-words mt-1 text-sm text-gray-700">
-                                            {interaction.content
-                                              .replace(/<[^>]+>/g, '')
-                                              .substring(0, 150)}
-                                            {interaction.content.length > 150 && '...'}
+                  <div className="space-y-8">
+                    {/* Section Activités */}
+                    <div>
+                      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <h2 className="text-lg font-semibold text-gray-900">Activités</h2>
+                      </div>
+                      <div className="space-y-4">
+                        {Object.keys(groupedActivities).length === 0 ? (
+                          <p className="py-6 text-center text-sm text-gray-500">Aucune activité</p>
+                        ) : (
+                          Object.entries(groupedActivities).map(([date, interactions]) => (
+                            <div key={date}>
+                              <h3 className="mb-3 text-sm font-semibold text-gray-700">{date}</h3>
+                              <div className="space-y-2">
+                                {interactions.map((interaction) => {
+                                  const getCardColor = (type: string) => {
+                                    switch (type) {
+                                      case 'EMAIL':
+                                        return 'bg-blue-50 border-blue-200';
+                                      case 'CALL':
+                                        return 'bg-green-50 border-green-200';
+                                      case 'SMS':
+                                        return 'bg-blue-50 border-blue-200';
+                                      case 'NOTE':
+                                        return 'bg-gray-50 border-gray-200';
+                                      case 'MEETING':
+                                        return 'bg-yellow-50 border-yellow-200';
+                                      case 'APPOINTMENT_CREATED':
+                                        return 'bg-orange-50 border-orange-200';
+                                      default:
+                                        return 'bg-gray-50 border-gray-200';
+                                    }
+                                  };
+                                  return (
+                                    <div
+                                      key={interaction.id}
+                                      onClick={() => {
+                                        setViewingActivity(interaction);
+                                        setShowActivityModal(true);
+                                      }}
+                                      className={cn(
+                                        'relative cursor-pointer rounded-lg border p-2.5 transition-colors hover:shadow-md sm:p-3',
+                                        getCardColor(interaction.type),
+                                      )}
+                                    >
+                                      <div className="flex items-start gap-2">
+                                        <div className="mt-0.5 shrink-0">
+                                          {getInteractionIcon(interaction.type)}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <p className="wrap-break-words text-sm font-medium text-gray-900">
+                                            {getInteractionLabel(interaction.type)}
+                                            {interaction.title && `: ${interaction.title}`}
                                           </p>
-                                        )}
-                                        <p className="mt-2 text-sm text-gray-500">
-                                          {new Date(interaction.createdAt).toLocaleTimeString(
-                                            'fr-FR',
-                                            {
-                                              hour: '2-digit',
-                                              minute: '2-digit',
-                                            },
+                                          {interaction.content && (
+                                            <p className="wrap-break-words mt-1 line-clamp-2 text-xs text-gray-700">
+                                              {interaction.content
+                                                .replace(/<[^>]+>/g, '')
+                                                .substring(0, 100)}
+                                              {interaction.content.replace(/<[^>]+>/g, '').length >
+                                                100 && '...'}
+                                            </p>
                                           )}
-                                        </p>
+                                          <div className="mt-1.5 flex items-center justify-between">
+                                            <p className="text-xs text-gray-500">
+                                              {new Date(interaction.createdAt).toLocaleTimeString(
+                                                'fr-FR',
+                                                {
+                                                  hour: '2-digit',
+                                                  minute: '2-digit',
+                                                },
+                                              )}
+                                            </p>
+                                            {interaction.user && (
+                                              <p className="text-xs text-gray-500">
+                                                Par :{' '}
+                                                {interaction.user.name || interaction.user.email}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                );
-                              })}
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </div>
-                        ))
-                      )}
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Section Fil d'actualités */}
+                    <div>
+                      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <h2 className="text-lg font-semibold text-gray-900">Fil d'actualités</h2>
+                      </div>
+                      <div className="space-y-4">
+                        {Object.keys(groupedNewsFeed).length === 0 ? (
+                          <p className="py-6 text-center text-sm text-gray-500">
+                            Aucune modification
+                          </p>
+                        ) : (
+                          Object.entries(groupedNewsFeed).map(([date, interactions]) => (
+                            <div key={date}>
+                              <h3 className="mb-3 text-sm font-semibold text-gray-700">{date}</h3>
+                              <div className="space-y-2">
+                                {interactions.map((interaction) => {
+                                  const getCardColor = (type: string) => {
+                                    switch (type) {
+                                      case 'STATUS_CHANGE':
+                                        return 'bg-purple-50 border-purple-200';
+                                      case 'CONTACT_UPDATE':
+                                        return 'bg-indigo-50 border-indigo-200';
+                                      case 'ASSIGNMENT_CHANGE':
+                                        return 'bg-teal-50 border-teal-200';
+                                      default:
+                                        return 'bg-gray-50 border-gray-200';
+                                    }
+                                  };
+                                  return (
+                                    <div
+                                      key={interaction.id}
+                                      className={cn(
+                                        'relative rounded-lg border p-3 sm:p-4',
+                                        getCardColor(interaction.type),
+                                      )}
+                                    >
+                                      <div className="flex items-start gap-2 sm:gap-3">
+                                        <div className="mt-0.5 shrink-0">
+                                          {getInteractionIcon(interaction.type)}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <p className="wrap-break-words text-sm font-medium text-gray-900">
+                                            {getInteractionLabel(interaction.type)}
+                                            {interaction.title && `: ${interaction.title}`}
+                                          </p>
+                                          {interaction.content && (
+                                            <p className="wrap-break-words mt-1 text-sm text-gray-700">
+                                              {interaction.content.replace(/<[^>]+>/g, '')}
+                                            </p>
+                                          )}
+                                          <div className="mt-2 flex items-center justify-between">
+                                            <p className="text-sm text-gray-500">
+                                              {new Date(interaction.createdAt).toLocaleTimeString(
+                                                'fr-FR',
+                                                {
+                                                  hour: '2-digit',
+                                                  minute: '2-digit',
+                                                },
+                                              )}
+                                            </p>
+                                            {interaction.user && (
+                                              <p className="text-xs text-gray-500">
+                                                Par :{' '}
+                                                {interaction.user.name || interaction.user.email}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1957,7 +2201,7 @@ export default function ContactDetailPage() {
                     </div>
                     <div className="space-y-4">
                       {(() => {
-                        // Filtrer les tâches pour ne garder que les RDV (MEETING et VIDEO_CONFERENCE)
+                        // Filtrer les tâches pour ne garder que les Rendez-vous (MEETING et VIDEO_CONFERENCE)
                         const appointments = tasks.filter(
                           (task) => task.type === 'MEETING' || task.type === 'VIDEO_CONFERENCE',
                         );
@@ -2039,7 +2283,7 @@ export default function ContactDetailPage() {
 
                                   fetchAttendees();
                                 } else {
-                                  // Pour les RDV normaux, ouvrir un nouveau modal
+                                  // Pour les Rendez-vous normaux, ouvrir un nouveau modal
                                   setEditingAppointment(appointment);
                                   setEditAppointmentData({
                                     title: appointment.title || '',
@@ -2053,6 +2297,17 @@ export default function ContactDetailPage() {
                                       appointment.reminderMinutesBefore || null,
                                   });
                                   setShowEditAppointmentModal(true);
+                                  // Injecter la description dans l'éditeur après un court délai pour s'assurer que l'éditeur est monté
+                                  setTimeout(() => {
+                                    if (
+                                      editAppointmentEditorRef.current &&
+                                      appointment.description
+                                    ) {
+                                      editAppointmentEditorRef.current.injectHTML(
+                                        appointment.description,
+                                      );
+                                    }
+                                  }, 200);
                                 }
                               }}
                             >
@@ -2074,7 +2329,7 @@ export default function ContactDetailPage() {
                                           : 'bg-yellow-100 text-yellow-700'
                                       }`}
                                     >
-                                      {isVideoConference ? 'Google Meet' : 'RDV physique'}
+                                      {isVideoConference ? 'Google Meet' : 'Rendez-vous physique'}
                                     </span>
                                   </div>
                                   <p className="mt-1 text-xs text-gray-500">
@@ -2091,9 +2346,10 @@ export default function ContactDetailPage() {
                                     })}
                                   </p>
                                   {appointment.description && (
-                                    <p className="mt-2 line-clamp-2 text-sm text-gray-600">
-                                      {appointment.description.replace(/<[^>]+>/g, '')}
-                                    </p>
+                                    <p
+                                      className="mt-2 line-clamp-2 text-sm text-gray-600"
+                                      dangerouslySetInnerHTML={{ __html: appointment.description }}
+                                    />
                                   )}
                                   {appointment.internalNote && (
                                     <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-2">
@@ -2130,37 +2386,64 @@ export default function ContactDetailPage() {
 
                 {activeTab === 'notes' && (
                   <div>
-                    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <h2 className="text-lg font-semibold text-gray-900">Notes</h2>
                     </div>
-                    <div className="space-y-3">
-                      {notes.length === 0 ? (
-                        <p className="py-8 text-center text-sm text-gray-500">Aucune note</p>
+                    <div className="space-y-4">
+                      {Object.keys(groupedNotes).length === 0 ? (
+                        <p className="py-6 text-center text-sm text-gray-500">Aucune note</p>
                       ) : (
-                        notes.map((note) => (
-                          <div
-                            key={note.id}
-                            className="rounded-lg border border-gray-200 p-3 sm:p-4"
-                          >
-                            <div className="flex items-start gap-2 sm:gap-3">
-                              <FileText className="mt-0.5 h-5 w-5 shrink-0 text-gray-400" />
-                              <div className="min-w-0 flex-1">
-                                <p className="wrap-break-words text-sm font-medium text-gray-900">
-                                  {note.title || 'Note'}
-                                </p>
-                                <p className="wrap-break-words mt-1 text-sm text-gray-700">
-                                  {note.content.replace(/<[^>]+>/g, '')}
-                                </p>
-                                <p className="mt-2 text-sm text-gray-500">
-                                  {new Date(note.createdAt).toLocaleDateString('fr-FR', {
-                                    day: 'numeric',
-                                    month: 'short',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })}
-                                </p>
-                              </div>
+                        Object.entries(groupedNotes).map(([date, interactions]) => (
+                          <div key={date}>
+                            <h3 className="mb-3 text-sm font-semibold text-gray-700">{date}</h3>
+                            <div className="space-y-2">
+                              {interactions.map((interaction) => (
+                                <div
+                                  key={interaction.id}
+                                  onClick={() => {
+                                    setViewingActivity(interaction);
+                                    setShowActivityModal(true);
+                                  }}
+                                  className="relative cursor-pointer rounded-lg border border-gray-200 bg-gray-50 p-2.5 transition-colors hover:shadow-md sm:p-3"
+                                >
+                                  <div className="flex items-start gap-2">
+                                    <div className="mt-0.5 shrink-0">
+                                      {getInteractionIcon(interaction.type)}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="wrap-break-words text-sm font-medium text-gray-900">
+                                        {getInteractionLabel(interaction.type)}
+                                        {interaction.title && `: ${interaction.title}`}
+                                      </p>
+                                      {interaction.content && (
+                                        <p className="wrap-break-words mt-1 line-clamp-2 text-xs text-gray-700">
+                                          {interaction.content
+                                            .replace(/<[^>]+>/g, '')
+                                            .substring(0, 100)}
+                                          {interaction.content.replace(/<[^>]+>/g, '').length >
+                                            100 && '...'}
+                                        </p>
+                                      )}
+                                      <div className="mt-1.5 flex items-center justify-between">
+                                        <p className="text-xs text-gray-500">
+                                          {new Date(interaction.createdAt).toLocaleTimeString(
+                                            'fr-FR',
+                                            {
+                                              hour: '2-digit',
+                                              minute: '2-digit',
+                                            },
+                                          )}
+                                        </p>
+                                        {interaction.user && (
+                                          <p className="text-xs text-gray-500">
+                                            Par : {interaction.user.name || interaction.user.email}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         ))
@@ -2171,54 +2454,75 @@ export default function ContactDetailPage() {
 
                 {activeTab === 'calls' && (
                   <div>
-                    <div className="mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">Appels</h3>
+                    <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <h2 className="text-lg font-semibold text-gray-900">Appels</h2>
                     </div>
-                    <div className="space-y-3">
-                      {contact &&
-                      contact.interactions.filter((i) => i.type === 'CALL').length === 0 ? (
-                        <p className="py-8 text-center text-sm text-gray-500">Aucun appel</p>
+                    <div className="space-y-4">
+                      {Object.keys(groupedCalls).length === 0 ? (
+                        <p className="py-6 text-center text-sm text-gray-500">Aucun appel</p>
                       ) : (
-                        contact &&
-                        contact.interactions
-                          .filter((i) => i.type === 'CALL')
-                          .map((call) => (
-                            <div
-                              key={call.id}
-                              className="rounded-lg border border-gray-200 p-3 sm:p-4"
-                            >
-                              <div className="flex items-start gap-2 sm:gap-3">
-                                <PhoneCall className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
-                                <div className="min-w-0 flex-1">
-                                  <p className="wrap-break-words text-sm font-medium text-gray-900">
-                                    {call.title || 'Appel'}
-                                  </p>
-                                  {call.content && (
-                                    <p className="wrap-break-words mt-1 text-sm text-gray-700">
-                                      {call.content.replace(/<[^>]+>/g, '')}
-                                    </p>
-                                  )}
-                                  <p className="mt-2 text-sm text-gray-500">
-                                    {call.date
-                                      ? new Date(call.date).toLocaleDateString('fr-FR', {
-                                          day: 'numeric',
-                                          month: 'short',
-                                          year: 'numeric',
-                                          hour: '2-digit',
-                                          minute: '2-digit',
-                                        })
-                                      : new Date(call.createdAt).toLocaleDateString('fr-FR', {
-                                          day: 'numeric',
-                                          month: 'short',
-                                          year: 'numeric',
-                                          hour: '2-digit',
-                                          minute: '2-digit',
-                                        })}
-                                  </p>
+                        Object.entries(groupedCalls).map(([date, interactions]) => (
+                          <div key={date}>
+                            <h3 className="mb-3 text-sm font-semibold text-gray-700">{date}</h3>
+                            <div className="space-y-2">
+                              {interactions.map((interaction) => (
+                                <div
+                                  key={interaction.id}
+                                  onClick={() => {
+                                    setViewingActivity(interaction);
+                                    setShowActivityModal(true);
+                                  }}
+                                  className="relative cursor-pointer rounded-lg border border-green-200 bg-green-50 p-2.5 transition-colors hover:shadow-md sm:p-3"
+                                >
+                                  <div className="flex items-start gap-2">
+                                    <div className="mt-0.5 shrink-0">
+                                      {getInteractionIcon(interaction.type)}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="wrap-break-words text-sm font-medium text-gray-900">
+                                        {getInteractionLabel(interaction.type)}
+                                        {interaction.title && `: ${interaction.title}`}
+                                      </p>
+                                      {interaction.content && (
+                                        <p className="wrap-break-words mt-1 line-clamp-2 text-xs text-gray-700">
+                                          {interaction.content
+                                            .replace(/<[^>]+>/g, '')
+                                            .substring(0, 100)}
+                                          {interaction.content.replace(/<[^>]+>/g, '').length >
+                                            100 && '...'}
+                                        </p>
+                                      )}
+                                      <div className="mt-1.5 flex items-center justify-between">
+                                        <p className="text-xs text-gray-500">
+                                          {interaction.date
+                                            ? new Date(interaction.date).toLocaleTimeString(
+                                                'fr-FR',
+                                                {
+                                                  hour: '2-digit',
+                                                  minute: '2-digit',
+                                                },
+                                              )
+                                            : new Date(interaction.createdAt).toLocaleTimeString(
+                                                'fr-FR',
+                                                {
+                                                  hour: '2-digit',
+                                                  minute: '2-digit',
+                                                },
+                                              )}
+                                        </p>
+                                        {interaction.user && (
+                                          <p className="text-xs text-gray-500">
+                                            Par : {interaction.user.name || interaction.user.email}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
+                              ))}
                             </div>
-                          ))
+                          </div>
+                        ))
                       )}
                     </div>
                   </div>
@@ -2236,46 +2540,66 @@ export default function ContactDetailPage() {
                 {activeTab === 'email' && (
                   <div>
                     <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900">Email</h3>
+                      <h2 className="text-lg font-semibold text-gray-900">Email</h2>
                     </div>
-                    <div className="space-y-3">
-                      {contact &&
-                      contact.interactions.filter((i) => i.type === 'EMAIL').length === 0 ? (
-                        <p className="py-8 text-center text-sm text-gray-500">Aucun email</p>
+                    <div className="space-y-4">
+                      {Object.keys(groupedEmails).length === 0 ? (
+                        <p className="py-6 text-center text-sm text-gray-500">Aucun email</p>
                       ) : (
-                        contact &&
-                        contact.interactions
-                          .filter((i) => i.type === 'EMAIL')
-                          .map((email) => (
-                            <div
-                              key={email.id}
-                              className="rounded-lg border border-gray-200 p-3 sm:p-4"
-                            >
-                              <div className="flex items-start gap-2 sm:gap-3">
-                                <MailIcon className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
-                                <div className="min-w-0 flex-1">
-                                  <p className="wrap-break-words text-sm font-medium text-gray-900">
-                                    {email.title || 'Email'}
-                                  </p>
-                                  {email.content && (
-                                    <p className="wrap-break-words mt-1 text-sm text-gray-700">
-                                      {email.content.replace(/<[^>]+>/g, '').substring(0, 200)}
-                                      {email.content.length > 200 && '...'}
-                                    </p>
-                                  )}
-                                  <p className="mt-2 text-sm text-gray-500">
-                                    {new Date(email.createdAt).toLocaleDateString('fr-FR', {
-                                      day: 'numeric',
-                                      month: 'short',
-                                      year: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                    })}
-                                  </p>
+                        Object.entries(groupedEmails).map(([date, interactions]) => (
+                          <div key={date}>
+                            <h3 className="mb-3 text-sm font-semibold text-gray-700">{date}</h3>
+                            <div className="space-y-2">
+                              {interactions.map((interaction) => (
+                                <div
+                                  key={interaction.id}
+                                  onClick={() => {
+                                    setViewingActivity(interaction);
+                                    setShowActivityModal(true);
+                                  }}
+                                  className="relative cursor-pointer rounded-lg border border-blue-200 bg-blue-50 p-2.5 transition-colors hover:shadow-md sm:p-3"
+                                >
+                                  <div className="flex items-start gap-2">
+                                    <div className="mt-0.5 shrink-0">
+                                      {getInteractionIcon(interaction.type)}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="wrap-break-words text-sm font-medium text-gray-900">
+                                        {getInteractionLabel(interaction.type)}
+                                        {interaction.title && `: ${interaction.title}`}
+                                      </p>
+                                      {interaction.content && (
+                                        <p className="wrap-break-words mt-1 line-clamp-2 text-xs text-gray-700">
+                                          {interaction.content
+                                            .replace(/<[^>]+>/g, '')
+                                            .substring(0, 100)}
+                                          {interaction.content.replace(/<[^>]+>/g, '').length >
+                                            100 && '...'}
+                                        </p>
+                                      )}
+                                      <div className="mt-1.5 flex items-center justify-between">
+                                        <p className="text-xs text-gray-500">
+                                          {new Date(interaction.createdAt).toLocaleTimeString(
+                                            'fr-FR',
+                                            {
+                                              hour: '2-digit',
+                                              minute: '2-digit',
+                                            },
+                                          )}
+                                        </p>
+                                        {interaction.user && (
+                                          <p className="text-xs text-gray-500">
+                                            Par : {interaction.user.name || interaction.user.email}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
+                              ))}
                             </div>
-                          ))
+                          </div>
+                        ))
                       )}
                     </div>
                   </div>
@@ -2437,7 +2761,7 @@ export default function ContactDetailPage() {
         </div>
       )}
 
-      {/* Modal d'édition de RDV */}
+      {/* Modal d'édition de Rendez-vous */}
       {showEditAppointmentModal && editingAppointment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
           <div className="flex max-h-[90vh] w-full max-w-5xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
@@ -2484,7 +2808,7 @@ export default function ContactDetailPage() {
                     setEditAppointmentData({ ...editAppointmentData, title: e.target.value })
                   }
                   className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  placeholder="Ex : RDV avec le client"
+                  placeholder="Ex : Rendez-vous avec le client"
                 />
               </div>
 
@@ -2607,7 +2931,15 @@ export default function ContactDetailPage() {
 
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Description</label>
-                <Editor ref={editAppointmentEditorRef} />
+                <Editor
+                  ref={editAppointmentEditorRef}
+                  onReady={(methods) => {
+                    // Injecter la description lorsque l'éditeur est prêt
+                    if (editingAppointment?.description) {
+                      methods.injectHTML(editingAppointment.description);
+                    }
+                  }}
+                />
               </div>
 
               {editAppointmentError && (
@@ -2698,7 +3030,7 @@ export default function ContactDetailPage() {
                   <option value="CALL">Appel</option>
                   <option value="SMS">SMS</option>
                   <option value="EMAIL">Email</option>
-                  <option value="MEETING">RDV</option>
+                  <option value="MEETING">Rendez-vous</option>
                 </select>
               </div>
 
@@ -2725,8 +3057,10 @@ export default function ContactDetailPage() {
                             city: contact.city,
                             postalCode: contact.postalCode,
                             companyName: contact.company
-                              ? `${contact.company.firstName || ''} ${contact.company.lastName || ''}`.trim()
-                              : null,
+                              ? contact.company
+                              : contact.companyRelation
+                                ? `${contact.companyRelation.firstName || ''} ${contact.companyRelation.lastName || ''}`.trim()
+                                : null,
                           };
 
                           const processedContent = replaceTemplateVariables(
@@ -2957,8 +3291,10 @@ export default function ContactDetailPage() {
                             city: contact.city,
                             postalCode: contact.postalCode,
                             companyName: contact.company
-                              ? `${contact.company.firstName || ''} ${contact.company.lastName || ''}`.trim()
-                              : null,
+                              ? contact.company
+                              : contact.companyRelation
+                                ? `${contact.companyRelation.firstName || ''} ${contact.companyRelation.lastName || ''}`.trim()
+                                : null,
                           };
 
                           const processedSubject = replaceTemplateVariables(
@@ -3335,7 +3671,7 @@ export default function ContactDetailPage() {
         </div>
       )}
 
-      {/* Modal de création de RDV */}
+      {/* Modal de création de Rendez-vous */}
       {showMeetingModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-6 backdrop-blur-sm sm:p-8">
           <div className="flex max-h-[90vh] w-full max-w-5xl flex-col rounded-2xl bg-white p-6 shadow-xl">
@@ -3398,7 +3734,7 @@ export default function ContactDetailPage() {
                   value={meetingData.title}
                   onChange={(e) => setMeetingData({ ...meetingData, title: e.target.value })}
                   className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  placeholder="Ex : RDV avec le client"
+                  placeholder="Ex : Rendez-vous avec le client"
                 />
               </div>
 
@@ -3871,8 +4207,10 @@ export default function ContactDetailPage() {
                             city: contact.city,
                             postalCode: contact.postalCode,
                             companyName: contact.company
-                              ? `${contact.company.firstName || ''} ${contact.company.lastName || ''}`.trim()
-                              : null,
+                              ? contact.company
+                              : contact.companyRelation
+                                ? `${contact.companyRelation.firstName || ''} ${contact.companyRelation.lastName || ''}`.trim()
+                                : null,
                           };
 
                           const processedContent = replaceTemplateVariables(
@@ -3966,7 +4304,7 @@ export default function ContactDetailPage() {
             <div className="shrink-0 border-b border-gray-100 pb-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
-                  Programmer un Google Meet
+                  Programmer une visio-conférence
                 </h2>
                 <button
                   onClick={() => {
@@ -4013,7 +4351,7 @@ export default function ContactDetailPage() {
                   value={meetData.title}
                   onChange={(e) => setMeetData({ ...meetData, title: e.target.value })}
                   className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  placeholder="Ex: RDV avec..."
+                  placeholder="Ex: Rendez-vous avec..."
                 />
               </div>
 
@@ -4478,6 +4816,214 @@ email2@example.com`}
                     {editMeetLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de visualisation d'activité */}
+      {showActivityModal && viewingActivity && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-2xl bg-white p-6 shadow-xl">
+            {/* En-tête fixe */}
+            <div className="shrink-0 border-b border-gray-100 pb-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-gray-100 p-2">
+                    {getInteractionIcon(viewingActivity.type)}
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">
+                      {getInteractionLabel(viewingActivity.type)}
+                      {viewingActivity.title && `: ${viewingActivity.title}`}
+                    </h2>
+                    <div className="mt-1 flex items-center gap-4 text-xs text-gray-500">
+                      <span>
+                        {new Date(viewingActivity.createdAt).toLocaleDateString('fr-FR', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}{' '}
+                        à{' '}
+                        {new Date(viewingActivity.createdAt).toLocaleTimeString('fr-FR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                      {viewingActivity.user && (
+                        <span>Par : {viewingActivity.user.name || viewingActivity.user.email}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowActivityModal(false);
+                    setViewingActivity(null);
+                  }}
+                  className="cursor-pointer rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                  aria-label="Fermer la modal"
+                  type="button"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu scrollable */}
+            <div className="flex-1 overflow-y-auto px-2 pt-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {/* Destinataires pour les emails */}
+              {viewingActivity.type === 'EMAIL' &&
+                viewingActivity.metadata &&
+                ((viewingActivity.metadata as any).to ||
+                  (viewingActivity.metadata as any).cc ||
+                  (viewingActivity.metadata as any).bcc) && (
+                  <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    {(viewingActivity.metadata as any).to && (
+                      <div className="mb-2">
+                        <p className="text-xs font-medium text-gray-600">À :</p>
+                        <p className="text-sm text-gray-700">
+                          {Array.isArray((viewingActivity.metadata as any).to)
+                            ? (viewingActivity.metadata as any).to.join(', ')
+                            : (viewingActivity.metadata as any).to}
+                        </p>
+                      </div>
+                    )}
+                    {(viewingActivity.metadata as any).cc &&
+                      Array.isArray((viewingActivity.metadata as any).cc) &&
+                      (viewingActivity.metadata as any).cc.length > 0 && (
+                        <div className="mb-2">
+                          <p className="text-xs font-medium text-gray-600">CC :</p>
+                          <p className="text-sm text-gray-700">
+                            {(viewingActivity.metadata as any).cc.join(', ')}
+                          </p>
+                        </div>
+                      )}
+                    {(viewingActivity.metadata as any).bcc &&
+                      Array.isArray((viewingActivity.metadata as any).bcc) &&
+                      (viewingActivity.metadata as any).bcc.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-gray-600">CCI :</p>
+                          <p className="text-sm text-gray-700">
+                            {(viewingActivity.metadata as any).bcc.join(', ')}
+                          </p>
+                        </div>
+                      )}
+                  </div>
+                )}
+
+              {/* Pièces jointes pour les emails */}
+              {viewingActivity.type === 'EMAIL' &&
+                viewingActivity.metadata &&
+                (viewingActivity.metadata as any).attachments &&
+                Array.isArray((viewingActivity.metadata as any).attachments) &&
+                (viewingActivity.metadata as any).attachments.length > 0 && (
+                  <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    <p className="mb-2 text-sm font-medium text-gray-700">Pièces jointes :</p>
+                    <div className="space-y-1">
+                      {(viewingActivity.metadata as any).attachments.map(
+                        (filename: string, index: number) => (
+                          <div
+                            key={index}
+                            className="flex items-center gap-2 rounded bg-white px-2 py-1.5 text-sm text-gray-700"
+                          >
+                            <FileText className="h-4 w-4 text-gray-500" />
+                            <span>{filename}</span>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                )}
+
+              {/* Contenu */}
+              {(() => {
+                // Pour les emails, utiliser le HTML depuis les métadonnées si disponible
+                let contentToDisplay = viewingActivity.content;
+                let shouldRenderHTML = false;
+
+                // Pour les emails, utiliser le HTML depuis les métadonnées si disponible
+                if (
+                  viewingActivity.type === 'EMAIL' &&
+                  viewingActivity.metadata &&
+                  (viewingActivity.metadata as any).htmlContent
+                ) {
+                  contentToDisplay = (viewingActivity.metadata as any).htmlContent;
+                  shouldRenderHTML = true;
+                }
+                // Pour les notes, utiliser le HTML depuis les métadonnées si disponible
+                else if (
+                  viewingActivity.type === 'NOTE' &&
+                  viewingActivity.metadata &&
+                  (viewingActivity.metadata as any).htmlContent
+                ) {
+                  contentToDisplay = (viewingActivity.metadata as any).htmlContent;
+                  shouldRenderHTML = true;
+                }
+                // Pour APPOINTMENT_CREATED, récupérer la description de la tâche
+                else if (
+                  viewingActivity.type === 'APPOINTMENT_CREATED' &&
+                  viewingActivity.metadata &&
+                  (viewingActivity.metadata as any).taskId
+                ) {
+                  // On va chercher la tâche dans la liste des tâches
+                  const task = tasks.find((t) => t.id === (viewingActivity.metadata as any).taskId);
+                  if (task && task.description) {
+                    contentToDisplay = task.description;
+                    shouldRenderHTML = true;
+                  }
+                }
+                // Pour les autres types qui peuvent contenir du HTML (NOTE par défaut)
+                else if (viewingActivity.type === 'NOTE') {
+                  // Si le contenu semble être du HTML, l'afficher comme HTML
+                  if (viewingActivity.content && viewingActivity.content.includes('<')) {
+                    contentToDisplay = viewingActivity.content;
+                    shouldRenderHTML = true;
+                  }
+                }
+
+                if (contentToDisplay) {
+                  return (
+                    <div className="prose prose-sm max-w-none">
+                      {shouldRenderHTML ? (
+                        <div
+                          className="text-sm text-gray-700"
+                          dangerouslySetInnerHTML={{ __html: contentToDisplay }}
+                        />
+                      ) : (
+                        <p className="text-sm whitespace-pre-wrap text-gray-700">
+                          {contentToDisplay.replace(/<[^>]+>/g, '')}
+                        </p>
+                      )}
+                    </div>
+                  );
+                }
+                return <p className="text-sm text-gray-500">Aucun contenu disponible</p>;
+              })()}
+            </div>
+
+            {/* Pied de modal fixe */}
+            <div className="shrink-0 border-t border-gray-100 pt-4">
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowActivityModal(false);
+                    setViewingActivity(null);
+                  }}
+                  className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+                >
+                  Fermer
+                </button>
               </div>
             </div>
           </div>

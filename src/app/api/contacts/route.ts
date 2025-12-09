@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
         where,
         include: {
           status: true,
-          company: {
+          companyRelation: {
             select: { id: true, firstName: true, lastName: true, isCompany: true },
           },
           assignedCommercial: {
@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
       city,
       postalCode,
       origin,
+      company,
       isCompany,
       companyId,
       statusId,
@@ -172,6 +173,7 @@ export async function POST(request: NextRequest) {
         city: city || null,
         postalCode: postalCode || null,
         origin: origin || null,
+        company: company || null,
         isCompany: isCompany === true,
         companyId: companyId || null,
         statusId: statusId || null,
@@ -196,7 +198,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         status: true,
-        company: {
+        companyRelation: {
           select: { id: true, firstName: true, lastName: true, isCompany: true },
         },
         assignedCommercial: {

@@ -54,7 +54,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const { id } = await params;
     const body = await request.json();
-    const { type, title, content, date } = body;
+    const { type, title, content, date, metadata } = body;
 
     // Validation
     if (!type || !content) {
@@ -78,6 +78,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         content,
         date: date ? new Date(date) : null,
         userId: session.user.id,
+        metadata: metadata || undefined,
       },
       include: {
         user: {

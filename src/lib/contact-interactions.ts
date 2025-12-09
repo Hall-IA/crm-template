@@ -81,6 +81,7 @@ export async function logContactUpdate(
       postalCode: 'Code postal',
       civility: 'Civilité',
       origin: 'Origine',
+      company: 'Entreprise',
     };
 
     const fieldName = fieldNames[field] || field;
@@ -118,6 +119,15 @@ export async function logAssignmentChange(
   oldUserName?: string | null,
   newUserName?: string | null,
 ) {
+  // Normaliser les valeurs pour la comparaison (null, undefined, '' sont considérés comme équivalents)
+  const normalizedOldUserId = oldUserId || null;
+  const normalizedNewUserId = newUserId || null;
+  
+  // Ne créer l'interaction que si les valeurs ont réellement changé
+  if (normalizedOldUserId === normalizedNewUserId) {
+    return null;
+  }
+
   const roleName = type === 'COMMERCIAL' ? 'Commercial' : 'Télépro';
   const oldName = oldUserName || 'Non attribué';
   const newName = newUserName || 'Non attribué';

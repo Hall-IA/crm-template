@@ -99,6 +99,7 @@ export default function ContactsPage() {
     city: '',
     postalCode: '',
     origin: '',
+    company: '',
     isCompany: false,
     companyId: '',
     statusId: '',
@@ -195,6 +196,7 @@ export default function ContactsPage() {
         body: JSON.stringify({
           ...formData,
           civility: formData.civility || null,
+          company: formData.company || null,
           isCompany: formData.isCompany || false,
           companyId: formData.companyId || null,
           assignedCommercialId: formData.assignedCommercialId || null,
@@ -222,6 +224,7 @@ export default function ContactsPage() {
         city: '',
         postalCode: '',
         origin: '',
+        company: '',
         isCompany: false,
         companyId: '',
         statusId: '',
@@ -237,6 +240,12 @@ export default function ContactsPage() {
   };
 
   const handleDelete = async (id: string) => {
+    // Vérifier que l'utilisateur est administrateur
+    if (!isAdmin) {
+      setError('Seuls les administrateurs peuvent supprimer un contact');
+      return;
+    }
+
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce contact ?')) {
       return;
     }
@@ -759,16 +768,18 @@ export default function ContactsPage() {
                         >
                           <Edit className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(contact.id);
-                          }}
-                          className="cursor-pointer rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50"
-                          title="Supprimer"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(contact.id);
+                            }}
+                            className="cursor-pointer rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50"
+                            title="Supprimer"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -994,6 +1005,16 @@ export default function ContactsPage() {
               <div>
                 <h3 className="mb-4 text-lg font-semibold text-gray-900">Autres informations</h3>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Entreprise</label>
+                    <input
+                      type="text"
+                      value={formData.company}
+                      onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                      className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      placeholder="Nom de l'entreprise"
+                    />
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
                       Origine du contact

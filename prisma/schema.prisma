@@ -198,10 +198,11 @@ model Contact {
   city                 String?
   postalCode           String?
   origin               String? // Origine du contact
+  company              String? // Nom de l'entreprise (texte brut)
   isCompany            Boolean       @default(false) // Indique si le contact est une entreprise
   companyId            String? // ID de l'entreprise à laquelle ce contact est lié
-  company              Contact?      @relation("ContactCompany", fields: [companyId], references: [id], onDelete: SetNull)
-  contacts             Contact[]     @relation("ContactCompany") // Contacts liés à cette entreprise
+  companyRelation      Contact?      @relation("ContactCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  contacts             Contact[]     @relation("ContactCompany") // Contacts liés à cette entreprise (via companyId)
   statusId             String?
   status               Status?       @relation(fields: [statusId], references: [id], onDelete: SetNull)
   assignedCommercialId String? // Commercial assigné

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       where: { id },
       include: {
         status: true,
-        company: {
+        companyRelation: {
           select: { id: true, firstName: true, lastName: true, isCompany: true },
         },
         contacts: {
@@ -81,6 +81,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       city,
       postalCode,
       origin,
+      company,
       isCompany,
       companyId,
       statusId,
@@ -98,7 +99,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       where: { id },
       include: {
         status: true,
-        company: {
+        companyRelation: {
           select: { id: true, firstName: true, lastName: true, isCompany: true },
         },
         assignedCommercial: {
@@ -127,6 +128,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       city: city !== undefined ? city || null : existing.city,
       postalCode: postalCode !== undefined ? postalCode || null : existing.postalCode,
       origin: origin !== undefined ? origin || null : existing.origin,
+      company: company !== undefined ? company || null : existing.company,
       isCompany: isCompany !== undefined ? isCompany === true : existing.isCompany,
       companyId: companyId !== undefined ? companyId || null : existing.companyId,
       statusId: statusId !== undefined ? statusId || null : existing.statusId,
@@ -172,6 +174,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (origin !== undefined && origin !== existing.origin) {
       changes.origin = { old: existing.origin, new: origin };
     }
+    if (company !== undefined && company !== existing.company) {
+      changes.company = { old: existing.company, new: company };
+    }
 
     // Mettre à jour le contact
     const contact = await prisma.contact.update({
@@ -206,9 +211,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
 
       // Changement d'assignation Commercial
+      // Normaliser les valeurs pour la comparaison (null, undefined, '' sont considérés comme équivalents)
+      const normalizedExistingCommercial = existing.assignedCommercialId || null;
+      const normalizedNewCommercial = assignedCommercialId || null;
+      
       if (
         assignedCommercialId !== undefined &&
-        assignedCommercialId !== existing.assignedCommercialId
+        normalizedExistingCommercial !== normalizedNewCommercial
       ) {
         await logAssignmentChange(
           id,
@@ -222,7 +231,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
 
       // Changement d'assignation Télépro
-      if (assignedTeleproId !== undefined && assignedTeleproId !== existing.assignedTeleproId) {
+      // Normaliser les valeurs pour la comparaison (null, undefined, '' sont considérés comme équivalents)
+      const normalizedExistingTelepro = existing.assignedTeleproId || null;
+      const normalizedNewTelepro = assignedTeleproId || null;
+      
+      if (
+        assignedTeleproId !== undefined &&
+        normalizedExistingTelepro !== normalizedNewTelepro
+      ) {
         await logAssignmentChange(
           id,
           'TELEPRO',
@@ -256,13 +272,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    });
-
-    if (!session) {
-      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
-    }
+    // Vérifier que l'utilisateur est administrateur
+    const { requireAdmin } = await import('@/lib/roles');
+    await requireAdmin(request.headers);
 
     const { id } = await params;
 
