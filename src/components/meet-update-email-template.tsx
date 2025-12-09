@@ -82,7 +82,13 @@ export function MeetUpdateEmailTemplate({
           <h2 style={{ color: '#1a1a1a', fontSize: '20px', marginBottom: '15px' }}>{title}</h2>
 
           {hasDateChanged && (
-            <div style={{ marginBottom: '15px', paddingBottom: '15px', borderBottom: '1px solid #ddd' }}>
+            <div
+              style={{
+                marginBottom: '15px',
+                paddingBottom: '15px',
+                borderBottom: '1px solid #ddd',
+              }}
+            >
               <div style={{ marginBottom: '10px' }}>
                 <strong>Ancienne date :</strong>{' '}
                 <span style={{ textDecoration: 'line-through', color: '#999' }}>
@@ -105,7 +111,13 @@ export function MeetUpdateEmailTemplate({
           )}
 
           {hasDurationChanged && (
-            <div style={{ marginBottom: '15px', paddingBottom: '15px', borderBottom: '1px solid #ddd' }}>
+            <div
+              style={{
+                marginBottom: '15px',
+                paddingBottom: '15px',
+                borderBottom: '1px solid #ddd',
+              }}
+            >
               <div style={{ marginBottom: '10px' }}>
                 <strong>Ancienne durée :</strong>{' '}
                 <span style={{ textDecoration: 'line-through', color: '#999' }}>
@@ -140,7 +152,10 @@ export function MeetUpdateEmailTemplate({
           {description && (
             <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #ddd' }}>
               <strong>Description :</strong>
-              <div style={{ marginTop: '10px' }} dangerouslySetInnerHTML={{ __html: description }} />
+              <div
+                style={{ marginTop: '10px' }}
+                dangerouslySetInnerHTML={{ __html: description }}
+              />
             </div>
           )}
         </div>
@@ -188,4 +203,3 @@ export function MeetUpdateEmailTemplate({
     </div>
   );
 }
-

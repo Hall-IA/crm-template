@@ -65,7 +65,7 @@ interface GoogleCalendarEventResponse {
  */
 export async function exchangeGoogleCodeForTokens(
   code: string,
-  redirectUri: string
+  redirectUri: string,
 ): Promise<GoogleTokenResponse> {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -134,7 +134,7 @@ export async function refreshGoogleToken(refreshToken: string): Promise<GoogleTo
 export async function getValidAccessToken(
   accessToken: string,
   refreshToken: string,
-  tokenExpiresAt: Date
+  tokenExpiresAt: Date,
 ): Promise<string> {
   // Si le token expire dans moins de 5 minutes, on le rafraîchit
   const now = new Date();
@@ -154,7 +154,7 @@ export async function getValidAccessToken(
  */
 export async function createGoogleCalendarEvent(
   accessToken: string,
-  event: GoogleCalendarEvent
+  event: GoogleCalendarEvent,
 ): Promise<GoogleCalendarEventResponse> {
   const response = await fetch(
     'https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1',
@@ -165,7 +165,7 @@ export async function createGoogleCalendarEvent(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(event),
-    }
+    },
   );
 
   if (!response.ok) {
@@ -182,7 +182,7 @@ export async function createGoogleCalendarEvent(
 export async function updateGoogleCalendarEvent(
   accessToken: string,
   eventId: string,
-  event: Partial<GoogleCalendarEvent>
+  event: Partial<GoogleCalendarEvent>,
 ): Promise<GoogleCalendarEventResponse> {
   const response = await fetch(
     `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}?conferenceDataVersion=1`,
@@ -193,7 +193,7 @@ export async function updateGoogleCalendarEvent(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(event),
-    }
+    },
   );
 
   if (!response.ok) {
@@ -209,7 +209,7 @@ export async function updateGoogleCalendarEvent(
  */
 export async function deleteGoogleCalendarEvent(
   accessToken: string,
-  eventId: string
+  eventId: string,
 ): Promise<void> {
   const response = await fetch(
     `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
@@ -218,7 +218,7 @@ export async function deleteGoogleCalendarEvent(
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
-    }
+    },
   );
 
   if (!response.ok) {
@@ -233,7 +233,7 @@ export async function deleteGoogleCalendarEvent(
 export function extractMeetLink(eventResponse: GoogleCalendarEventResponse): string | null {
   if (eventResponse.conferenceData?.entryPoints) {
     const meetEntry = eventResponse.conferenceData.entryPoints.find(
-      (entry) => entry.entryPointType === 'video'
+      (entry) => entry.entryPointType === 'video',
     );
     return meetEntry?.uri || null;
   }
@@ -245,7 +245,7 @@ export function extractMeetLink(eventResponse: GoogleCalendarEventResponse): str
  */
 export async function getGoogleCalendarEvent(
   accessToken: string,
-  eventId: string
+  eventId: string,
 ): Promise<GoogleCalendarEventResponse> {
   const response = await fetch(
     `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
@@ -255,7 +255,7 @@ export async function getGoogleCalendarEvent(
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-    }
+    },
   );
 
   if (!response.ok) {
@@ -265,4 +265,3 @@ export async function getGoogleCalendarEvent(
 
   return response.json();
 }
-

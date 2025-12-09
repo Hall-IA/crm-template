@@ -8,7 +8,16 @@ import { useMemo } from 'react';
 import { useUserRole } from '@/hooks/use-user-role';
 import { useMobileMenuContext } from '@/contexts/mobile-menu-context';
 import { useSidebarContext } from '@/contexts/sidebar-context';
-import { LayoutDashboard, Users, UserCog, Settings, Calendar as CalendarIcon, Pin, PinOff, FileText } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  UserCog,
+  Settings,
+  Calendar as CalendarIcon,
+  Pin,
+  PinOff,
+  FileText,
+} from 'lucide-react';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -88,12 +97,14 @@ export function Sidebar() {
         }}
       >
         {/* Logo/Brand */}
-        <div className={`flex h-16 items-center justify-between border-b border-gray-200 transition-all duration-300 ${
-          isCollapsed && !isPinned ? 'px-6 lg:px-2 lg:justify-center' : 'px-6'
-        }`}>
-          {(!isCollapsed || isPinned) ? (
+        <div
+          className={`flex h-16 items-center justify-between border-b border-gray-200 transition-all duration-300 ${
+            isCollapsed && !isPinned ? 'px-6 lg:justify-center lg:px-2' : 'px-6'
+          }`}
+        >
+          {!isCollapsed || isPinned ? (
             <>
-              <h1 className="text-xl font-bold text-indigo-600 whitespace-nowrap">CRM Template</h1>
+              <h1 className="text-xl font-bold whitespace-nowrap text-indigo-600">CRM Template</h1>
               <div className="flex items-center gap-2">
                 {/* Bouton Pin/Unpin - Desktop seulement */}
                 <button
@@ -102,11 +113,7 @@ export function Sidebar() {
                   aria-label={isPinned ? 'Désépingler la sidebar' : 'Épingler la sidebar'}
                   title={isPinned ? 'Désépingler' : 'Épingler'}
                 >
-                  {isPinned ? (
-                    <Pin className="h-5 w-5" />
-                  ) : (
-                    <PinOff className="h-5 w-5" />
-                  )}
+                  {isPinned ? <Pin className="h-5 w-5" /> : <PinOff className="h-5 w-5" />}
                 </button>
                 {/* Bouton fermer - Mobile seulement */}
                 <button
@@ -139,11 +146,7 @@ export function Sidebar() {
                 aria-label={isPinned ? 'Désépingler la sidebar' : 'Épingler la sidebar'}
                 title={isPinned ? 'Désépingler' : 'Épingler'}
               >
-                {isPinned ? (
-                  <Pin className="h-5 w-5" />
-                ) : (
-                  <PinOff className="h-5 w-5" />
-                )}
+                {isPinned ? <Pin className="h-5 w-5" /> : <PinOff className="h-5 w-5" />}
               </button>
               {/* Bouton fermer - Mobile seulement */}
               <button
@@ -170,9 +173,11 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className={`flex-1 space-y-1 overflow-y-auto py-4 transition-all duration-300 ${
-          isCollapsed && !isPinned ? 'px-3 lg:px-2' : 'px-3'
-        }`}>
+        <nav
+          className={`flex-1 space-y-1 overflow-y-auto py-4 transition-all duration-300 ${
+            isCollapsed && !isPinned ? 'px-3 lg:px-2' : 'px-3'
+          }`}
+        >
           {navigation.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
@@ -200,10 +205,12 @@ export function Sidebar() {
         </nav>
 
         {/* User Profile */}
-        <div className={`border-t border-gray-200 transition-all duration-300 ${
-          isCollapsed && !isPinned ? 'p-4 lg:p-2' : 'p-4'
-        }`}>
-          {(!isCollapsed || isPinned) ? (
+        <div
+          className={`border-t border-gray-200 transition-all duration-300 ${
+            isCollapsed && !isPinned ? 'p-4 lg:p-2' : 'p-4'
+          }`}
+        >
+          {!isCollapsed || isPinned ? (
             <>
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
@@ -234,12 +241,7 @@ export function Sidebar() {
                 title="Déconnexion"
                 aria-label="Déconnexion"
               >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"

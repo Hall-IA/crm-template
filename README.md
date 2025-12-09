@@ -1,6 +1,7 @@
 # 📊 CRM Template
 
-Un système CRM moderne et complet construit avec **Next.js 15**, **Better Auth**, **Prisma** et **PostgreSQL**.
+Un système CRM moderne et complet construit avec **Next.js 15**, **Better
+Auth**, **Prisma** et **PostgreSQL**.
 
 ## ✨ Fonctionnalités
 
@@ -121,7 +122,8 @@ src/
 
 ## 🔒 Système de protection des routes
 
-Ce projet utilise un **proxy Next.js** (`src/proxy.ts`) pour protéger les routes côté serveur :
+Ce projet utilise un **proxy Next.js** (`src/proxy.ts`) pour protéger les routes
+côté serveur :
 
 - Les pages dans `(dashboard)/` sont automatiquement protégées
 - Redirection automatique vers `/signin` si non authentifié
@@ -145,7 +147,8 @@ Deux rôles sont disponibles :
 
 ### Modifier le thème
 
-Les couleurs principales sont configurées avec Tailwind. Modifiez les classes dans les composants pour personnaliser le thème.
+Les couleurs principales sont configurées avec Tailwind. Modifiez les classes
+dans les composants pour personnaliser le thème.
 
 ## 📝 Scripts disponibles
 

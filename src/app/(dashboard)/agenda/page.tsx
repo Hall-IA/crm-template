@@ -15,11 +15,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
-import {
-  AgendaMonthSkeleton,
-  AgendaWeekSkeleton,
-  AgendaDaySkeleton,
-} from '@/components/skeleton';
+import { AgendaMonthSkeleton, AgendaWeekSkeleton, AgendaDaySkeleton } from '@/components/skeleton';
 
 interface Task {
   id: string;
@@ -363,72 +359,74 @@ export default function AgendaPage() {
               <AgendaMonthSkeleton />
             ) : (
               <div className="rounded-lg bg-white shadow">
-            <div className="grid grid-cols-7 border-b border-gray-200">
-              {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day) => (
-                <div
-                  key={day}
-                  className="border-r border-gray-200 p-3 text-center text-sm font-semibold text-gray-700 last:border-r-0"
-                >
-                  {day}
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7">
-              {getDaysInMonth().map((day, index) => {
-                const dayTasks = getTasksForDate(day.date);
-                const isToday = day.date.toDateString() === new Date().toDateString();
-
-                return (
-                  <div
-                    key={index}
-                    className={`min-h-[100px] border-r border-b border-gray-200 p-2 last:border-r-0 ${
-                      !day.isCurrentMonth ? 'bg-gray-50' : ''
-                    } ${isToday ? 'bg-indigo-50' : ''}`}
-                  >
+                <div className="grid grid-cols-7 border-b border-gray-200">
+                  {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day) => (
                     <div
-                      className={`mb-1 text-sm font-medium ${
-                        isToday
-                          ? 'text-indigo-600'
-                          : day.isCurrentMonth
-                            ? 'text-gray-900'
-                            : 'text-gray-400'
-                      }`}
+                      key={day}
+                      className="border-r border-gray-200 p-3 text-center text-sm font-semibold text-gray-700 last:border-r-0"
                     >
-                      {day.date.getDate()}
+                      {day}
                     </div>
-                    <div className="space-y-1">
-                      {dayTasks.slice(0, 3).map((task) => (
-                        <Link
-                          key={task.id}
-                          href={task.contact ? `/contacts/${task.contact.id}` : '#'}
-                          className={`block rounded px-1.5 py-0.5 text-xs transition-colors ${
-                            task.contact ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
+                  ))}
+                </div>
+                <div className="grid grid-cols-7">
+                  {getDaysInMonth().map((day, index) => {
+                    const dayTasks = getTasksForDate(day.date);
+                    const isToday = day.date.toDateString() === new Date().toDateString();
+
+                    return (
+                      <div
+                        key={index}
+                        className={`min-h-[100px] border-r border-b border-gray-200 p-2 last:border-r-0 ${
+                          !day.isCurrentMonth ? 'bg-gray-50' : ''
+                        } ${isToday ? 'bg-indigo-50' : ''}`}
+                      >
+                        <div
+                          className={`mb-1 text-sm font-medium ${
+                            isToday
+                              ? 'text-indigo-600'
+                              : day.isCurrentMonth
+                                ? 'text-gray-900'
+                                : 'text-gray-400'
                           }`}
-                          style={{
-                            backgroundColor: `${PRIORITY_COLORS[task.priority]}20`,
-                            borderLeft: `3px solid ${PRIORITY_COLORS[task.priority]}`,
-                          }}
-                          title={`${TASK_TYPE_LABELS[task.type]} - ${task.title || 'Sans titre'}`}
-                          onClick={(e) => {
-                            if (!task.contact) {
-                              e.preventDefault();
-                            }
-                          }}
                         >
-                          <div className="truncate font-medium text-gray-900">
-                            {formatTime(task.scheduledAt)}{' '}
-                            {task.title || TASK_TYPE_LABELS[task.type]}
-                          </div>
-                        </Link>
-                      ))}
-                      {dayTasks.length > 3 && (
-                        <div className="text-xs text-gray-500">+{dayTasks.length - 3} autre(s)</div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                          {day.date.getDate()}
+                        </div>
+                        <div className="space-y-1">
+                          {dayTasks.slice(0, 3).map((task) => (
+                            <Link
+                              key={task.id}
+                              href={task.contact ? `/contacts/${task.contact.id}` : '#'}
+                              className={`block rounded px-1.5 py-0.5 text-xs transition-colors ${
+                                task.contact ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
+                              }`}
+                              style={{
+                                backgroundColor: `${PRIORITY_COLORS[task.priority]}20`,
+                                borderLeft: `3px solid ${PRIORITY_COLORS[task.priority]}`,
+                              }}
+                              title={`${TASK_TYPE_LABELS[task.type]} - ${task.title || 'Sans titre'}`}
+                              onClick={(e) => {
+                                if (!task.contact) {
+                                  e.preventDefault();
+                                }
+                              }}
+                            >
+                              <div className="truncate font-medium text-gray-900">
+                                {formatTime(task.scheduledAt)}{' '}
+                                {task.title || TASK_TYPE_LABELS[task.type]}
+                              </div>
+                            </Link>
+                          ))}
+                          {dayTasks.length > 3 && (
+                            <div className="text-xs text-gray-500">
+                              +{dayTasks.length - 3} autre(s)
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </>
@@ -441,88 +439,91 @@ export default function AgendaPage() {
               <AgendaWeekSkeleton />
             ) : (
               <div className="overflow-auto rounded-lg bg-white shadow">
-            <div className="grid grid-cols-8 border-b border-gray-200 bg-gray-50 text-xs font-medium text-gray-500">
-              <div className="px-3 py-2 text-right">(UTC+01:00) Hr</div>
-              {getWeekDays().map((day) => {
-                const isToday = day.toDateString() === new Date().toDateString();
-                return (
-                  <div key={day.toISOString()} className="border-l border-gray-200 px-3 py-2 text-center">
-                    <div className="text-xs text-gray-500">
-                      {day.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}
-                    </div>
-                    <div
-                      className={`mx-auto mt-1 flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
-                        isToday ? 'bg-indigo-600 text-white' : 'text-gray-900'
-                      }`}
-                    >
-                      {day.getDate()}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="grid grid-cols-8 text-xs">
-              {/* Colonne des heures */}
-              <div className="border-r border-gray-200 bg-gray-50">
-                {HOURS.map((hour) => (
-                  <div
-                    key={hour}
-                    className="flex h-16 items-start justify-end border-b border-gray-200 pr-2 text-[11px] text-gray-500"
-                  >
-                    {formatHourLabel(hour)}
-                  </div>
-                ))}
-              </div>
-
-              {/* Colonnes des jours */}
-              {getWeekDays().map((day) => (
-                <div key={day.toISOString()} className="border-l border-gray-200">
-                  {HOURS.map((hour) => {
-                    const slotTasks = tasks.filter((task) => {
-                      const d = new Date(task.scheduledAt);
-                      return (
-                        d.getFullYear() === day.getFullYear() &&
-                        d.getMonth() === day.getMonth() &&
-                        d.getDate() === day.getDate() &&
-                        d.getHours() === hour
-                      );
-                    });
-
+                <div className="grid grid-cols-8 border-b border-gray-200 bg-gray-50 text-xs font-medium text-gray-500">
+                  <div className="px-3 py-2 text-right">(UTC+01:00) Hr</div>
+                  {getWeekDays().map((day) => {
+                    const isToday = day.toDateString() === new Date().toDateString();
                     return (
                       <div
-                        key={hour}
-                        className="relative h-16 border-b border-gray-100 px-1.5 py-0.5 text-[11px]"
+                        key={day.toISOString()}
+                        className="border-l border-gray-200 px-3 py-2 text-center"
                       >
-                        {slotTasks.map((task) => (
-                          <div
-                            key={task.id}
-                            className="mb-0.5 rounded border-l-4 bg-white px-1.5 py-0.5 text-[11px] shadow-sm"
-                            style={{
-                              borderColor: PRIORITY_COLORS[task.priority],
-                              backgroundColor: `${PRIORITY_COLORS[task.priority]}10`,
-                            }}
-                          >
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="truncate font-medium text-gray-900">
-                                {task.title || TASK_TYPE_LABELS[task.type]}
-                              </span>
-                            </div>
-                            {task.contact && (
-                              <div className="mt-0.5 flex items-center gap-1 text-[10px] text-gray-500">
-                                <User className="h-3 w-3" />
-                                <span className="truncate">
-                                  {task.contact.firstName} {task.contact.lastName}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                        <div className="text-xs text-gray-500">
+                          {day.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}
+                        </div>
+                        <div
+                          className={`mx-auto mt-1 flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
+                            isToday ? 'bg-indigo-600 text-white' : 'text-gray-900'
+                          }`}
+                        >
+                          {day.getDate()}
+                        </div>
                       </div>
                     );
                   })}
                 </div>
-              ))}
-            </div>
+                <div className="grid grid-cols-8 text-xs">
+                  {/* Colonne des heures */}
+                  <div className="border-r border-gray-200 bg-gray-50">
+                    {HOURS.map((hour) => (
+                      <div
+                        key={hour}
+                        className="flex h-16 items-start justify-end border-b border-gray-200 pr-2 text-[11px] text-gray-500"
+                      >
+                        {formatHourLabel(hour)}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Colonnes des jours */}
+                  {getWeekDays().map((day) => (
+                    <div key={day.toISOString()} className="border-l border-gray-200">
+                      {HOURS.map((hour) => {
+                        const slotTasks = tasks.filter((task) => {
+                          const d = new Date(task.scheduledAt);
+                          return (
+                            d.getFullYear() === day.getFullYear() &&
+                            d.getMonth() === day.getMonth() &&
+                            d.getDate() === day.getDate() &&
+                            d.getHours() === hour
+                          );
+                        });
+
+                        return (
+                          <div
+                            key={hour}
+                            className="relative h-16 border-b border-gray-100 px-1.5 py-0.5 text-[11px]"
+                          >
+                            {slotTasks.map((task) => (
+                              <div
+                                key={task.id}
+                                className="mb-0.5 rounded border-l-4 bg-white px-1.5 py-0.5 text-[11px] shadow-sm"
+                                style={{
+                                  borderColor: PRIORITY_COLORS[task.priority],
+                                  backgroundColor: `${PRIORITY_COLORS[task.priority]}10`,
+                                }}
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="truncate font-medium text-gray-900">
+                                    {task.title || TASK_TYPE_LABELS[task.type]}
+                                  </span>
+                                </div>
+                                {task.contact && (
+                                  <div className="mt-0.5 flex items-center gap-1 text-[10px] text-gray-500">
+                                    <User className="h-3 w-3" />
+                                    <span className="truncate">
+                                      {task.contact.firstName} {task.contact.lastName}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </>
@@ -536,146 +537,146 @@ export default function AgendaPage() {
             ) : (
               <div className="space-y-4">
                 {tasks.length === 0 ? (
-              <div className="rounded-lg bg-white p-8 text-center shadow">
-                <p className="text-gray-500">Aucune tâche pour cette journée</p>
-              </div>
-            ) : (
-              tasks.map((task) => {
-                const TaskContent = (
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleTaskComplete(task.id, task.completed);
-                          }}
-                          className="cursor-pointer text-gray-400 hover:text-indigo-600"
-                        >
-                          {task.completed ? (
-                            <CheckCircle2 className="h-5 w-5 text-indigo-600" />
-                          ) : (
-                            <Circle className="h-5 w-5" />
-                          )}
-                        </button>
+                  <div className="rounded-lg bg-white p-8 text-center shadow">
+                    <p className="text-gray-500">Aucune tâche pour cette journée</p>
+                  </div>
+                ) : (
+                  tasks.map((task) => {
+                    const TaskContent = (
+                      <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span
-                              className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                              style={{
-                                backgroundColor: `${PRIORITY_COLORS[task.priority]}20`,
-                                color: PRIORITY_COLORS[task.priority],
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleTaskComplete(task.id, task.completed);
                               }}
+                              className="cursor-pointer text-gray-400 hover:text-indigo-600"
                             >
-                              {PRIORITY_LABELS[task.priority]}
-                            </span>
-                            <span className="text-sm text-gray-500">
-                              {TASK_TYPE_LABELS[task.type]}
-                            </span>
-                          </div>
-                          <h3
-                            className={`mt-1 text-base font-semibold ${
-                              task.completed ? 'text-gray-400 line-through' : 'text-gray-900'
-                            }`}
-                          >
-                            {task.title || TASK_TYPE_LABELS[task.type]}
-                          </h3>
-                          {task.contact && (
-                            <div className="mt-1 inline-flex items-center gap-1 text-sm text-indigo-600">
-                              <User className="h-4 w-4" />
-                              <span>
-                                {task.contact.firstName} {task.contact.lastName}
-                              </span>
-                            </div>
-                          )}
-                          {task.googleMeetLink && (
-                            <div className="mt-2 flex flex-wrap items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (task.googleMeetLink) {
-                                    window.open(
-                                      task.googleMeetLink,
-                                      '_blank',
-                                      'noopener,noreferrer',
-                                    );
-                                  }
-                                }}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100"
-                              >
-                                <Video className="h-4 w-4" />
-                                <span>Rejoindre Google Meet</span>
-                                <ExternalLink className="h-3 w-3" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openEditMeetModal(task);
-                                }}
-                                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
-                              >
-                                Modifier le rendez-vous
-                              </button>
-                            </div>
-                          )}
-                          <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              {formatTime(task.scheduledAt)}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4" />
-                              {new Date(task.scheduledAt).toLocaleDateString('fr-FR')}
-                            </div>
-                            {isAdmin && (
-                              <div className="flex items-center gap-1">
-                                <User className="h-4 w-4" />
-                                {task.assignedUser.name}
+                              {task.completed ? (
+                                <CheckCircle2 className="h-5 w-5 text-indigo-600" />
+                              ) : (
+                                <Circle className="h-5 w-5" />
+                              )}
+                            </button>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                                  style={{
+                                    backgroundColor: `${PRIORITY_COLORS[task.priority]}20`,
+                                    color: PRIORITY_COLORS[task.priority],
+                                  }}
+                                >
+                                  {PRIORITY_LABELS[task.priority]}
+                                </span>
+                                <span className="text-sm text-gray-500">
+                                  {TASK_TYPE_LABELS[task.type]}
+                                </span>
                               </div>
-                            )}
+                              <h3
+                                className={`mt-1 text-base font-semibold ${
+                                  task.completed ? 'text-gray-400 line-through' : 'text-gray-900'
+                                }`}
+                              >
+                                {task.title || TASK_TYPE_LABELS[task.type]}
+                              </h3>
+                              {task.contact && (
+                                <div className="mt-1 inline-flex items-center gap-1 text-sm text-indigo-600">
+                                  <User className="h-4 w-4" />
+                                  <span>
+                                    {task.contact.firstName} {task.contact.lastName}
+                                  </span>
+                                </div>
+                              )}
+                              {task.googleMeetLink && (
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (task.googleMeetLink) {
+                                        window.open(
+                                          task.googleMeetLink,
+                                          '_blank',
+                                          'noopener,noreferrer',
+                                        );
+                                      }
+                                    }}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100"
+                                  >
+                                    <Video className="h-4 w-4" />
+                                    <span>Rejoindre Google Meet</span>
+                                    <ExternalLink className="h-3 w-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openEditMeetModal(task);
+                                    }}
+                                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                                  >
+                                    Modifier le rendez-vous
+                                  </button>
+                                </div>
+                              )}
+                              <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
+                                  {formatTime(task.scheduledAt)}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-4 w-4" />
+                                  {new Date(task.scheduledAt).toLocaleDateString('fr-FR')}
+                                </div>
+                                {isAdmin && (
+                                  <div className="flex items-center gap-1">
+                                    <User className="h-4 w-4" />
+                                    {task.assignedUser.name}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                );
+                    );
 
-                if (task.contact) {
-                  return (
-                    <Link
-                      key={task.id}
-                      href={`/contacts/${task.contact.id}`}
-                      onClick={(e) => {
-                        // Empêcher la navigation si on clique sur un bouton ou un lien
-                        const target = e.target as HTMLElement;
-                        if (
-                          target.tagName === 'BUTTON' ||
-                          target.closest('button') ||
-                          target.tagName === 'A' ||
-                          target.closest('a')
-                        ) {
-                          e.preventDefault();
-                        }
-                      }}
-                      className="block rounded-lg border border-gray-200 bg-white p-4 shadow transition-colors hover:border-indigo-300 hover:shadow-md"
-                    >
-                      {TaskContent}
-                    </Link>
-                  );
-                }
+                    if (task.contact) {
+                      return (
+                        <Link
+                          key={task.id}
+                          href={`/contacts/${task.contact.id}`}
+                          onClick={(e) => {
+                            // Empêcher la navigation si on clique sur un bouton ou un lien
+                            const target = e.target as HTMLElement;
+                            if (
+                              target.tagName === 'BUTTON' ||
+                              target.closest('button') ||
+                              target.tagName === 'A' ||
+                              target.closest('a')
+                            ) {
+                              e.preventDefault();
+                            }
+                          }}
+                          className="block rounded-lg border border-gray-200 bg-white p-4 shadow transition-colors hover:border-indigo-300 hover:shadow-md"
+                        >
+                          {TaskContent}
+                        </Link>
+                      );
+                    }
 
-                return (
-                  <div
-                    key={task.id}
-                    className="rounded-lg border border-gray-200 bg-white p-4 shadow"
-                  >
-                    {TaskContent}
-                  </div>
-                );
-              })
+                    return (
+                      <div
+                        key={task.id}
+                        className="rounded-lg border border-gray-200 bg-white p-4 shadow"
+                      >
+                        {TaskContent}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             )}

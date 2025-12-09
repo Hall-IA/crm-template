@@ -4,10 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getValidAccessToken, getGoogleCalendarEvent } from '@/lib/google-calendar';
 
 // GET /api/tasks/[id]/attendees - Récupérer les invités d'un Google Meet
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
@@ -54,17 +51,14 @@ export async function GET(
     });
 
     if (!googleAccount) {
-      return NextResponse.json(
-        { error: 'Compte Google non connecté' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Compte Google non connecté' }, { status: 400 });
     }
 
     // Obtenir un token valide
     const accessToken = await getValidAccessToken(
       googleAccount.accessToken,
       googleAccount.refreshToken,
-      googleAccount.tokenExpiresAt
+      googleAccount.tokenExpiresAt,
     );
 
     // Récupérer l'événement Google Calendar
@@ -77,10 +71,6 @@ export async function GET(
     return NextResponse.json({ attendees });
   } catch (error: any) {
     console.error('Erreur lors de la récupération des invités:', error);
-    return NextResponse.json(
-      { error: error.message || 'Erreur serveur' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-

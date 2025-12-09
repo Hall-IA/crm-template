@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 // GET /api/users/list - Liste tous les utilisateurs (pour les dropdowns)
 export async function GET(request: NextRequest) {
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!session) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     const users = await prisma.user.findMany({
@@ -20,17 +20,13 @@ export async function GET(request: NextRequest) {
         email: true,
       },
       orderBy: {
-        name: "asc",
+        name: 'asc',
       },
     });
 
     return NextResponse.json(users);
   } catch (error: any) {
-    console.error("Erreur lors de la récupération des utilisateurs:", error);
-    return NextResponse.json(
-      { error: "Erreur serveur" },
-      { status: 500 }
-    );
+    console.error('Erreur lors de la récupération des utilisateurs:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
-

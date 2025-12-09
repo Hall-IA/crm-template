@@ -36,10 +36,11 @@ async function getAdminSmtpConfig(userId: string) {
     }
 
     if (!user.smtpConfig) {
-      console.error('❌ Aucune configuration SMTP trouvée pour l\'utilisateur:', user.email);
+      console.error("❌ Aucune configuration SMTP trouvée pour l'utilisateur:", user.email);
       return {
         config: null,
-        error: 'Vous devez configurer votre SMTP dans les paramètres avant de pouvoir envoyer des emails.',
+        error:
+          'Vous devez configurer votre SMTP dans les paramètres avant de pouvoir envoyer des emails.',
       };
     }
 
@@ -79,21 +80,21 @@ async function getAnyAdminSmtpConfig() {
 
     if (!smtpConfig) {
       console.error('❌ Aucune configuration SMTP trouvée pour un administrateur');
-      
+
       // Log supplémentaire pour debug : vérifier s'il y a des admins
       const adminCount = await prisma.user.count({
         where: { role: 'ADMIN' },
       });
       const smtpConfigCount = await prisma.smtpConfig.count();
       console.error('Debug - Admins:', adminCount, 'Configs SMTP:', smtpConfigCount);
-      
+
       return {
         config: null,
         error: 'Aucune configuration SMTP trouvée. Veuillez configurer SMTP dans les paramètres.',
       };
     }
 
-    console.log('✅ Configuration SMTP trouvée pour l\'admin:', smtpConfig.user.email);
+    console.log("✅ Configuration SMTP trouvée pour l'admin:", smtpConfig.user.email);
     return { config: smtpConfig, error: null };
   } catch (error) {
     console.error('Erreur lors de la récupération de la configuration SMTP admin:', error);
@@ -116,13 +117,13 @@ export async function POST(request: Request) {
 
     // Pour le reset password, on n'a pas besoin de session
     const isResetPassword = template === 'reset-password';
-    
+
     if (!isResetPassword && (!session || !session.user?.id)) {
       console.error('❌ Utilisateur non authentifié');
       return Response.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
-    console.log('📧 Tentative d\'envoi d\'email:', {
+    console.log("📧 Tentative d'envoi d'email:", {
       to,
       subject,
       template,
@@ -145,7 +146,9 @@ export async function POST(request: Request) {
     }
 
     if (!smtpConfig) {
-      const errorMsg = smtpError || 'Aucune configuration SMTP trouvée. Veuillez configurer SMTP dans les paramètres.';
+      const errorMsg =
+        smtpError ||
+        'Aucune configuration SMTP trouvée. Veuillez configurer SMTP dans les paramètres.';
       console.error('❌', errorMsg);
       return Response.json({ error: errorMsg }, { status: 400 });
     }
@@ -176,7 +179,7 @@ export async function POST(request: Request) {
 
     // Logger les informations de l'email (même en production pour le debug)
     if (isDevelopment) {
-      console.log('📧 [DEV MODE] Envoi de l\'email:');
+      console.log("📧 [DEV MODE] Envoi de l'email:");
       console.log({
         from: smtpConfig.fromName
           ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
@@ -189,7 +192,7 @@ export async function POST(request: Request) {
 
       // Afficher le lien d'invitation dans la console si c'est une invitation
       if (template === 'invitation' && emailData.invitationUrl) {
-        console.log('🔗 Lien d\'invitation:', emailData.invitationUrl);
+        console.log("🔗 Lien d'invitation:", emailData.invitationUrl);
       }
 
       // Afficher le code de réinitialisation dans la console
@@ -204,7 +207,9 @@ export async function POST(request: Request) {
       password = decrypt(smtpConfig.password);
     } catch (error) {
       // Si le déchiffrement échoue, utiliser le mot de passe tel quel (ancien format non chiffré)
-      console.warn('⚠️ Impossible de déchiffrer le mot de passe SMTP, utilisation du mot de passe brut');
+      console.warn(
+        '⚠️ Impossible de déchiffrer le mot de passe SMTP, utilisation du mot de passe brut',
+      );
       password = smtpConfig.password;
     }
 
@@ -231,7 +236,7 @@ export async function POST(request: Request) {
       html: emailHtml,
     };
 
-    console.log('📤 Envoi de l\'email via SMTP...', {
+    console.log("📤 Envoi de l'email via SMTP...", {
       from: mailOptions.from,
       to: recipients,
       subject,
@@ -246,8 +251,8 @@ export async function POST(request: Request) {
       message: 'Email envoyé avec succès',
     });
   } catch (error: any) {
-    console.error('❌ Erreur lors de l\'envoi de l\'email:', error);
-    console.error('Détails de l\'erreur:', {
+    console.error("❌ Erreur lors de l'envoi de l'email:", error);
+    console.error("Détails de l'erreur:", {
       message: error.message,
       code: error.code,
       command: error.command,
@@ -258,7 +263,8 @@ export async function POST(request: Request) {
     if (error.code === 'EAUTH' || error.code === 'ECONNECTION') {
       return Response.json(
         {
-          error: "Erreur d'authentification SMTP. Vérifiez votre configuration SMTP dans les paramètres.",
+          error:
+            "Erreur d'authentification SMTP. Vérifiez votre configuration SMTP dans les paramètres.",
           details: error.message,
         },
         { status: 400 },
@@ -267,7 +273,7 @@ export async function POST(request: Request) {
 
     return Response.json(
       {
-        error: error.message || 'Erreur lors de l\'envoi de l\'email',
+        error: error.message || "Erreur lors de l'envoi de l'email",
         details: error.code || 'UNKNOWN_ERROR',
       },
       { status: 500 },

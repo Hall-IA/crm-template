@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 // PUT /api/contacts/[id]/interactions/[interactionId] - Mettre à jour une interaction
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; interactionId: string }> }
+  { params }: { params: Promise<{ id: string; interactionId: string }> },
 ) {
   try {
     const session = await auth.api.getSession({
@@ -13,7 +13,7 @@ export async function PUT(
     });
 
     if (!session) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     const { interactionId } = await params;
@@ -26,10 +26,7 @@ export async function PUT(
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Interaction non trouvée" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Interaction non trouvée' }, { status: 404 });
     }
 
     const interaction = await prisma.interaction.update({
@@ -50,17 +47,14 @@ export async function PUT(
     return NextResponse.json(interaction);
   } catch (error: any) {
     console.error("Erreur lors de la mise à jour de l'interaction:", error);
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
 
 // DELETE /api/contacts/[id]/interactions/[interactionId] - Supprimer une interaction
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; interactionId: string }> }
+  { params }: { params: Promise<{ id: string; interactionId: string }> },
 ) {
   try {
     const session = await auth.api.getSession({
@@ -68,7 +62,7 @@ export async function DELETE(
     });
 
     if (!session) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     const { interactionId } = await params;
@@ -79,10 +73,7 @@ export async function DELETE(
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Interaction non trouvée" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Interaction non trouvée' }, { status: 404 });
     }
 
     await prisma.interaction.delete({
@@ -91,14 +82,10 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: "Interaction supprimée avec succès",
+      message: 'Interaction supprimée avec succès',
     });
   } catch (error: any) {
     console.error("Erreur lors de la suppression de l'interaction:", error);
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-

@@ -147,9 +147,15 @@ export default function ContactDetailPage() {
 
   // Formulaire d'email
   const [emailData, setEmailData] = useState({
+    to: '',
+    cc: '',
+    bcc: '',
     subject: '',
     content: '',
   });
+  const [emailAttachments, setEmailAttachments] = useState<File[]>([]);
+  const [showCc, setShowCc] = useState(false);
+  const [showBcc, setShowBcc] = useState(false);
 
   // Formulaire de tâche
   const [taskData, setTaskData] = useState({
@@ -215,6 +221,40 @@ export default function ContactDetailPage() {
   const [editAppointmentLoading, setEditAppointmentLoading] = useState(false);
   const [editAppointmentError, setEditAppointmentError] = useState('');
   const editAppointmentEditorRef = useRef<DefaultTemplateRef | null>(null);
+
+  // Modals spécifiques pour chaque action
+  const [showMeetingModal, setShowMeetingModal] = useState(false);
+  const [showCallModal, setShowCallModal] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [creatingMeeting, setCreatingMeeting] = useState(false);
+  const [creatingCall, setCreatingCall] = useState(false);
+  const [creatingNote, setCreatingNote] = useState(false);
+
+  // Données pour les modals spécifiques
+  const [meetingData, setMeetingData] = useState({
+    title: '',
+    description: '',
+    scheduledAt: '',
+    priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+    assignedUserId: '',
+    reminderMinutesBefore: null as number | null,
+  });
+  const [callData, setCallData] = useState({
+    title: '',
+    description: '',
+    scheduledAt: '',
+    priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+    assignedUserId: '',
+    reminderMinutesBefore: null as number | null,
+  });
+  const [noteData, setNoteData] = useState({
+    title: '',
+    content: '',
+    date: '',
+  });
+  const meetingEditorRef = useRef<DefaultTemplateRef | null>(null);
+  const callEditorRef = useRef<DefaultTemplateRef | null>(null);
+  const noteEditorRef = useRef<DefaultTemplateRef | null>(null);
 
   // État pour les onglets
   const [activeTab, setActiveTab] = useState<
@@ -504,7 +544,6 @@ export default function ContactDetailPage() {
 
     try {
       const htmlContent = await emailEditorRef.current?.getHTML();
-      console.log(htmlContent);
       const plainText = (htmlContent || '')
         .replace(/<br\s*\/?>/gi, '\n')
         .replace(/<\/p>/gi, '\n\n')
@@ -512,19 +551,35 @@ export default function ContactDetailPage() {
         .replace(/\s+/g, ' ')
         .trim();
 
+      if (!emailData.to || !emailData.to.trim()) {
+        setError('Le destinataire (À) est requis');
+        setSendingEmail(false);
+        return;
+      }
+
       if (!emailData.subject || !plainText) {
         setError('Le sujet et le contenu sont requis');
         setSendingEmail(false);
         return;
       }
 
+      // Créer FormData pour envoyer les fichiers
+      const formData = new FormData();
+      formData.append('to', emailData.to);
+      formData.append('cc', emailData.cc || '');
+      formData.append('bcc', emailData.bcc || '');
+      formData.append('subject', emailData.subject);
+      formData.append('content', htmlContent || '');
+
+      // Ajouter les pièces jointes
+      emailAttachments.forEach((file, index) => {
+        formData.append(`attachment_${index}`, file);
+      });
+      formData.append('attachmentCount', emailAttachments.length.toString());
+
       const response = await fetch(`/api/contacts/${contactId}/send-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subject: emailData.subject,
-          content: htmlContent || '',
-        }),
+        body: formData,
       });
 
       const data = await response.json();
@@ -534,7 +589,8 @@ export default function ContactDetailPage() {
       }
 
       setShowEmailModal(false);
-      setEmailData({ subject: '', content: '' });
+      setEmailData({ to: '', cc: '', bcc: '', subject: '', content: '' });
+      setEmailAttachments([]);
       setSuccess('Email envoyé avec succès !');
       fetchContact(); // Recharger pour afficher la nouvelle interaction
 
@@ -589,65 +645,7 @@ export default function ContactDetailPage() {
         return;
       }
 
-      // Si c'est une visio-conférence, créer un Google Meet
-      if (taskData.type === 'VIDEO_CONFERENCE') {
-        // Vérifier que Google est connecté
-        if (!googleAccountConnected) {
-          setError(
-            'Veuillez connecter votre compte Google dans les paramètres pour créer une visio-conférence',
-          );
-          setCreatingTask(false);
-          return;
-        }
-
-        // Pour Google Meet, le titre est requis
-        if (!taskData.title || taskData.title.trim() === '') {
-          setError('Le titre est requis pour créer une visio-conférence');
-          setCreatingTask(false);
-          return;
-        }
-
-        // Créer le Google Meet
-        const meetResponse = await fetch(`/api/contacts/${contactId}/meet`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: taskData.title || 'Visio-conférence',
-            description: htmlContent || '',
-            scheduledAt: taskData.scheduledAt,
-            durationMinutes: taskData.durationMinutes || 30,
-            attendees: taskData.attendees.filter((email) => email.trim() !== ''),
-            reminderMinutesBefore: taskData.reminderMinutesBefore,
-          }),
-        });
-
-        const meetData = await meetResponse.json();
-
-        if (!meetResponse.ok) {
-          throw new Error(meetData.error || 'Erreur lors de la création de la visio-conférence');
-        }
-
-        setShowTaskModal(false);
-        setTaskData({
-          type: 'CALL',
-          title: '',
-          description: '',
-          priority: 'MEDIUM',
-          scheduledAt: '',
-          assignedUserId: '',
-          reminderMinutesBefore: null,
-          durationMinutes: 30,
-          attendees: [],
-        });
-        setSuccess('Visio-conférence créée avec succès !');
-        fetchContact();
-        fetchTasks();
-
-        setTimeout(() => setSuccess(''), 5000);
-        return;
-      }
-
-      // Créer une tâche normale
+      // Créer une tâche (type générique, utilisé pour EMAIL et NOTE)
       const response = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -689,6 +687,210 @@ export default function ContactDetailPage() {
       setError(err.message);
     } finally {
       setCreatingTask(false);
+    }
+  };
+
+  const handleCreateMeeting = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setCreatingMeeting(true);
+
+    try {
+      if (!meetingEditorRef.current) {
+        setError("L'éditeur n'est pas prêt. Veuillez réessayer.");
+        setCreatingMeeting(false);
+        return;
+      }
+
+      const htmlContent = await meetingEditorRef.current.getHTML();
+      const plainText = (htmlContent || '')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (!meetingData.scheduledAt) {
+        setError('La date/heure est requise');
+        setCreatingMeeting(false);
+        return;
+      }
+
+      if (!plainText) {
+        setError('La description est requise');
+        setCreatingMeeting(false);
+        return;
+      }
+
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'MEETING',
+          title: meetingData.title || null,
+          description: htmlContent || '',
+          priority: meetingData.priority,
+          scheduledAt: meetingData.scheduledAt,
+          contactId: contactId,
+          assignedUserId: meetingData.assignedUserId || undefined,
+          reminderMinutesBefore: meetingData.reminderMinutesBefore ?? null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la création du rendez-vous');
+      }
+
+      setShowMeetingModal(false);
+      setMeetingData({
+        title: '',
+        description: '',
+        scheduledAt: '',
+        priority: 'MEDIUM',
+        assignedUserId: '',
+        reminderMinutesBefore: null,
+      });
+      setSuccess('Rendez-vous créé avec succès !');
+      fetchContact();
+      fetchTasks();
+
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setCreatingMeeting(false);
+    }
+  };
+
+  const handleCreateCall = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setCreatingCall(true);
+
+    try {
+      if (!callEditorRef.current) {
+        setError("L'éditeur n'est pas prêt. Veuillez réessayer.");
+        setCreatingCall(false);
+        return;
+      }
+
+      const htmlContent = await callEditorRef.current.getHTML();
+      const plainText = (htmlContent || '')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (!callData.scheduledAt) {
+        setError('La date/heure est requise');
+        setCreatingCall(false);
+        return;
+      }
+
+      if (!plainText) {
+        setError('La description est requise');
+        setCreatingCall(false);
+        return;
+      }
+
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'CALL',
+          title: callData.title || null,
+          description: htmlContent || '',
+          priority: callData.priority,
+          scheduledAt: callData.scheduledAt,
+          contactId: contactId,
+          assignedUserId: callData.assignedUserId || undefined,
+          reminderMinutesBefore: callData.reminderMinutesBefore ?? null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Erreur lors de la création de la tâche d'appel");
+      }
+
+      setShowCallModal(false);
+      setCallData({
+        title: '',
+        description: '',
+        scheduledAt: '',
+        priority: 'MEDIUM',
+        assignedUserId: '',
+        reminderMinutesBefore: null,
+      });
+      setSuccess("Tâche d'appel créée avec succès !");
+      fetchContact();
+      fetchTasks();
+
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setCreatingCall(false);
+    }
+  };
+
+  const handleCreateNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    let contentText = '';
+    if (noteEditorRef.current) {
+      const html = noteEditorRef.current.getHTML() || '';
+      contentText = html
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/\u00A0/g, ' ')
+        .trim();
+    }
+
+    if (!contentText) {
+      setError('Le contenu est requis');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/contacts/${contactId}/interactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'NOTE',
+          title: noteData.title || null,
+          content: contentText,
+          date: noteData.date || null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la création de la note');
+      }
+
+      setShowNoteModal(false);
+      setNoteData({
+        title: '',
+        content: '',
+        date: '',
+      });
+      noteEditorRef.current?.injectHTML('');
+      setSuccess('Note créée avec succès !');
+      fetchContact();
+
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err: any) {
+      setError(err.message);
     }
   };
 
@@ -1212,7 +1414,7 @@ export default function ContactDetailPage() {
               onClick={() => {
                 setShowTaskModal(true);
                 setTaskData({
-                  type: 'CALL',
+                  type: 'EMAIL',
                   title: '',
                   description: '',
                   priority: 'MEDIUM',
@@ -1230,6 +1432,93 @@ export default function ContactDetailPage() {
               <Plus className="mr-1 inline h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Créer une tâche</span>
               <span className="sm:hidden">Tâche</span>
+            </button>
+            <button
+              onClick={() => {
+                setShowMeetingModal(true);
+                setMeetingData({
+                  title: '',
+                  description: '',
+                  scheduledAt: '',
+                  priority: 'MEDIUM',
+                  assignedUserId: '',
+                  reminderMinutesBefore: null,
+                });
+                setError('');
+                setSuccess('');
+              }}
+              className="cursor-pointer rounded-lg bg-blue-600 px-2 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 sm:px-4 sm:py-2 sm:text-sm"
+              title="Créer un RDV"
+            >
+              <CalendarIcon className="mr-1 inline h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">RDV</span>
+            </button>
+            <button
+              onClick={() => {
+                setShowMeetModal(true);
+                setMeetData({
+                  title: '',
+                  description: '',
+                  scheduledAt: '',
+                  durationMinutes: 30,
+                  attendees: [],
+                  reminderMinutesBefore: null,
+                });
+                setError('');
+                setSuccess('');
+              }}
+              className="cursor-pointer rounded-lg bg-indigo-600 px-2 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700 sm:px-4 sm:py-2 sm:text-sm"
+              title="Créer un Google Meet"
+            >
+              <Video className="mr-1 inline h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Google Meet</span>
+              <span className="sm:hidden">Meet</span>
+            </button>
+            <Link
+              href={'tel:' + contact.phone}
+              className="cursor-pointer rounded-lg bg-green-600 px-2 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-700 sm:px-4 sm:py-2 sm:text-sm"
+              title="Créer un appel"
+            >
+              <PhoneCall className="mr-1 inline h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Appeler</span>
+            </Link>
+            <button
+              onClick={() => {
+                setShowEmailModal(true);
+                setEmailData({
+                  to: contact.email || '',
+                  cc: '',
+                  bcc: '',
+                  subject: '',
+                  content: '',
+                });
+                setEmailAttachments([]);
+                setShowCc(false);
+                setShowBcc(false);
+                setError('');
+                setSuccess('');
+              }}
+              className="cursor-pointer rounded-lg bg-blue-500 px-2 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-600 sm:px-4 sm:py-2 sm:text-sm"
+              title="Envoyer un email"
+            >
+              <MailIcon className="mr-1 inline h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Email</span>
+            </button>
+            <button
+              onClick={() => {
+                setShowNoteModal(true);
+                setNoteData({
+                  title: '',
+                  content: '',
+                  date: '',
+                });
+                setError('');
+              }}
+              className="cursor-pointer rounded-lg bg-gray-600 px-2 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-700 sm:px-4 sm:py-2 sm:text-sm"
+              title="Créer une note"
+            >
+              <FileText className="mr-1 inline h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Note</span>
             </button>
           </div>
         </div>
@@ -1829,23 +2118,6 @@ export default function ContactDetailPage() {
                   <div>
                     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <h2 className="text-lg font-semibold text-gray-900">Notes</h2>
-                      <button
-                        onClick={() => {
-                          setShowInteractionModal(true);
-                          setEditingInteraction(null);
-                          setInteractionData({
-                            type: 'NOTE',
-                            title: '',
-                            content: '',
-                            date: '',
-                          });
-                          setError('');
-                        }}
-                        className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
-                      >
-                        <Plus className="mr-2 inline h-4 w-4" />
-                        Ajouter une note
-                      </button>
                     </div>
                     <div className="space-y-3">
                       {notes.length === 0 ? (
@@ -1951,18 +2223,6 @@ export default function ContactDetailPage() {
                   <div>
                     <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <h3 className="text-lg font-semibold text-gray-900">Email</h3>
-                      <button
-                        onClick={() => {
-                          setShowEmailModal(true);
-                          setEmailData({ subject: '', content: '' });
-                          setError('');
-                          setSuccess('');
-                        }}
-                        className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
-                      >
-                        <Plus className="mr-2 inline h-4 w-4" />
-                        Nouvel email
-                      </button>
                     </div>
                     <div className="space-y-3">
                       {contact &&
@@ -2569,7 +2829,10 @@ export default function ContactDetailPage() {
                 <button
                   onClick={() => {
                     setShowEmailModal(false);
-                    setEmailData({ subject: '', content: '' });
+                    setEmailData({ to: '', cc: '', bcc: '', subject: '', content: '' });
+                    setEmailAttachments([]);
+                    setShowCc(false);
+                    setShowBcc(false);
                     setError('');
                   }}
                   className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100"
@@ -2591,13 +2854,71 @@ export default function ContactDetailPage() {
             <form
               id="email-form"
               onSubmit={handleSendEmail}
-              className="flex-1 space-y-4 overflow-y-auto pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="flex-1 space-y-4 overflow-y-auto px-1 pt-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-              <div className="rounded-lg bg-gray-50 p-3">
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">À :</span> {contact.email}
-                </p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">À *</label>
+                <input
+                  type="email"
+                  required
+                  value={emailData.to}
+                  onChange={(e) => setEmailData({ ...emailData, to: e.target.value })}
+                  className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder={contact.email || 'email@exemple.com'}
+                />
+                <div className="mt-2 flex items-center gap-3">
+                  {!showCc && (
+                    <button
+                      type="button"
+                      onClick={() => setShowCc(true)}
+                      className="cursor-pointer text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                    >
+                      + Cc
+                    </button>
+                  )}
+                  {!showBcc && (
+                    <button
+                      type="button"
+                      onClick={() => setShowBcc(true)}
+                      className="cursor-pointer text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                    >
+                      + Cci
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {showCc && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Cc</label>
+                  <input
+                    type="text"
+                    value={emailData.cc}
+                    onChange={(e) => setEmailData({ ...emailData, cc: e.target.value })}
+                    className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    placeholder="copie@exemple.com"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Séparez plusieurs adresses par des virgules
+                  </p>
+                </div>
+              )}
+
+              {showBcc && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Cci</label>
+                  <input
+                    type="text"
+                    value={emailData.bcc}
+                    onChange={(e) => setEmailData({ ...emailData, bcc: e.target.value })}
+                    className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    placeholder="copie@exemple.com"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Séparez plusieurs adresses par des virgules
+                  </p>
+                </div>
+              )}
 
               {emailTemplates.length > 0 && (
                 <div>
@@ -2636,6 +2957,7 @@ export default function ContactDetailPage() {
                           );
 
                           setEmailData({
+                            ...emailData,
                             subject: processedSubject,
                             content: processedContent,
                           });
@@ -2679,6 +3001,47 @@ export default function ContactDetailPage() {
                 <Editor ref={emailEditorRef} />
               </div>
 
+              <div className="space-y-2 py-2">
+                <label className="block text-sm font-medium text-gray-700">Pièces jointes</label>
+                <div>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      setEmailAttachments((prev) => [...prev, ...files]);
+                    }}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100"
+                  />
+                </div>
+                {emailAttachments.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {emailAttachments.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm text-gray-700">
+                            {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEmailAttachments((prev) => prev.filter((_, i) => i !== index));
+                          }}
+                          className="cursor-pointer text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {error && (
                 <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>
               )}
@@ -2691,7 +3054,10 @@ export default function ContactDetailPage() {
                   type="button"
                   onClick={() => {
                     setShowEmailModal(false);
-                    setEmailData({ subject: '', content: '' });
+                    setEmailData({ to: '', cc: '', bcc: '', subject: '', content: '' });
+                    setEmailAttachments([]);
+                    setShowCc(false);
+                    setShowBcc(false);
                     setError('');
                   }}
                   className="w-full cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
@@ -2767,85 +3133,20 @@ export default function ContactDetailPage() {
             <form
               id="task-form"
               onSubmit={handleCreateTask}
-              className="flex-1 space-y-8 overflow-y-auto pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-2 pb-2"
+              className="flex-1 space-y-8 overflow-y-auto px-2 pt-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
               {/* Titre */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Titre de la tâche {taskData.type === 'VIDEO_CONFERENCE' ? '*' : '(optionnel)'}
+                  Titre de la tâche (optionnel)
                 </label>
                 <input
                   type="text"
                   value={taskData.title}
                   onChange={(e) => setTaskData({ ...taskData, title: e.target.value })}
                   className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  placeholder="Ex : Appeler le client pour devis"
-                  required={taskData.type === 'VIDEO_CONFERENCE'}
+                  placeholder="Ex : Suivi client"
                 />
-              </div>
-
-              {/* Type de tâche */}
-              <div>
-                <p className="mb-2 text-sm font-medium text-gray-700">Type de tâche</p>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                  {[
-                    {
-                      value: 'CALL' as const,
-                      label: 'Appel téléphonique',
-                      icon: <PhoneCall className="h-5 w-5" />,
-                    },
-                    {
-                      value: 'MEETING' as const,
-                      label: 'RDV',
-                      icon: <CalendarIcon className="h-5 w-5" />,
-                    },
-                    {
-                      value: 'VIDEO_CONFERENCE' as const,
-                      label: 'Google Meet',
-                      icon: <Video className="h-5 w-5" />,
-                    },
-                    {
-                      value: 'EMAIL' as const,
-                      label: 'Email',
-                      icon: <MailIcon className="h-5 w-5" />,
-                    },
-                    {
-                      value: 'NOTE' as const,
-                      label: 'Suivi',
-                      icon: <FileText className="h-5 w-5" />,
-                    },
-                  ].map((option) => {
-                    const isActive = taskData.type === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() =>
-                          setTaskData({
-                            ...taskData,
-                            type: option.value,
-                          })
-                        }
-                        className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border px-3 py-3 text-xs font-medium transition-colors sm:text-sm ${
-                          isActive
-                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                            : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-200 hover:bg-indigo-50/60'
-                        }`}
-                      >
-                        <span
-                          className={`mb-2 flex h-10 w-10 items-center justify-center rounded-full border text-base ${
-                            isActive
-                              ? 'border-indigo-500 bg-white text-indigo-600'
-                              : 'border-gray-200 bg-gray-50 text-gray-500'
-                          }`}
-                        >
-                          {option.icon}
-                        </span>
-                        <span className="text-center leading-snug">{option.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
 
               {/* Date & heure + priorité */}
@@ -2949,92 +3250,6 @@ export default function ContactDetailPage() {
                 </select>
               </div>
 
-              {/* Champs Google Meet - Affichés seulement si type VIDEO_CONFERENCE */}
-              {taskData.type === 'VIDEO_CONFERENCE' && (
-                <>
-                  {!googleAccountConnected && (
-                    <div className="rounded-lg bg-yellow-50 p-3 text-sm text-yellow-800">
-                      ⚠️ Veuillez connecter votre compte Google dans les paramètres pour créer une
-                      visio-conférence
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Durée (minutes) *
-                    </label>
-                    <select
-                      value={taskData.durationMinutes}
-                      onChange={(e) =>
-                        setTaskData({
-                          ...taskData,
-                          durationMinutes: Number(e.target.value),
-                        })
-                      }
-                      className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                      required
-                    >
-                      <option value={15}>15 minutes</option>
-                      <option value={30}>30 minutes</option>
-                      <option value={45}>45 minutes</option>
-                      <option value={60}>1 heure</option>
-                      <option value={90}>1h30</option>
-                      <option value={120}>2 heures</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Invités additionnels (optionnel)
-                    </label>
-                    <div className="mt-1 space-y-2">
-                      {taskData.attendees.map((email, index) => (
-                        <div key={index} className="flex gap-2">
-                          <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => {
-                              const newAttendees = [...taskData.attendees];
-                              newAttendees[index] = e.target.value;
-                              setTaskData({ ...taskData, attendees: newAttendees });
-                            }}
-                            placeholder="email@exemple.com"
-                            className="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newAttendees = taskData.attendees.filter((_, i) => i !== index);
-                              setTaskData({ ...taskData, attendees: newAttendees });
-                            }}
-                            className="cursor-pointer rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
-                          >
-                            Supprimer
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTaskData({
-                            ...taskData,
-                            attendees: [...taskData.attendees, ''],
-                          });
-                        }}
-                        className="cursor-pointer rounded-xl border border-dashed border-gray-300 px-4 py-2 text-sm text-gray-600 transition-colors hover:border-indigo-500 hover:text-indigo-600"
-                      >
-                        + Ajouter un invité
-                      </button>
-                    </div>
-                    {contact.email && (
-                      <p className="mt-2 text-xs text-gray-500">
-                        Le contact ({contact.email}) sera automatiquement invité
-                      </p>
-                    )}
-                  </div>
-                </>
-              )}
-
               {/* Attribution */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">Attribuer à</label>
@@ -3098,13 +3313,630 @@ export default function ContactDetailPage() {
                   disabled={creatingTask}
                   className="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
-                  {creatingTask
-                    ? taskData.type === 'VIDEO_CONFERENCE'
-                      ? 'Création de la visio-conférence...'
-                      : 'Création...'
-                    : taskData.type === 'VIDEO_CONFERENCE'
-                      ? 'Créer la visio-conférence'
-                      : 'Créer la tâche'}
+                  {creatingTask ? 'Création...' : 'Créer la tâche'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de création de RDV */}
+      {showMeetingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-6 backdrop-blur-sm sm:p-8">
+          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col rounded-2xl bg-white p-6 shadow-xl">
+            {/* En-tête fixe */}
+            <div className="shrink-0 border-b border-gray-100 pb-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">
+                    Créer un rendez-vous
+                  </h2>
+                  <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+                    Pour{' '}
+                    <span className="font-medium text-gray-900">
+                      {`${contact.firstName || ''} ${contact.lastName || ''}`.trim() ||
+                        contact.phone}
+                    </span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowMeetingModal(false);
+                    setMeetingData({
+                      title: '',
+                      description: '',
+                      scheduledAt: '',
+                      priority: 'MEDIUM',
+                      assignedUserId: '',
+                      reminderMinutesBefore: null,
+                    });
+                    setError('');
+                  }}
+                  className="cursor-pointer rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                  aria-label="Fermer la modal"
+                  type="button"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu scrollable */}
+            <form
+              id="meeting-form"
+              onSubmit={handleCreateMeeting}
+              className="flex-1 space-y-6 overflow-y-auto px-2 pt-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Titre du rendez-vous (optionnel)
+                </label>
+                <input
+                  type="text"
+                  value={meetingData.title}
+                  onChange={(e) => setMeetingData({ ...meetingData, title: e.target.value })}
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Ex : RDV avec le client"
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700">Date & heure *</p>
+                  <div className="grid grid-cols-[3fr,2fr] gap-2">
+                    <input
+                      type="date"
+                      required
+                      value={meetingData.scheduledAt ? meetingData.scheduledAt.split('T')[0] : ''}
+                      onChange={(e) => {
+                        const time =
+                          meetingData.scheduledAt && meetingData.scheduledAt.includes('T')
+                            ? meetingData.scheduledAt.split('T')[1]
+                            : '';
+                        setMeetingData({
+                          ...meetingData,
+                          scheduledAt: time
+                            ? `${e.target.value}T${time}`
+                            : `${e.target.value}T09:00`,
+                        });
+                      }}
+                      className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                    <input
+                      type="time"
+                      value={
+                        meetingData.scheduledAt && meetingData.scheduledAt.includes('T')
+                          ? meetingData.scheduledAt.split('T')[1].slice(0, 5)
+                          : ''
+                      }
+                      onChange={(e) => {
+                        const datePart =
+                          meetingData.scheduledAt && meetingData.scheduledAt.includes('T')
+                            ? meetingData.scheduledAt.split('T')[0]
+                            : new Date().toISOString().split('T')[0];
+                        setMeetingData({
+                          ...meetingData,
+                          scheduledAt: `${datePart}T${e.target.value || '09:00'}`,
+                        });
+                      }}
+                      className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700">Priorité</p>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {[
+                      { value: 'LOW' as const, label: 'Faible' },
+                      { value: 'MEDIUM' as const, label: 'Moyenne' },
+                      { value: 'HIGH' as const, label: 'Haute' },
+                      { value: 'URGENT' as const, label: 'Urgente' },
+                    ].map((option) => {
+                      const isActive = meetingData.priority === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() =>
+                            setMeetingData({
+                              ...meetingData,
+                              priority: option.value,
+                            })
+                          }
+                          className={`cursor-pointer rounded-xl border px-3 py-2 text-xs font-medium transition-colors sm:text-sm ${
+                            isActive
+                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-200 hover:bg-indigo-50/60'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-700">Rappel</p>
+                <select
+                  value={meetingData.reminderMinutesBefore ?? ''}
+                  onChange={(e) =>
+                    setMeetingData({
+                      ...meetingData,
+                      reminderMinutesBefore: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Aucun rappel</option>
+                  <option value="5">5 minutes avant</option>
+                  <option value="15">15 minutes avant</option>
+                  <option value="30">30 minutes avant</option>
+                  <option value="60">1 heure avant</option>
+                  <option value="120">2 heures avant</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Attribuer à</label>
+                <select
+                  value={meetingData.assignedUserId}
+                  onChange={(e) =>
+                    setMeetingData({ ...meetingData, assignedUserId: e.target.value })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Moi-même ({session?.user?.name || 'Utilisateur'})</option>
+                  {isAdmin &&
+                    users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Description *</label>
+                <Editor ref={meetingEditorRef} />
+                <p className="text-xs text-gray-500">
+                  Ajoutez des détails sur ce rendez-vous (contexte, points à aborder, informations
+                  importantes…).
+                </p>
+              </div>
+
+              {error && (
+                <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>
+              )}
+            </form>
+
+            {/* Pied de modal fixe */}
+            <div className="shrink-0 border-t border-gray-100 pt-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMeetingModal(false);
+                    setMeetingData({
+                      title: '',
+                      description: '',
+                      scheduledAt: '',
+                      priority: 'MEDIUM',
+                      assignedUserId: '',
+                      reminderMinutesBefore: null,
+                    });
+                    setError('');
+                  }}
+                  className="w-full cursor-pointer rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  form="meeting-form"
+                  disabled={creatingMeeting}
+                  className="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                >
+                  {creatingMeeting ? 'Création...' : 'Créer le rendez-vous'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de création d'appel */}
+      {showCallModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-6 backdrop-blur-sm sm:p-8">
+          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col rounded-2xl bg-white p-6 shadow-xl">
+            {/* En-tête fixe */}
+            <div className="shrink-0 border-b border-gray-100 pb-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">Créer un appel</h2>
+                  <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+                    Pour{' '}
+                    <span className="font-medium text-gray-900">
+                      {`${contact.firstName || ''} ${contact.lastName || ''}`.trim() ||
+                        contact.phone}
+                    </span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowCallModal(false);
+                    setCallData({
+                      title: 'Appel téléphonique',
+                      description: '',
+                      scheduledAt: '',
+                      priority: 'MEDIUM',
+                      assignedUserId: '',
+                      reminderMinutesBefore: null,
+                    });
+                    setError('');
+                  }}
+                  className="cursor-pointer rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                  aria-label="Fermer la modal"
+                  type="button"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu scrollable */}
+            <form
+              id="call-form"
+              onSubmit={handleCreateCall}
+              className="flex-1 space-y-6 overflow-y-auto px-2 pt-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Titre de l'appel (optionnel)
+                </label>
+                <input
+                  type="text"
+                  value={callData.title}
+                  onChange={(e) => setCallData({ ...callData, title: e.target.value })}
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Ex : Appeler le client pour devis"
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700">Date & heure *</p>
+                  <div className="grid grid-cols-[3fr,2fr] gap-2">
+                    <input
+                      type="date"
+                      required
+                      value={callData.scheduledAt ? callData.scheduledAt.split('T')[0] : ''}
+                      onChange={(e) => {
+                        const time =
+                          callData.scheduledAt && callData.scheduledAt.includes('T')
+                            ? callData.scheduledAt.split('T')[1]
+                            : '';
+                        setCallData({
+                          ...callData,
+                          scheduledAt: time
+                            ? `${e.target.value}T${time}`
+                            : `${e.target.value}T09:00`,
+                        });
+                      }}
+                      className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                    <input
+                      type="time"
+                      value={
+                        callData.scheduledAt && callData.scheduledAt.includes('T')
+                          ? callData.scheduledAt.split('T')[1].slice(0, 5)
+                          : ''
+                      }
+                      onChange={(e) => {
+                        const datePart =
+                          callData.scheduledAt && callData.scheduledAt.includes('T')
+                            ? callData.scheduledAt.split('T')[0]
+                            : new Date().toISOString().split('T')[0];
+                        setCallData({
+                          ...callData,
+                          scheduledAt: `${datePart}T${e.target.value || '09:00'}`,
+                        });
+                      }}
+                      className="block w-full rounded-xl border border-gray-300 px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700">Priorité</p>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {[
+                      { value: 'LOW' as const, label: 'Faible' },
+                      { value: 'MEDIUM' as const, label: 'Moyenne' },
+                      { value: 'HIGH' as const, label: 'Haute' },
+                      { value: 'URGENT' as const, label: 'Urgente' },
+                    ].map((option) => {
+                      const isActive = callData.priority === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() =>
+                            setCallData({
+                              ...callData,
+                              priority: option.value,
+                            })
+                          }
+                          className={`cursor-pointer rounded-xl border px-3 py-2 text-xs font-medium transition-colors sm:text-sm ${
+                            isActive
+                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-200 hover:bg-indigo-50/60'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-700">Rappel</p>
+                <select
+                  value={callData.reminderMinutesBefore ?? ''}
+                  onChange={(e) =>
+                    setCallData({
+                      ...callData,
+                      reminderMinutesBefore: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Aucun rappel</option>
+                  <option value="5">5 minutes avant</option>
+                  <option value="15">15 minutes avant</option>
+                  <option value="30">30 minutes avant</option>
+                  <option value="60">1 heure avant</option>
+                  <option value="120">2 heures avant</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Attribuer à</label>
+                <select
+                  value={callData.assignedUserId}
+                  onChange={(e) => setCallData({ ...callData, assignedUserId: e.target.value })}
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="">Moi-même ({session?.user?.name || 'Utilisateur'})</option>
+                  {isAdmin &&
+                    users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Description *</label>
+                <Editor ref={callEditorRef} />
+                <p className="text-xs text-gray-500">
+                  Ajoutez des détails sur cet appel (contexte, points à aborder, informations
+                  importantes…).
+                </p>
+              </div>
+
+              {error && (
+                <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>
+              )}
+            </form>
+
+            {/* Pied de modal fixe */}
+            <div className="shrink-0 border-t border-gray-100 pt-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCallModal(false);
+                    setCallData({
+                      title: 'Appel téléphonique',
+                      description: '',
+                      scheduledAt: '',
+                      priority: 'MEDIUM',
+                      assignedUserId: '',
+                      reminderMinutesBefore: null,
+                    });
+                    setError('');
+                  }}
+                  className="w-full cursor-pointer rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  form="call-form"
+                  disabled={creatingCall}
+                  className="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                >
+                  {creatingCall ? 'Création...' : "Créer l'appel"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de création de note */}
+      {showNoteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-6 backdrop-blur-sm sm:p-8">
+          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col rounded-2xl bg-white p-6 shadow-xl">
+            {/* En-tête fixe */}
+            <div className="shrink-0 border-b border-gray-100 pb-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">Créer une note</h2>
+                  <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+                    Pour{' '}
+                    <span className="font-medium text-gray-900">
+                      {`${contact.firstName || ''} ${contact.lastName || ''}`.trim() ||
+                        contact.phone}
+                    </span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowNoteModal(false);
+                    setNoteData({
+                      title: '',
+                      content: '',
+                      date: '',
+                    });
+                    noteEditorRef.current?.injectHTML('');
+                    setError('');
+                  }}
+                  className="cursor-pointer rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                  aria-label="Fermer la modal"
+                  type="button"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu scrollable */}
+            <form
+              id="note-form"
+              onSubmit={handleCreateNote}
+              className="flex-1 space-y-6 overflow-y-auto px-2 pt-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {noteTemplates.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Utiliser un template
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      const templateId = e.target.value;
+                      if (templateId && contact) {
+                        const template = noteTemplates.find((t) => t.id === templateId);
+                        if (template) {
+                          const variables = {
+                            firstName: contact.firstName,
+                            lastName: contact.lastName,
+                            civility: contact.civility,
+                            email: contact.email,
+                            phone: contact.phone,
+                            secondaryPhone: contact.secondaryPhone,
+                            address: contact.address,
+                            city: contact.city,
+                            postalCode: contact.postalCode,
+                            companyName: contact.company
+                              ? `${contact.company.firstName || ''} ${contact.company.lastName || ''}`.trim()
+                              : null,
+                          };
+
+                          const processedContent = replaceTemplateVariables(
+                            template.content,
+                            variables,
+                          );
+
+                          setNoteData({
+                            ...noteData,
+                            content: processedContent,
+                          });
+                          if (noteEditorRef.current) {
+                            noteEditorRef.current.injectHTML(processedContent);
+                          }
+                        }
+                      }
+                    }}
+                    className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  >
+                    <option value="">Sélectionner un template...</option>
+                    {noteTemplates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Titre (optionnel)</label>
+                <input
+                  type="text"
+                  value={noteData.title}
+                  onChange={(e) => setNoteData({ ...noteData, title: e.target.value })}
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Titre de la note"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Contenu *</label>
+                <Editor ref={noteEditorRef} />
+                <p className="text-xs text-gray-500">
+                  Ajoutez le contenu de votre note (informations importantes, observations…).
+                </p>
+              </div>
+
+              {error && (
+                <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>
+              )}
+            </form>
+
+            {/* Pied de modal fixe */}
+            <div className="shrink-0 border-t border-gray-100 pt-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNoteModal(false);
+                    setNoteData({
+                      title: '',
+                      content: '',
+                      date: '',
+                    });
+                    noteEditorRef.current?.injectHTML('');
+                    setError('');
+                  }}
+                  className="w-full cursor-pointer rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  form="note-form"
+                  className="w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none sm:w-auto"
+                >
+                  Créer la note
                 </button>
               </div>
             </div>
@@ -3566,7 +4398,7 @@ export default function ContactDetailPage() {
 
             {/* Pied de modal fixe */}
             <div className="shrink-0 border-t border-gray-100 pt-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <button
                   type="button"
                   onClick={handleDeleteMeet}

@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { hashPassword } from "@/lib/auth";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { hashPassword } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,12 +8,12 @@ export async function POST(request: NextRequest) {
     const { token, password } = body;
 
     if (!token || !password) {
-      return NextResponse.json({ error: "Token et mot de passe requis" }, { status: 400 });
+      return NextResponse.json({ error: 'Token et mot de passe requis' }, { status: 400 });
     }
 
     if (password.length < 6) {
       return NextResponse.json(
-        { error: "Le mot de passe doit contenir au moins 6 caractères" },
+        { error: 'Le mot de passe doit contenir au moins 6 caractères' },
         { status: 400 },
       );
     }
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!verification) {
-      return NextResponse.json({ error: "Lien invalide ou expiré" }, { status: 400 });
+      return NextResponse.json({ error: 'Lien invalide ou expiré' }, { status: 400 });
     }
 
     // Trouver l'utilisateur
@@ -37,13 +37,13 @@ export async function POST(request: NextRequest) {
       where: { email: verification.identifier },
       include: {
         accounts: {
-          where: { providerId: "credential" },
+          where: { providerId: 'credential' },
         },
       },
     });
 
     if (!user || user.accounts.length === 0) {
-      return NextResponse.json({ error: "Utilisateur non trouvé" }, { status: 404 });
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 });
     }
 
     // Hasher le nouveau mot de passe
@@ -64,11 +64,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Mot de passe réinitialisé avec succès",
+      message: 'Mot de passe réinitialisé avec succès',
     });
   } catch (error: any) {
-    console.error("Erreur lors de la complétion:", error);
-    return NextResponse.json({ error: error.message || "Erreur serveur" }, { status: 500 });
+    console.error('Erreur lors de la complétion:', error);
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-

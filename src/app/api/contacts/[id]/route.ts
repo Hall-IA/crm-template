@@ -1,24 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import {
-  logStatusChange,
-  logContactUpdate,
-  logAssignmentChange,
-} from "@/lib/contact-interactions";
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { logStatusChange, logContactUpdate, logAssignmentChange } from '@/lib/contact-interactions';
 
 // GET /api/contacts/[id] - Récupérer un contact spécifique avec ses interactions
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
     });
 
     if (!session) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     const { id } = await params;
@@ -48,40 +41,31 @@ export async function GET(
               select: { id: true, name: true, email: true },
             },
           },
-          orderBy: { createdAt: "desc" },
+          orderBy: { createdAt: 'desc' },
         },
       },
     });
 
     if (!contact) {
-      return NextResponse.json(
-        { error: "Contact non trouvé" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Contact non trouvé' }, { status: 404 });
     }
 
     return NextResponse.json(contact);
   } catch (error: any) {
-    console.error("Erreur lors de la récupération du contact:", error);
-    return NextResponse.json(
-      { error: "Erreur serveur" },
-      { status: 500 }
-    );
+    console.error('Erreur lors de la récupération du contact:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
 // PUT /api/contacts/[id] - Mettre à jour un contact
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
     });
 
     if (!session) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     const { id } = await params;
@@ -106,10 +90,7 @@ export async function PUT(
 
     // Validation
     if (!phone) {
-      return NextResponse.json(
-        { error: "Le téléphone est obligatoire" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Le téléphone est obligatoire' }, { status: 400 });
     }
 
     // Vérifier que le contact existe avec toutes les relations nécessaires
@@ -130,28 +111,21 @@ export async function PUT(
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Contact non trouvé" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Contact non trouvé' }, { status: 404 });
     }
 
     // Préparer les données de mise à jour
     const updateData: any = {
       civility: civility !== undefined ? civility || null : existing.civility,
-      firstName:
-        firstName !== undefined ? firstName || null : existing.firstName,
+      firstName: firstName !== undefined ? firstName || null : existing.firstName,
       lastName: lastName !== undefined ? lastName || null : existing.lastName,
       phone: phone || existing.phone,
       secondaryPhone:
-        secondaryPhone !== undefined
-          ? secondaryPhone || null
-          : existing.secondaryPhone,
+        secondaryPhone !== undefined ? secondaryPhone || null : existing.secondaryPhone,
       email: email !== undefined ? email || null : existing.email,
       address: address !== undefined ? address || null : existing.address,
       city: city !== undefined ? city || null : existing.city,
-      postalCode:
-        postalCode !== undefined ? postalCode || null : existing.postalCode,
+      postalCode: postalCode !== undefined ? postalCode || null : existing.postalCode,
       origin: origin !== undefined ? origin || null : existing.origin,
       isCompany: isCompany !== undefined ? isCompany === true : existing.isCompany,
       companyId: companyId !== undefined ? companyId || null : existing.companyId,
@@ -161,9 +135,7 @@ export async function PUT(
           ? assignedCommercialId || null
           : existing.assignedCommercialId,
       assignedTeleproId:
-        assignedTeleproId !== undefined
-          ? assignedTeleproId || null
-          : existing.assignedTeleproId,
+        assignedTeleproId !== undefined ? assignedTeleproId || null : existing.assignedTeleproId,
     };
 
     // Détecter les changements pour créer les interactions
@@ -182,10 +154,7 @@ export async function PUT(
     if (phone !== undefined && phone !== existing.phone) {
       changes.phone = { old: existing.phone, new: phone };
     }
-    if (
-      secondaryPhone !== undefined &&
-      secondaryPhone !== existing.secondaryPhone
-    ) {
+    if (secondaryPhone !== undefined && secondaryPhone !== existing.secondaryPhone) {
       changes.secondaryPhone = { old: existing.secondaryPhone, new: secondaryPhone };
     }
     if (email !== undefined && email !== existing.email) {
@@ -225,17 +194,14 @@ export async function PUT(
     // Créer les interactions pour les changements détectés
     try {
       // Changement de statut
-      if (
-        statusId !== undefined &&
-        statusId !== existing.statusId
-      ) {
+      if (statusId !== undefined && statusId !== existing.statusId) {
         await logStatusChange(
           id,
           existing.statusId,
           statusId,
           session.user.id,
           existing.status?.name || null,
-          contact.status?.name || null
+          contact.status?.name || null,
         );
       }
 
@@ -246,28 +212,25 @@ export async function PUT(
       ) {
         await logAssignmentChange(
           id,
-          "COMMERCIAL",
+          'COMMERCIAL',
           existing.assignedCommercialId,
           assignedCommercialId,
           session.user.id,
           existing.assignedCommercial?.name || null,
-          contact.assignedCommercial?.name || null
+          contact.assignedCommercial?.name || null,
         );
       }
 
       // Changement d'assignation Télépro
-      if (
-        assignedTeleproId !== undefined &&
-        assignedTeleproId !== existing.assignedTeleproId
-      ) {
+      if (assignedTeleproId !== undefined && assignedTeleproId !== existing.assignedTeleproId) {
         await logAssignmentChange(
           id,
-          "TELEPRO",
+          'TELEPRO',
           existing.assignedTeleproId,
           assignedTeleproId,
           session.user.id,
           existing.assignedTelepro?.name || null,
-          contact.assignedTelepro?.name || null
+          contact.assignedTelepro?.name || null,
         );
       }
 
@@ -277,23 +240,20 @@ export async function PUT(
       }
     } catch (error) {
       // Ne pas faire échouer la mise à jour si l'enregistrement de l'interaction échoue
-      console.error("Erreur lors de la création des interactions:", error);
+      console.error('Erreur lors de la création des interactions:', error);
     }
 
     return NextResponse.json(contact);
   } catch (error: any) {
-    console.error("Erreur lors de la mise à jour du contact:", error);
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+    console.error('Erreur lors de la mise à jour du contact:', error);
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
 
 // DELETE /api/contacts/[id] - Supprimer un contact
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth.api.getSession({
@@ -301,7 +261,7 @@ export async function DELETE(
     });
 
     if (!session) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     const { id } = await params;
@@ -312,23 +272,16 @@ export async function DELETE(
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Contact non trouvé" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Contact non trouvé' }, { status: 404 });
     }
 
     await prisma.contact.delete({
       where: { id },
     });
 
-    return NextResponse.json({ success: true, message: "Contact supprimé avec succès" });
+    return NextResponse.json({ success: true, message: 'Contact supprimé avec succès' });
   } catch (error: any) {
-    console.error("Erreur lors de la suppression du contact:", error);
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+    console.error('Erreur lors de la suppression du contact:', error);
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-

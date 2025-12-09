@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useSession } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useSession } from '@/lib/auth-client';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function HomePage() {
   const { data: session, isPending } = useSession();
@@ -13,10 +13,10 @@ export default function HomePage() {
 
     if (session) {
       // Utilisateur connecté -> rediriger vers le dashboard
-      router.push("/dashboard");
+      router.push('/dashboard');
     } else {
       // Utilisateur non connecté -> rediriger vers la page de connexion
-      router.push("/signin");
+      router.push('/signin');
     }
   }, [session, isPending, router]);
 
@@ -30,4 +30,3 @@ export default function HomePage() {
     </div>
   );
 }
-

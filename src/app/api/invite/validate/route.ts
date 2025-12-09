@@ -1,16 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const token = searchParams.get("token");
+    const token = searchParams.get('token');
 
     if (!token) {
-      return NextResponse.json(
-        { error: "Token manquant" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Token manquant' }, { status: 400 });
     }
 
     // Trouver le token de vérification
@@ -24,10 +21,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!verification) {
-      return NextResponse.json(
-        { error: "Lien invalide ou expiré" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Lien invalide ou expiré' }, { status: 400 });
     }
 
     // Vérifier si l'utilisateur existe et n'a pas encore de compte
@@ -35,24 +29,18 @@ export async function GET(request: NextRequest) {
       where: { email: verification.identifier },
       include: {
         accounts: {
-          where: { providerId: "credential" },
+          where: { providerId: 'credential' },
         },
       },
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: "Utilisateur non trouvé" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 });
     }
 
     // Vérifier si le compte existe déjà (mot de passe déjà défini)
     if (user.accounts.length > 0) {
-      return NextResponse.json(
-        { error: "Ce compte a déjà été activé" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Ce compte a déjà été activé' }, { status: 400 });
     }
 
     return NextResponse.json({
@@ -61,11 +49,7 @@ export async function GET(request: NextRequest) {
       valid: true,
     });
   } catch (error) {
-    console.error("Erreur lors de la validation:", error);
-    return NextResponse.json(
-      { error: "Erreur serveur" },
-      { status: 500 }
-    );
+    console.error('Erreur lors de la validation:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
-

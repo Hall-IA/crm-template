@@ -176,8 +176,7 @@ export async function POST(request: NextRequest) {
 
           const firstName =
             firstNameIdx !== null ? row[firstNameIdx]?.trim() || undefined : undefined;
-          const lastName =
-            lastNameIdx !== null ? row[lastNameIdx]?.trim() || undefined : undefined;
+          const lastName = lastNameIdx !== null ? row[lastNameIdx]?.trim() || undefined : undefined;
           const email = emailIdx !== null ? row[emailIdx]?.trim() || undefined : undefined;
           const city = cityIdx !== null ? row[cityIdx]?.trim() || undefined : undefined;
           const postalCode =
@@ -196,7 +195,11 @@ export async function POST(request: NextRequest) {
             });
 
             if (defaultUser) {
-              if (defaultUser.role === 'COMMERCIAL' || defaultUser.role === 'ADMIN' || defaultUser.role === 'MANAGER') {
+              if (
+                defaultUser.role === 'COMMERCIAL' ||
+                defaultUser.role === 'ADMIN' ||
+                defaultUser.role === 'MANAGER'
+              ) {
                 assignedCommercialId = config.defaultAssignedUserId;
               } else if (defaultUser.role === 'TELEPRO') {
                 assignedTeleproId = config.defaultAssignedUserId;
@@ -211,7 +214,7 @@ export async function POST(request: NextRequest) {
             lastName,
             email,
             origin,
-            config.defaultAssignedUserId
+            config.defaultAssignedUserId,
           );
 
           let contact;

@@ -107,7 +107,10 @@ export default function UsersPage() {
     }
   };
 
-  const handleChangeRole = async (userId: string, newRole: 'USER' | 'ADMIN' | 'MANAGER' | 'COMMERCIAL' | 'TELEPRO' | 'COMPTABLE') => {
+  const handleChangeRole = async (
+    userId: string,
+    newRole: 'USER' | 'ADMIN' | 'MANAGER' | 'COMMERCIAL' | 'TELEPRO' | 'COMPTABLE',
+  ) => {
     try {
       const response = await fetch(`/api/users/${userId}`, {
         method: 'PUT',

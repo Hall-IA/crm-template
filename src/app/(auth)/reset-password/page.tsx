@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setLoading(true);
 
     try {
-      const response = await fetch("/api/reset-password/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/reset-password/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
 
@@ -58,10 +58,8 @@ export default function ResetPasswordPage() {
                   />
                 </svg>
               </div>
-              <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
-                Code envoyé
-              </h1>
-              <p className="mt-2 break-all text-sm text-gray-600">
+              <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Code envoyé</h1>
+              <p className="mt-2 text-sm break-all text-gray-600">
                 Un code à 6 chiffres a été envoyé à <strong>{email}</strong>
               </p>
               <p className="mt-2 text-sm text-gray-500">
@@ -70,8 +68,10 @@ export default function ResetPasswordPage() {
             </div>
 
             <button
-              onClick={() => router.push(`/reset-password/verify?email=${encodeURIComponent(email)}`)}
-              className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-indigo-700"
+              onClick={() =>
+                router.push(`/reset-password/verify?email=${encodeURIComponent(email)}`)
+              }
+              className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-indigo-700"
             >
               Continuer
             </button>
@@ -104,18 +104,13 @@ export default function ResetPasswordPage() {
 
           {/* Error Message */}
           {error && (
-            <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">
-              {error}
-            </div>
+            <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>
           )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email
               </label>
               <input
@@ -124,7 +119,7 @@ export default function ResetPasswordPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 placeholder="vous@exemple.com"
               />
             </div>
@@ -132,9 +127,9 @@ export default function ResetPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? "Envoi..." : "Envoyer le code"}
+              {loading ? 'Envoi...' : 'Envoyer le code'}
             </button>
           </form>
 
@@ -149,4 +144,3 @@ export default function ResetPasswordPage() {
     </div>
   );
 }
-

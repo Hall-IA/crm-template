@@ -23,7 +23,7 @@ export async function proxy(request: NextRequest) {
 
   let isAuthenticated = !!session;
   let isActiveUser = true;
-  
+
   // Récupérer le rôle depuis la session ou depuis la base de données
   let userRole: string | null = null;
   if (session && session.user?.id) {

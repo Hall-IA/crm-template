@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
  * - Change le statut en "Doublon"
  * - Met à jour updatedAt pour remonter le contact en haut
  * - Ajoute une note indiquant que le contact a été enregistré une énième fois
- * 
+ *
  * @param firstName - Prénom du contact
  * @param lastName - Nom du contact
  * @param email - Email du contact
@@ -19,7 +19,7 @@ export async function handleContactDuplicate(
   lastName: string | null | undefined,
   email: string | null | undefined,
   origin: string | null | undefined,
-  userId: string
+  userId: string,
 ): Promise<string | null> {
   // Normaliser les valeurs pour la comparaison
   const normalizedFirstName = firstName?.trim().toLowerCase() || null;
@@ -93,13 +93,16 @@ export async function handleContactDuplicate(
       contactId: existingContact.id,
       type: 'NOTE',
       title: 'Contact enregistré à nouveau',
-      content: `Ce contact a été enregistré une ${occurrenceNumber}${occurrenceNumber === 1 ? 'ère' : 'ème'} fois${origin ? ` depuis ${origin}` : ''} le ${new Date().toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })}.`,
+      content: `Ce contact a été enregistré une ${occurrenceNumber}${occurrenceNumber === 1 ? 'ère' : 'ème'} fois${origin ? ` depuis ${origin}` : ''} le ${new Date().toLocaleDateString(
+        'fr-FR',
+        {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        },
+      )}.`,
       userId: userId,
       date: new Date(),
     },
@@ -107,4 +110,3 @@ export async function handleContactDuplicate(
 
   return existingContact.id;
 }
-

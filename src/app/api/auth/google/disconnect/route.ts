@@ -26,8 +26,7 @@ export async function POST(request: NextRequest) {
     console.error('Erreur lors de la déconnexion Google:', error);
     return NextResponse.json(
       { error: error.message || 'Erreur lors de la déconnexion' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

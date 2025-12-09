@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     const { email } = body;
 
     if (!email) {
-      return NextResponse.json({ error: "Email requis" }, { status: 400 });
+      return NextResponse.json({ error: 'Email requis' }, { status: 400 });
     }
 
     // Vérifier si l'utilisateur existe
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       where: { email },
       include: {
         accounts: {
-          where: { providerId: "credential" },
+          where: { providerId: 'credential' },
         },
       },
     });
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       // Retourner un succès même si l'utilisateur n'existe pas (sécurité)
       return NextResponse.json({
         success: true,
-        message: "Si cet email existe, un code vous a été envoyé",
+        message: 'Si cet email existe, un code vous a été envoyé',
       });
     }
 
@@ -55,16 +55,16 @@ export async function POST(request: NextRequest) {
     });
 
     // Envoyer l'email avec le code
-    const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
+    const baseUrl = process.env.BETTER_AUTH_URL || 'http://localhost:3000';
 
     try {
       await fetch(`${baseUrl}/api/send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: email,
-          subject: "Code de réinitialisation de mot de passe",
-          template: "reset-password",
+          subject: 'Code de réinitialisation de mot de passe',
+          template: 'reset-password',
           code,
         }),
       });
@@ -75,11 +75,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Si cet email existe, un code vous a été envoyé",
+      message: 'Si cet email existe, un code vous a été envoyé',
     });
   } catch (error: any) {
-    console.error("Erreur lors de la demande de réinitialisation:", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    console.error('Erreur lors de la demande de réinitialisation:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
-

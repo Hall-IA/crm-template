@@ -4,10 +4,7 @@ import { requireAdmin } from '@/lib/roles';
 import { encrypt } from '@/lib/encryption';
 
 // PUT /api/settings/meta-leads/[id] - Mettre à jour une configuration (admin uniquement)
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdmin(request.headers);
 
@@ -124,4 +121,3 @@ export async function DELETE(
     return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-

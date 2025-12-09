@@ -30,16 +30,13 @@ export const AVAILABLE_VARIABLES = [
   { key: '{{address}}', description: 'Adresse complète' },
   { key: '{{city}}', description: 'Ville' },
   { key: '{{postalCode}}', description: 'Code postal' },
-  { key: '{{companyName}}', description: 'Nom de l\'entreprise associée' },
+  { key: '{{companyName}}', description: "Nom de l'entreprise associée" },
 ];
 
 /**
  * Remplace les variables dans un template par les valeurs du contact
  */
-export function replaceTemplateVariables(
-  template: string,
-  variables: ContactVariables
-): string {
+export function replaceTemplateVariables(template: string, variables: ContactVariables): string {
   let result = template;
 
   // Remplacer les variables simples
@@ -55,9 +52,7 @@ export function replaceTemplateVariables(
   result = result.replace(/\{\{companyName\}\}/g, variables.companyName || '');
 
   // Variable composée : fullName
-  const fullName = [variables.firstName, variables.lastName]
-    .filter(Boolean)
-    .join(' ') || '';
+  const fullName = [variables.firstName, variables.lastName].filter(Boolean).join(' ') || '';
   result = result.replace(/\{\{fullName\}\}/g, fullName);
 
   return result;
@@ -79,4 +74,3 @@ export function extractVariables(template: string): string[] {
 
   return variables;
 }
-

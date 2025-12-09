@@ -1,12 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/roles";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '@/lib/roles';
 
 // PUT /api/settings/statuses/[id] - Mettre à jour un statut
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdmin(request.headers);
     const { id } = await params;
@@ -16,10 +13,7 @@ export async function PUT(
 
     // Validation
     if (!name || !color) {
-      return NextResponse.json(
-        { error: "Le nom et la couleur sont requis" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Le nom et la couleur sont requis' }, { status: 400 });
     }
 
     // Vérifier si le statut existe
@@ -28,10 +22,7 @@ export async function PUT(
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Statut non trouvé" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Statut non trouvé' }, { status: 404 });
     }
 
     // Vérifier si le nom existe déjà pour un autre statut
@@ -43,10 +34,7 @@ export async function PUT(
     });
 
     if (nameConflict) {
-      return NextResponse.json(
-        { error: "Un statut avec ce nom existe déjà" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Un statut avec ce nom existe déjà' }, { status: 400 });
     }
 
     const updatedStatus = await prisma.status.update({
@@ -60,27 +48,24 @@ export async function PUT(
 
     return NextResponse.json(updatedStatus);
   } catch (error: any) {
-    console.error("Erreur lors de la mise à jour du statut:", error);
-    
-    if (error.message === "Non authentifié") {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    console.error('Erreur lors de la mise à jour du statut:', error);
+
+    if (error.message === 'Non authentifié') {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
-    
-    if (error.message === "Permissions insuffisantes") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+
+    if (error.message === 'Permissions insuffisantes') {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
     }
-    
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
 
 // DELETE /api/settings/statuses/[id] - Supprimer un statut
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     await requireAdmin(request.headers);
@@ -92,32 +77,25 @@ export async function DELETE(
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Statut non trouvé" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Statut non trouvé' }, { status: 404 });
     }
 
     await prisma.status.delete({
       where: { id },
     });
 
-    return NextResponse.json({ success: true, message: "Statut supprimé avec succès" });
+    return NextResponse.json({ success: true, message: 'Statut supprimé avec succès' });
   } catch (error: any) {
-    console.error("Erreur lors de la suppression du statut:", error);
-    
-    if (error.message === "Non authentifié") {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    console.error('Erreur lors de la suppression du statut:', error);
+
+    if (error.message === 'Non authentifié') {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
-    
-    if (error.message === "Permissions insuffisantes") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+
+    if (error.message === 'Permissions insuffisantes') {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
     }
-    
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-

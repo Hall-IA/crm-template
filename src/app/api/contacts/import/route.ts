@@ -50,13 +50,13 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         return NextResponse.json(
           { error: 'Erreur lors du parsing Excel. Assurez-vous que xlsx est installé.' },
-          { status: 400 }
+          { status: 400 },
         );
       }
     } else {
       return NextResponse.json(
         { error: 'Format de fichier non supporté. Utilisez CSV ou Excel (.xlsx, .xls)' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
           contactData.lastName,
           contactData.email,
           contactData.origin || 'Import CSV/Excel',
-          session.user.id
+          session.user.id,
         );
 
         if (duplicateContactId) {
@@ -176,7 +176,9 @@ export async function POST(request: NextRequest) {
           });
           if (existingContact) {
             createdContacts.push(existingContact);
-            duplicateErrors.push(`Contact ${contactData.firstName} ${contactData.lastName} (${contactData.email}) - doublon détecté`);
+            duplicateErrors.push(
+              `Contact ${contactData.firstName} ${contactData.lastName} (${contactData.email}) - doublon détecté`,
+            );
           }
           continue;
         }
@@ -198,13 +200,16 @@ export async function POST(request: NextRequest) {
               create: {
                 type: 'NOTE',
                 title: 'Contact importé',
-                content: `Contact importé depuis un fichier le ${new Date().toLocaleDateString('fr-FR', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}`,
+                content: `Contact importé depuis un fichier le ${new Date().toLocaleDateString(
+                  'fr-FR',
+                  {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  },
+                )}`,
                 userId: session.user.id,
                 date: new Date(),
               },
@@ -244,10 +249,10 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Erreur lors de l\'import:', error);
+    console.error("Erreur lors de l'import:", error);
     return NextResponse.json(
-      { error: error.message || 'Erreur serveur lors de l\'import' },
-      { status: 500 }
+      { error: error.message || "Erreur serveur lors de l'import" },
+      { status: 500 },
     );
   }
 }
@@ -298,4 +303,3 @@ function getValueFromRow(row: any, columnName: string | null | undefined): strin
 
   return null;
 }
-

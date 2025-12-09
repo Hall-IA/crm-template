@@ -462,7 +462,6 @@ export default function ContactsPage() {
       setImportMapping({});
       setImportResult(null);
       setSuccess('');
-      
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -545,7 +544,9 @@ export default function ContactsPage() {
                 <option value="">Tous les commerciaux</option>
                 {(isAdmin
                   ? users.filter((u) => u.role !== 'USER')
-                  : users.filter((u) => u.role === 'COMMERCIAL' || u.role === 'ADMIN' || u.role === 'MANAGER')
+                  : users.filter(
+                      (u) => u.role === 'COMMERCIAL' || u.role === 'ADMIN' || u.role === 'MANAGER',
+                    )
                 ).map((user) => (
                   <option key={user.id} value={user.id}>
                     {user.name}
@@ -554,7 +555,7 @@ export default function ContactsPage() {
               </select>
             </div>
 
-          <div>
+            <div>
               <label className="block text-sm font-medium text-gray-700">Télépro</label>
               <select
                 value={assignedTeleproFilter}
@@ -564,7 +565,9 @@ export default function ContactsPage() {
                 <option value="">Tous les télépros</option>
                 {(isAdmin
                   ? users.filter((u) => u.role !== 'USER')
-                  : users.filter((u) => u.role === 'TELEPRO' || u.role === 'ADMIN' || u.role === 'MANAGER')
+                  : users.filter(
+                      (u) => u.role === 'TELEPRO' || u.role === 'ADMIN' || u.role === 'MANAGER',
+                    )
                 ).map((user) => (
                   <option key={user.id} value={user.id}>
                     {user.name}
@@ -668,7 +671,8 @@ export default function ContactsPage() {
                           </div>
                           {contact.company && (
                             <div className="text-xs text-gray-500">
-                              Entreprise: {contact.company.firstName || contact.company.lastName || 'Sans nom'}
+                              Entreprise:{' '}
+                              {contact.company.firstName || contact.company.lastName || 'Sans nom'}
                             </div>
                           )}
                           {contact.city && (
@@ -737,10 +741,10 @@ export default function ContactsPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-4 text-sm text-gray-500 whitespace-nowrap sm:px-6">
+                    <td className="px-3 py-4 text-sm whitespace-nowrap text-gray-500 sm:px-6">
                       {contact.createdAt ? formatDate(contact.createdAt) : '-'}
                     </td>
-                    <td className="px-3 py-4 text-sm text-gray-500 whitespace-nowrap sm:px-6">
+                    <td className="px-3 py-4 text-sm whitespace-nowrap text-gray-500 sm:px-6">
                       {contact.updatedAt ? formatDate(contact.updatedAt) : '-'}
                     </td>
                     <td className="px-3 py-4 text-right text-sm font-medium whitespace-nowrap sm:px-6">
@@ -764,8 +768,8 @@ export default function ContactsPage() {
                           title="Supprimer"
                         >
                           <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -784,7 +788,7 @@ export default function ContactsPage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
                   {editingContact ? 'Modifier le contact' : 'Nouveau contact'}
-          </h2>
+                </h2>
                 <button
                   type="button"
                   onClick={() => {
@@ -948,7 +952,13 @@ export default function ContactsPage() {
                       type="checkbox"
                       id="isCompany"
                       checked={formData.isCompany}
-                      onChange={(e) => setFormData({ ...formData, isCompany: e.target.checked, companyId: e.target.checked ? formData.companyId : '' })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          isCompany: e.target.checked,
+                          companyId: e.target.checked ? formData.companyId : '',
+                        })
+                      }
                       className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     />
                     <label htmlFor="isCompany" className="ml-2 text-sm font-medium text-gray-700">
@@ -1017,13 +1027,18 @@ export default function ContactsPage() {
                     <label className="block text-sm font-medium text-gray-700">Commercial</label>
                     <select
                       value={formData.assignedCommercialId}
-                      onChange={(e) => setFormData({ ...formData, assignedCommercialId: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, assignedCommercialId: e.target.value })
+                      }
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     >
                       <option value="">Non assigné</option>
                       {(isAdmin
                         ? users.filter((u) => u.role !== 'USER')
-                        : users.filter((u) => u.role === 'COMMERCIAL' || u.role === 'ADMIN' || u.role === 'MANAGER')
+                        : users.filter(
+                            (u) =>
+                              u.role === 'COMMERCIAL' || u.role === 'ADMIN' || u.role === 'MANAGER',
+                          )
                       ).map((user) => (
                         <option key={user.id} value={user.id}>
                           {user.name}
@@ -1036,13 +1051,18 @@ export default function ContactsPage() {
                     <label className="block text-sm font-medium text-gray-700">Télépro</label>
                     <select
                       value={formData.assignedTeleproId}
-                      onChange={(e) => setFormData({ ...formData, assignedTeleproId: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, assignedTeleproId: e.target.value })
+                      }
                       className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     >
                       <option value="">Non assigné</option>
                       {(isAdmin
                         ? users.filter((u) => u.role !== 'USER')
-                        : users.filter((u) => u.role === 'TELEPRO' || u.role === 'ADMIN' || u.role === 'MANAGER')
+                        : users.filter(
+                            (u) =>
+                              u.role === 'TELEPRO' || u.role === 'ADMIN' || u.role === 'MANAGER',
+                          )
                       ).map((user) => (
                         <option key={user.id} value={user.id}>
                           {user.name}
@@ -1078,9 +1098,9 @@ export default function ContactsPage() {
                   className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
                 >
                   {editingContact ? 'Modifier' : 'Créer'}
-          </button>
-        </div>
-      </div>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

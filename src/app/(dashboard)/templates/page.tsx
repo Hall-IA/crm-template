@@ -90,7 +90,6 @@ export default function TemplatesPage() {
     }
 
     try {
-
       const url = editingTemplate ? `/api/templates/${editingTemplate.id}` : '/api/templates';
       const method = editingTemplate ? 'PUT' : 'POST';
 
@@ -109,7 +108,9 @@ export default function TemplatesPage() {
         throw new Error(data.error || 'Erreur lors de la sauvegarde');
       }
 
-      setSuccess(editingTemplate ? 'Template modifié avec succès !' : 'Template créé avec succès !');
+      setSuccess(
+        editingTemplate ? 'Template modifié avec succès !' : 'Template créé avec succès !',
+      );
       setShowModal(false);
       setEditingTemplate(null);
       setFormData({
@@ -225,9 +226,7 @@ export default function TemplatesPage() {
     }
   };
 
-  const filteredTemplates = templates.filter(
-    (t) => filterType === 'ALL' || t.type === filterType
-  );
+  const filteredTemplates = templates.filter((t) => filterType === 'ALL' || t.type === filterType);
 
   if (loading) {
     return <TemplatesPageSkeleton />;
@@ -250,9 +249,7 @@ export default function TemplatesPage() {
       />
 
       <div className="p-4 sm:p-6 lg:p-8">
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>
-        )}
+        {error && <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>}
         {success && (
           <div className="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-600">{success}</div>
         )}
@@ -452,7 +449,7 @@ export default function TemplatesPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">Contenu *</label>
-                {(formData.type === 'EMAIL' || formData.type === 'NOTE') ? (
+                {formData.type === 'EMAIL' || formData.type === 'NOTE' ? (
                   <div className="mt-1">
                     <Editor
                       ref={formData.type === 'EMAIL' ? emailEditorRef : noteEditorRef}
@@ -505,16 +502,20 @@ export default function TemplatesPage() {
                             const start = textarea.selectionStart || 0;
                             const end = textarea.selectionEnd || 0;
                             const text = formData.content;
-                            const newText = text.substring(0, start) + variable.key + text.substring(end);
+                            const newText =
+                              text.substring(0, start) + variable.key + text.substring(end);
                             setFormData({ ...formData, content: newText });
                             // Repositionner le curseur après la variable insérée
                             setTimeout(() => {
                               textarea.focus();
-                              textarea.setSelectionRange(start + variable.key.length, start + variable.key.length);
+                              textarea.setSelectionRange(
+                                start + variable.key.length,
+                                start + variable.key.length,
+                              );
                             }, 0);
                           }
                         }}
-                        className="cursor-pointer rounded-lg bg-blue-100 px-3 py-1.5 text-xs font-mono text-blue-800 transition-colors hover:bg-blue-200"
+                        className="cursor-pointer rounded-lg bg-blue-100 px-3 py-1.5 font-mono text-xs text-blue-800 transition-colors hover:bg-blue-200"
                         title={variable.description}
                       >
                         {variable.key}
@@ -558,4 +559,3 @@ export default function TemplatesPage() {
     </div>
   );
 }
-

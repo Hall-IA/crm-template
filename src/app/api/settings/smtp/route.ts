@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { encrypt } from "@/lib/encryption";
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { encrypt } from '@/lib/encryption';
 
 // GET /api/settings/smtp - Récupérer la configuration SMTP de l'utilisateur
 export async function GET(request: NextRequest) {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!session) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     const smtpConfig = await prisma.smtpConfig.findUnique({
@@ -31,11 +31,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(smtpConfig || null);
   } catch (error: any) {
-    console.error("Erreur lors de la récupération de la config SMTP:", error);
-    return NextResponse.json(
-      { error: "Erreur serveur" },
-      { status: 500 }
-    );
+    console.error('Erreur lors de la récupération de la config SMTP:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
@@ -47,7 +44,7 @@ export async function PUT(request: NextRequest) {
     });
 
     if (!session) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -56,16 +53,13 @@ export async function PUT(request: NextRequest) {
     // Validation
     if (!host || !port || !username || !password || !fromEmail) {
       return NextResponse.json(
-        { error: "Tous les champs sont requis (host, port, username, password, fromEmail)" },
-        { status: 400 }
+        { error: 'Tous les champs sont requis (host, port, username, password, fromEmail)' },
+        { status: 400 },
       );
     }
 
     if (port < 1 || port > 65535) {
-      return NextResponse.json(
-        { error: "Le port doit être entre 1 et 65535" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Le port doit être entre 1 et 65535' }, { status: 400 });
     }
 
     // Chiffrer le mot de passe avant stockage
@@ -73,10 +67,10 @@ export async function PUT(request: NextRequest) {
     try {
       encryptedPassword = encrypt(password);
     } catch (encryptError: any) {
-      console.error("Erreur lors du chiffrement du mot de passe:", encryptError);
+      console.error('Erreur lors du chiffrement du mot de passe:', encryptError);
       return NextResponse.json(
         { error: `Erreur de chiffrement: ${encryptError.message}` },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -88,7 +82,7 @@ export async function PUT(request: NextRequest) {
         update: {
           host,
           port: parseInt(port),
-          secure: secure === true || secure === "true",
+          secure: secure === true || secure === 'true',
           username,
           password: encryptedPassword, // Mot de passe chiffré
           fromEmail,
@@ -99,7 +93,7 @@ export async function PUT(request: NextRequest) {
           userId: session.user.id,
           host,
           port: parseInt(port),
-          secure: secure === true || secure === "true",
+          secure: secure === true || secure === 'true',
           username,
           password: encryptedPassword, // Mot de passe chiffré
           fromEmail,
@@ -108,10 +102,10 @@ export async function PUT(request: NextRequest) {
         },
       });
     } catch (dbError: any) {
-      console.error("Erreur lors de la sauvegarde en base de données:", dbError);
+      console.error('Erreur lors de la sauvegarde en base de données:', dbError);
       return NextResponse.json(
         { error: `Erreur de base de données: ${dbError.message}` },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -127,14 +121,10 @@ export async function PUT(request: NextRequest) {
         fromName: smtpConfig.fromName,
         signature: smtpConfig.signature,
       },
-      message: "Configuration SMTP sauvegardée avec succès",
+      message: 'Configuration SMTP sauvegardée avec succès',
     });
   } catch (error: any) {
-    console.error("Erreur lors de la sauvegarde de la config SMTP:", error);
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+    console.error('Erreur lors de la sauvegarde de la config SMTP:', error);
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-

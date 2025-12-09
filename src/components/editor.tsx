@@ -37,7 +37,13 @@ import {
 } from '@lexkit/editor';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import { LexicalEditor, $getSelection, $isRangeSelection, $insertNodes, $createTextNode } from 'lexical';
+import {
+  LexicalEditor,
+  $getSelection,
+  $isRangeSelection,
+  $insertNodes,
+  $createTextNode,
+} from 'lexical';
 import {
   Bold,
   Italic,
@@ -590,129 +596,6 @@ function Toolbar({
             >
               <TableIcon size={16} />
             </button>
-          </div>
-        )}
-
-        {/* Image */}
-        {hasExtension('image') && (
-          <div className="lexkit-toolbar-section">
-            <Dropdown
-              trigger={
-                <button
-                  type="button"
-                  className={`lexkit-toolbar-button ${activeStates.imageSelected ? 'active' : ''}`}
-                  title="Insert Image"
-                >
-                  <ImageIcon size={16} />
-                </button>
-              }
-              isOpen={showImageDropdown}
-              onOpenChange={setShowImageDropdown}
-            >
-              <button
-                type="button"
-                className="lexkit-dropdown-item"
-                onClick={() => {
-                  handlers.insertFromUrl();
-                  setShowImageDropdown(false);
-                }}
-              >
-                <Link size={16} /> From URL
-              </button>
-              <button
-                type="button"
-                className="lexkit-dropdown-item"
-                onClick={() => {
-                  handlers.insertFromFile();
-                  setShowImageDropdown(false);
-                }}
-              >
-                <Upload size={16} /> Upload File
-              </button>
-            </Dropdown>
-            {activeStates.imageSelected && (
-              <Dropdown
-                trigger={
-                  <button type="button" className="lexkit-toolbar-button" title="Align Image">
-                    <AlignCenter size={16} />
-                  </button>
-                }
-                isOpen={showAlignDropdown}
-                onOpenChange={setShowAlignDropdown}
-              >
-                <button
-                  type="button"
-                  className="lexkit-dropdown-item"
-                  onClick={() => {
-                    handlers.setAlignment('left');
-                    setShowAlignDropdown(false);
-                  }}
-                >
-                  <AlignLeft size={16} /> Align Left
-                </button>
-                <button
-                  type="button"
-                  className="lexkit-dropdown-item"
-                  onClick={() => {
-                    handlers.setAlignment('center');
-                    setShowAlignDropdown(false);
-                  }}
-                >
-                  <AlignCenter size={16} /> Align Center
-                </button>
-                <button
-                  type="button"
-                  className="lexkit-dropdown-item"
-                  onClick={() => {
-                    handlers.setAlignment('right');
-                    setShowAlignDropdown(false);
-                  }}
-                >
-                  <AlignRight size={16} /> Align Right
-                </button>
-                <button
-                  type="button"
-                  className="lexkit-dropdown-item"
-                  onClick={() => {
-                    handlers.setCaption();
-                    setShowAlignDropdown(false);
-                  }}
-                >
-                  <Type size={16} /> Set Caption
-                </button>
-              </Dropdown>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handlers.handleUpload}
-              className="lexkit-file-input"
-            />
-          </div>
-        )}
-
-        {/* HTML Embed */}
-        {hasExtension('htmlEmbed') && (
-          <div className="lexkit-toolbar-section">
-            <button
-              type="button"
-              onClick={() => commands.insertHTMLEmbed()}
-              className={`lexkit-toolbar-button ${activeStates.isHTMLEmbedSelected ? 'active' : ''}`}
-              title="Insert HTML Embed"
-            >
-              <FileCode size={16} />
-            </button>
-            {activeStates.isHTMLEmbedSelected && (
-              <button
-                type="button"
-                onClick={() => commands.toggleHTMLPreview()}
-                className="lexkit-toolbar-button"
-                title="Toggle Preview/Edit"
-              >
-                {activeStates.isHTMLPreviewMode ? <Eye size={16} /> : <Pencil size={16} />}
-              </button>
-            )}
           </div>
         )}
 

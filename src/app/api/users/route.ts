@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/roles";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '@/lib/roles';
 
 // GET /api/users - Liste tous les utilisateurs (admin seulement)
 export async function GET(request: NextRequest) {
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
     const users = await prisma.user.findMany({
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
     });
 
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role || "USER",
+      role: user.role || 'USER',
       emailVerified: user.emailVerified,
       active: user.active,
       createdAt: user.createdAt,
@@ -28,20 +28,17 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(usersWithRole);
   } catch (error: any) {
-    console.error("Erreur lors de la récupération des utilisateurs:", error);
-    
-    if (error.message === "Non authentifié") {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    console.error('Erreur lors de la récupération des utilisateurs:', error);
+
+    if (error.message === 'Non authentifié') {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
-    
-    if (error.message === "Permissions insuffisantes") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+
+    if (error.message === 'Permissions insuffisantes') {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
     }
-    
-    return NextResponse.json(
-      { error: "Erreur serveur" },
-      { status: 500 }
-    );
+
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
@@ -49,16 +46,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await requireAdmin(request.headers);
-    
+
     const body = await request.json();
-    const { name, email, role = "USER" } = body;
+    const { name, email, role = 'USER' } = body;
 
     // Validation
     if (!name || !email) {
-      return NextResponse.json(
-        { error: "Nom et email requis" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Nom et email requis' }, { status: 400 });
     }
 
     // Vérifier si l'email existe déjà
@@ -66,7 +60,7 @@ export async function POST(request: NextRequest) {
       where: { email },
       include: {
         accounts: {
-          where: { providerId: "credential" },
+          where: { providerId: 'credential' },
         },
       },
     });
@@ -74,10 +68,7 @@ export async function POST(request: NextRequest) {
     if (existingUser) {
       // Si l'utilisateur existe déjà avec un compte, erreur
       if (existingUser.accounts.length > 0) {
-        return NextResponse.json(
-          { error: "Cet email est déjà utilisé" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Cet email est déjà utilisé' }, { status: 400 });
       }
       // Si l'utilisateur existe mais sans compte, on peut régénérer un token
     }
@@ -132,7 +123,7 @@ export async function POST(request: NextRequest) {
     // Envoyer l'email d'invitation
     const baseUrl = process.env.BETTER_AUTH_URL || 'http://localhost:3000';
     const invitationUrl = `${baseUrl}/invite/${token}`;
-    
+
     try {
       // Transmettre les cookies de session pour que /api/send puisse identifier l'utilisateur connecté
       const cookieHeader = request.headers.get('cookie') || '';
@@ -140,7 +131,7 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Cookie': cookieHeader,
+          Cookie: cookieHeader,
         },
         body: JSON.stringify({
           to: email,
@@ -164,46 +155,46 @@ export async function POST(request: NextRequest) {
       }
     } catch (emailError: any) {
       console.error("❌ Erreur lors de l'envoi de l'email:", emailError);
-      console.error("Détails:", {
+      console.error('Détails:', {
         message: emailError.message,
         stack: emailError.stack,
       });
       // On continue même si l'email échoue, l'utilisateur est créé
     }
 
-    return NextResponse.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role || "USER",
-      emailVerified: user.emailVerified,
-      active: user.active,
-      createdAt: user.createdAt,
-      message: 'Utilisateur créé, email d\'invitation envoyé',
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role || 'USER',
+        emailVerified: user.emailVerified,
+        active: user.active,
+        createdAt: user.createdAt,
+        message: "Utilisateur créé, email d'invitation envoyé",
+      },
+      { status: 201 },
+    );
   } catch (error: any) {
     console.error("Erreur lors de la création de l'utilisateur:", error);
-    
-    if (error.message === "Non authentifié") {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+
+    if (error.message === 'Non authentifié') {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
-    
-    if (error.message === "Permissions insuffisantes") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+
+    if (error.message === 'Permissions insuffisantes') {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
     }
 
     // Gérer les erreurs spécifiques
-    if (error.message?.includes("email") || error.message?.includes("Email") || error.message?.includes("already exists")) {
-      return NextResponse.json(
-        { error: "Cet email est déjà utilisé" },
-        { status: 400 }
-      );
+    if (
+      error.message?.includes('email') ||
+      error.message?.includes('Email') ||
+      error.message?.includes('already exists')
+    ) {
+      return NextResponse.json({ error: 'Cet email est déjà utilisé' }, { status: 400 });
     }
-    
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-

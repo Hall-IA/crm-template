@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useSession } from "@/lib/auth-client";
-import { useEffect, useState } from "react";
+import { useSession } from '@/lib/auth-client';
+import { useEffect, useState } from 'react';
 
 /**
  * Hook personnalisé pour récupérer le rôle de l'utilisateur
@@ -23,7 +23,7 @@ export function useUserRole() {
 
     // Essayer d'obtenir le rôle depuis la session
     const sessionRole = (session.user as any).role;
-    
+
     if (sessionRole) {
       setRole(sessionRole);
       setLoading(false);
@@ -33,17 +33,17 @@ export function useUserRole() {
     // Si le rôle n'est pas dans la session, le récupérer depuis l'API
     const fetchUserRole = async () => {
       try {
-        const response = await fetch("/api/users/me");
+        const response = await fetch('/api/users/me');
         if (response.ok) {
           const userData = await response.json();
-          setRole(userData.role || "USER");
+          setRole(userData.role || 'USER');
         } else {
           // Valeur par défaut si erreur
-          setRole("USER");
+          setRole('USER');
         }
       } catch (error) {
-        console.error("Erreur lors de la récupération du rôle:", error);
-        setRole("USER"); // Valeur par défaut
+        console.error('Erreur lors de la récupération du rôle:', error);
+        setRole('USER'); // Valeur par défaut
       } finally {
         setLoading(false);
       }
@@ -54,8 +54,7 @@ export function useUserRole() {
 
   return {
     role,
-    isAdmin: role === "ADMIN",
+    isAdmin: role === 'ADMIN',
     isLoading: loading || isPending,
   };
 }
-

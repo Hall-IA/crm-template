@@ -23,17 +23,24 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       return NextResponse.redirect(
-        new URL(`/settings?error=${encodeURIComponent('Erreur lors de la connexion Google')}`, request.url)
+        new URL(
+          `/settings?error=${encodeURIComponent('Erreur lors de la connexion Google')}`,
+          request.url,
+        ),
       );
     }
 
     if (!code) {
       return NextResponse.redirect(
-        new URL(`/settings?error=${encodeURIComponent('Code d\'autorisation manquant')}`, request.url)
+        new URL(
+          `/settings?error=${encodeURIComponent("Code d'autorisation manquant")}`,
+          request.url,
+        ),
       );
     }
 
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/auth/google/callback';
+    const redirectUri =
+      process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/auth/google/callback';
     const tokens = await exchangeGoogleCodeForTokens(code, redirectUri);
 
     // Calculer la date d'expiration du token
@@ -53,7 +60,7 @@ export async function GET(request: NextRequest) {
         googleEmail = userInfo.email || null;
       }
     } catch (err) {
-      console.error('Erreur lors de la récupération de l\'email Google:', err);
+      console.error("Erreur lors de la récupération de l'email Google:", err);
     }
 
     // Sauvegarder ou mettre à jour les tokens
@@ -80,9 +87,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(
       new URL(
         `/settings?error=${encodeURIComponent(error.message || 'Erreur lors de la connexion Google')}`,
-        request.url
-      )
+        request.url,
+      ),
     );
   }
 }
-

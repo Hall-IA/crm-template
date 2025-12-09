@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   --background: #ffffff;
@@ -21,7 +21,7 @@ body {
 /* LexKit Editor - Clean Framework-Agnostic Styles */
 
 /* CSS Variables for Theme - Framework Agnostic */
-.lexkit-editor-wrapper[data-editor-theme="light"] {
+.lexkit-editor-wrapper[data-editor-theme='light'] {
   --lexkit-bg: #ffffff;
   --lexkit-fg: #0f172a;
   --lexkit-border: #e2e8f0;
@@ -35,9 +35,9 @@ body {
 }
 
 /* Dark Mode - Framework Agnostic */
-[data-theme="dark"],
+[data-theme='dark'],
 .dark,
-.lexkit-editor-wrapper[data-editor-theme="dark"] {
+.lexkit-editor-wrapper[data-editor-theme='dark'] {
   --lexkit-bg: #0a0a0a;
   --lexkit-fg: #ededed;
   --lexkit-border: #262626;
@@ -95,8 +95,6 @@ body {
   border-bottom-color: var(--lexkit-accent);
   background-color: rgba(15, 23, 42, 0.05);
 }
-
-
 
 /* Toolbar */
 .lexkit-toolbar {
@@ -508,7 +506,8 @@ body {
   outline: none;
   resize: none;
   box-sizing: border-box;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace;
+  font-family:
+    'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace;
   font-size: 14px;
   line-height: 1.6;
   background-color: var(--lexkit-bg);
@@ -616,7 +615,8 @@ body {
   text-decoration: line-through;
 }
 
-.lexkit-text-code, .lexkit-code-block {
+.lexkit-text-code,
+.lexkit-code-block {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 0.875em;
   background-color: var(--lexkit-muted);
@@ -626,9 +626,9 @@ body {
 }
 .lexkit-code-block {
   display: block;
-  padding:12px;
+  padding: 12px;
   border-radius: 6px;
-  margin: 0 0 1rem 0
+  margin: 0 0 1rem 0;
 }
 
 .lexkit-link {
@@ -957,63 +957,72 @@ body {
 /* ===== ANIMATIONS ===== */
 
 @keyframes fade-in-up {
-  0% { 
-    opacity: 0; 
-    transform: translateY(8px) scale(0.95); 
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
   }
-  100% { 
-    opacity: 1; 
-    transform: translateY(0) scale(1); 
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
 @keyframes subtle-area-glow {
-  0%, 100% { 
-    opacity: 0.4; 
+  0%,
+  100% {
+    opacity: 0.4;
     transform: scale(1);
   }
-  50% { 
-    opacity: 0.7; 
+  50% {
+    opacity: 0.7;
     transform: scale(1.02);
   }
 }
 
 @keyframes drag-handle-bounce {
-  0% { 
-    transform: scale(0.8) rotate(-10deg); 
-    opacity: 0; 
+  0% {
+    transform: scale(0.8) rotate(-10deg);
+    opacity: 0;
   }
-  50% { 
-    transform: scale(1.05) rotate(2deg); 
-    opacity: 0.8; 
+  50% {
+    transform: scale(1.05) rotate(2deg);
+    opacity: 0.8;
   }
-  100% { 
-    transform: scale(1) rotate(0deg); 
-    opacity: 1; 
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
   }
 }
 
 @keyframes button-hover-lift {
-  0% { transform: translateY(0) scale(1); }
-  100% { transform: translateY(-2px) scale(1.05); }
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    transform: translateY(-2px) scale(1.05);
+  }
 }
 
 @keyframes button-press {
-  0% { transform: translateY(-2px) scale(1.05); }
-  100% { transform: translateY(0) scale(0.98); }
+  0% {
+    transform: translateY(-2px) scale(1.05);
+  }
+  100% {
+    transform: translateY(0) scale(0.98);
+  }
 }
 
 /* ===== DARK MODE SUPPORT ===== */
 
-[data-theme="dark"] .lexkit-drag-handle,
+[data-theme='dark'] .lexkit-drag-handle,
 .dark .lexkit-drag-handle {
   background: linear-gradient(135deg, var(--lexkit-bg) 0%, var(--lexkit-muted) 100%) !important;
   border-color: var(--lexkit-border) !important;
   color: var(--lexkit-fg) !important;
 }
 
-[data-theme="dark"] .lexkit-move-up,
-[data-theme="dark"] .lexkit-move-down,
+[data-theme='dark'] .lexkit-move-up,
+[data-theme='dark'] .lexkit-move-down,
 .dark .lexkit-move-up,
 .dark .lexkit-move-down {
   background: linear-gradient(135deg, var(--lexkit-bg) 0%, var(--lexkit-muted) 100%) !important;
@@ -1021,14 +1030,14 @@ body {
   color: var(--lexkit-fg) !important;
 }
 
-[data-theme="dark"] .lexkit-move-up:hover,
-[data-theme="dark"] .lexkit-move-down:hover,
+[data-theme='dark'] .lexkit-move-up:hover,
+[data-theme='dark'] .lexkit-move-down:hover,
 .dark .lexkit-move-up:hover,
 .dark .lexkit-move-down:hover {
   background: linear-gradient(135deg, var(--lexkit-muted) 0%, var(--lexkit-bg) 100%) !important;
   border-color: var(--lexkit-border-hover) !important;
   color: var(--lexkit-accent) !important;
-}/* HTML Embed Styles - Modern and Clean */
+} /* HTML Embed Styles - Modern and Clean */
 .html-embed-wrapper {
   position: relative;
   border: 1px solid var(--lexkit-border);
@@ -1077,7 +1086,8 @@ body {
   border: none;
   outline: none;
   resize: vertical;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace;
+  font-family:
+    'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.6;
   background: var(--lexkit-bg);
@@ -1120,7 +1130,7 @@ body {
 
 /* Visual indicator */
 .html-embed-wrapper::before {
-  content: "HTML";
+  content: 'HTML';
   position: absolute;
   top: 0;
   left: 16px;
@@ -1150,7 +1160,9 @@ body {
 .lexkit-dialog {
   background-color: var(--lexkit-bg);
   border-radius: 8px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   min-width: 400px;
   max-width: 500px;
   max-height: 90vh;
@@ -1264,7 +1276,7 @@ body {
 .lexkit-button-primary {
   background-color: var(--lexkit-accent);
   border-color: var(--lexkit-accent);
-  color:var(--lexkit-bg)
+  color: var(--lexkit-bg);
 }
 
 .lexkit-button-primary:hover {
@@ -1359,7 +1371,8 @@ table td[data-lexical-table-cell-selection] {
 
 /* Draggable Block Animations */
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {

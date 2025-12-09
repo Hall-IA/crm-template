@@ -89,10 +89,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(tasks);
   } catch (error: any) {
     console.error('Erreur lors de la récupération des tâches:', error);
-    return NextResponse.json(
-      { error: error.message || 'Erreur serveur' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
 
@@ -123,7 +120,7 @@ export async function POST(request: NextRequest) {
     if (!type || !description || !scheduledAt) {
       return NextResponse.json(
         { error: 'Le type, la description et la date sont requis' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -149,10 +146,7 @@ export async function POST(request: NextRequest) {
         where: { id: contactId },
       });
       if (!contact) {
-        return NextResponse.json(
-          { error: 'Contact non trouvé' },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: 'Contact non trouvé' }, { status: 404 });
       }
     }
 
@@ -207,7 +201,7 @@ export async function POST(request: NextRequest) {
             task.id,
             new Date(scheduledAt),
             title,
-            session.user.id
+            session.user.id,
           );
         } else {
           // Pour les autres types de tâches, créer une interaction standard
@@ -228,17 +222,13 @@ export async function POST(request: NextRequest) {
         }
       } catch (error) {
         // Ne pas faire échouer la création de la tâche si l'interaction échoue
-        console.error('Erreur lors de la création de l\'interaction:', error);
+        console.error("Erreur lors de la création de l'interaction:", error);
       }
     }
 
     return NextResponse.json(task, { status: 201 });
   } catch (error: any) {
     console.error('Erreur lors de la création de la tâche:', error);
-    return NextResponse.json(
-      { error: error.message || 'Erreur serveur' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-

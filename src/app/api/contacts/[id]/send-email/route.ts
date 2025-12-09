@@ -26,12 +26,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const { id } = await params;
-    const body = await request.json();
-    const { subject, content } = body;
+
+    // Récupérer FormData
+    const formData = await request.formData();
+    const to = formData.get('to') as string;
+    const cc = formData.get('cc') as string;
+    const bcc = formData.get('bcc') as string;
+    const subject = formData.get('subject') as string;
+    const content = formData.get('content') as string;
+    const attachmentCount = parseInt(formData.get('attachmentCount') as string) || 0;
 
     // Validation
-    if (!subject || !content) {
-      return NextResponse.json({ error: 'Le sujet et le contenu sont requis' }, { status: 400 });
+    if (!to || !subject || !content) {
+      return NextResponse.json(
+        { error: 'Le destinataire, le sujet et le contenu sont requis' },
+        { status: 400 },
+      );
     }
 
     // Récupérer le contact
@@ -41,10 +51,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (!contact) {
       return NextResponse.json({ error: 'Contact non trouvé' }, { status: 404 });
-    }
-
-    if (!contact.email) {
-      return NextResponse.json({ error: "Le contact n'a pas d'email" }, { status: 400 });
     }
 
     // Récupérer la configuration SMTP de l'utilisateur
@@ -83,22 +89,80 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     });
 
     // Construire les variantes texte / HTML avec la signature (si définie)
-    const baseHtml = content || '';
+    let baseHtml = content || '';
     const baseText = htmlToText(baseHtml);
 
-    const signatureHtml = smtpConfig.signature ? `<br><br>${smtpConfig.signature}` : '';
-    const signatureText = smtpConfig.signature ? `${htmlToText(smtpConfig.signature)}` : '';
+    // Nettoyer les espaces en fin de contenu HTML
+    baseHtml = baseHtml.trim();
+
+    // Ajouter la signature de manière propre avec un espacement raisonnable
+    let signatureHtml = '';
+    let signatureText = '';
+
+    if (smtpConfig.signature) {
+      const signatureContent = smtpConfig.signature.trim();
+      // Ajouter un seul saut de ligne pour un espacement naturel
+      if (baseHtml.length > 0) {
+        signatureHtml = `<br>${signatureContent}`;
+      } else {
+        signatureHtml = signatureContent;
+      }
+      signatureText = `\n\n${htmlToText(signatureContent)}`;
+    }
+
+    // Préparer les destinataires
+    const toEmails = to
+      .split(',')
+      .map((email) => email.trim())
+      .filter((email) => email);
+    const ccEmails = cc
+      ? cc
+          .split(',')
+          .map((email) => email.trim())
+          .filter((email) => email)
+      : [];
+    const bccEmails = bcc
+      ? bcc
+          .split(',')
+          .map((email) => email.trim())
+          .filter((email) => email)
+      : [];
+
+    // Récupérer les pièces jointes
+    const attachments: Array<{ filename: string; content: Buffer }> = [];
+    for (let i = 0; i < attachmentCount; i++) {
+      const file = formData.get(`attachment_${i}`) as File | null;
+      if (file) {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        attachments.push({
+          filename: file.name,
+          content: buffer,
+        });
+      }
+    }
 
     // Envoyer l'email
-    const mailOptions = {
+    const mailOptions: any = {
       from: smtpConfig.fromName
         ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
         : smtpConfig.fromEmail,
-      to: contact.email,
+      to: toEmails.join(', '),
       subject: subject,
       text: `${baseText}${signatureText}`,
       html: `${baseHtml}${signatureHtml}`,
     };
+
+    if (ccEmails.length > 0) {
+      mailOptions.cc = ccEmails.join(', ');
+    }
+
+    if (bccEmails.length > 0) {
+      mailOptions.bcc = bccEmails.join(', ');
+    }
+
+    if (attachments.length > 0) {
+      mailOptions.attachments = attachments;
+    }
 
     await transporter.sendMail(mailOptions);
 

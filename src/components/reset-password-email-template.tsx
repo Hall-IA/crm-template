@@ -5,7 +5,14 @@ interface ResetPasswordEmailProps {
 
 export function ResetPasswordEmailTemplate({ code, signature }: ResetPasswordEmailProps) {
   return (
-    <div style={{ fontFamily: 'Arial, sans-serif', padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
+    <div
+      style={{
+        fontFamily: 'Arial, sans-serif',
+        padding: '20px',
+        maxWidth: '600px',
+        margin: '0 auto',
+      }}
+    >
       <h1 style={{ color: '#1F2937', fontSize: '24px', marginBottom: '16px' }}>
         Réinitialisation de mot de passe
       </h1>
@@ -50,7 +57,8 @@ export function ResetPasswordEmailTemplate({ code, signature }: ResetPasswordEma
           borderTop: '1px solid #E5E7EB',
         }}
       >
-        Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email. Votre mot de passe ne sera pas modifié.
+        Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email. Votre mot
+        de passe ne sera pas modifié.
       </p>
 
       {signature && (
@@ -69,4 +77,3 @@ export function ResetPasswordEmailTemplate({ code, signature }: ResetPasswordEma
     </div>
   );
 }
-

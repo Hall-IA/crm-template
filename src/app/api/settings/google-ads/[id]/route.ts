@@ -3,10 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/roles';
 
 // PUT /api/settings/google-ads/[id] - Mettre à jour une configuration (admin uniquement)
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdmin(request.headers);
 
@@ -57,7 +54,10 @@ export async function PUT(
       message: 'Configuration Google Ads Lead Forms mise à jour avec succès.',
     });
   } catch (error: any) {
-    console.error('Erreur lors de la mise à jour de la configuration Google Ads Lead Forms:', error);
+    console.error(
+      'Erreur lors de la mise à jour de la configuration Google Ads Lead Forms:',
+      error,
+    );
 
     if (error.message === 'Non authentifié') {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
@@ -99,7 +99,10 @@ export async function DELETE(
       message: 'Configuration Google Ads Lead Forms supprimée avec succès.',
     });
   } catch (error: any) {
-    console.error('Erreur lors de la suppression de la configuration Google Ads Lead Forms:', error);
+    console.error(
+      'Erreur lors de la suppression de la configuration Google Ads Lead Forms:',
+      error,
+    );
 
     if (error.message === 'Non authentifié') {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
@@ -112,4 +115,3 @@ export async function DELETE(
     return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-

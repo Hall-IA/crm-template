@@ -356,7 +356,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 });
               } catch (individualEmailError: any) {
                 // Logger l'erreur mais continuer avec les autres destinataires
-                console.error(`Erreur lors de l'envoi de l'email à ${recipientEmail}:`, individualEmailError);
+                console.error(
+                  `Erreur lors de l'envoi de l'email à ${recipientEmail}:`,
+                  individualEmailError,
+                );
               }
             }
           }

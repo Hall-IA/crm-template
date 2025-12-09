@@ -18,10 +18,7 @@ function extractSpreadsheetId(sheetUrlOrId: string): string {
 }
 
 // PUT /api/settings/google-sheet/[id] - Mettre à jour une configuration (admin uniquement)
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdmin(request.headers);
 
@@ -169,4 +166,3 @@ export async function DELETE(
     return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-

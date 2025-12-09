@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/prisma";
-import { InteractionType } from "../../generated/prisma/client";
+import { prisma } from '@/lib/prisma';
+import { InteractionType } from '../../generated/prisma/client';
 
 interface CreateInteractionParams {
   contactId: string;
@@ -39,15 +39,15 @@ export async function logStatusChange(
   newStatusId: string | null,
   userId: string,
   oldStatusName?: string | null,
-  newStatusName?: string | null
+  newStatusName?: string | null,
 ) {
-  const oldStatus = oldStatusName || "Aucun";
-  const newStatus = newStatusName || "Aucun";
+  const oldStatus = oldStatusName || 'Aucun';
+  const newStatus = newStatusName || 'Aucun';
 
   return await createInteraction({
     contactId,
-    type: "STATUS_CHANGE",
-    title: "Changement de statut",
+    type: 'STATUS_CHANGE',
+    title: 'Changement de statut',
     content: `Statut modifié de "${oldStatus}" à "${newStatus}"`,
     userId,
     metadata: {
@@ -65,33 +65,30 @@ export async function logStatusChange(
 export async function logContactUpdate(
   contactId: string,
   changes: Record<string, { old: any; new: any }>,
-  userId: string
+  userId: string,
 ) {
   const changeDescriptions: string[] = [];
 
   for (const [field, { old, new: newValue }] of Object.entries(changes)) {
     const fieldNames: Record<string, string> = {
-      firstName: "Prénom",
-      lastName: "Nom",
-      phone: "Téléphone",
-      secondaryPhone: "Téléphone secondaire",
-      email: "Email",
-      address: "Adresse",
-      city: "Ville",
-      postalCode: "Code postal",
-      civility: "Civilité",
-      origin: "Origine",
+      firstName: 'Prénom',
+      lastName: 'Nom',
+      phone: 'Téléphone',
+      secondaryPhone: 'Téléphone secondaire',
+      email: 'Email',
+      address: 'Adresse',
+      city: 'Ville',
+      postalCode: 'Code postal',
+      civility: 'Civilité',
+      origin: 'Origine',
     };
 
     const fieldName = fieldNames[field] || field;
-    const oldValue = old !== null && old !== undefined ? String(old) : "Aucun";
-    const newValueStr =
-      newValue !== null && newValue !== undefined ? String(newValue) : "Aucun";
+    const oldValue = old !== null && old !== undefined ? String(old) : 'Aucun';
+    const newValueStr = newValue !== null && newValue !== undefined ? String(newValue) : 'Aucun';
 
     if (oldValue !== newValueStr) {
-      changeDescriptions.push(
-        `${fieldName}: "${oldValue}" → "${newValueStr}"`
-      );
+      changeDescriptions.push(`${fieldName}: "${oldValue}" → "${newValueStr}"`);
     }
   }
 
@@ -101,9 +98,9 @@ export async function logContactUpdate(
 
   return await createInteraction({
     contactId,
-    type: "CONTACT_UPDATE",
-    title: "Modification de la fiche contact",
-    content: changeDescriptions.join("\n"),
+    type: 'CONTACT_UPDATE',
+    title: 'Modification de la fiche contact',
+    content: changeDescriptions.join('\n'),
     userId,
     metadata: { changes },
   });
@@ -114,20 +111,20 @@ export async function logContactUpdate(
  */
 export async function logAssignmentChange(
   contactId: string,
-  type: "COMMERCIAL" | "TELEPRO",
+  type: 'COMMERCIAL' | 'TELEPRO',
   oldUserId: string | null,
   newUserId: string | null,
   userId: string,
   oldUserName?: string | null,
-  newUserName?: string | null
+  newUserName?: string | null,
 ) {
-  const roleName = type === "COMMERCIAL" ? "Commercial" : "Télépro";
-  const oldName = oldUserName || "Non attribué";
-  const newName = newUserName || "Non attribué";
+  const roleName = type === 'COMMERCIAL' ? 'Commercial' : 'Télépro';
+  const oldName = oldUserName || 'Non attribué';
+  const newName = newUserName || 'Non attribué';
 
   return await createInteraction({
     contactId,
-    type: "ASSIGNMENT_CHANGE",
+    type: 'ASSIGNMENT_CHANGE',
     title: `Changement d'assignation ${roleName}`,
     content: `${roleName} modifié de "${oldName}" à "${newName}"`,
     userId,
@@ -149,20 +146,20 @@ export async function logAppointmentCreated(
   taskId: string,
   scheduledAt: Date,
   title: string | null,
-  userId: string
+  userId: string,
 ) {
-  const formattedDate = scheduledAt.toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  const formattedDate = scheduledAt.toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 
   return await createInteraction({
     contactId,
-    type: "APPOINTMENT_CREATED",
-    title: title || "Rendez-vous créé",
+    type: 'APPOINTMENT_CREATED',
+    title: title || 'Rendez-vous créé',
     content: `Rendez-vous programmé le ${formattedDate}`,
     userId,
     date: scheduledAt,
@@ -182,22 +179,22 @@ export async function logAppointmentCancelled(
   scheduledAt: Date,
   title: string | null,
   userId: string,
-  isGoogleMeet: boolean = false
+  isGoogleMeet: boolean = false,
 ) {
-  const formattedDate = scheduledAt.toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  const formattedDate = scheduledAt.toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 
-  const appointmentType = isGoogleMeet ? "Google Meet" : "Rendez-vous";
+  const appointmentType = isGoogleMeet ? 'Google Meet' : 'Rendez-vous';
   const appointmentTitle = title || appointmentType;
 
   return await createInteraction({
     contactId,
-    type: "MEETING",
+    type: 'MEETING',
     title: `${appointmentType} annulé : ${appointmentTitle}`,
     content: `${appointmentType} prévu le ${formattedDate} a été annulé.`,
     userId,
@@ -210,4 +207,3 @@ export async function logAppointmentCancelled(
     },
   });
 }
-

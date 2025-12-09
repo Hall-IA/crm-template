@@ -5,8 +5,17 @@ interface EmailTemplateProps {
 
 export function EmailTemplate({ firstName, signature }: EmailTemplateProps) {
   return (
-    <div style={{ fontFamily: 'Arial, sans-serif', padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
-      <h1 style={{ color: '#1F2937', fontSize: '24px', marginBottom: '16px' }}>Welcome, {firstName}!</h1>
+    <div
+      style={{
+        fontFamily: 'Arial, sans-serif',
+        padding: '20px',
+        maxWidth: '600px',
+        margin: '0 auto',
+      }}
+    >
+      <h1 style={{ color: '#1F2937', fontSize: '24px', marginBottom: '16px' }}>
+        Welcome, {firstName}!
+      </h1>
 
       {signature && (
         <div

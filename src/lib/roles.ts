@@ -1,13 +1,13 @@
-import { auth } from "./auth";
-import { prisma } from "./prisma";
+import { auth } from './auth';
+import { prisma } from './prisma';
 
 export enum Role {
-  USER = "USER",
-  ADMIN = "ADMIN",
-  MANAGER = "MANAGER",
-  COMMERCIAL = "COMMERCIAL",
-  TELEPRO = "TELEPRO",
-  COMPTABLE = "COMPTABLE",
+  USER = 'USER',
+  ADMIN = 'ADMIN',
+  MANAGER = 'MANAGER',
+  COMMERCIAL = 'COMMERCIAL',
+  TELEPRO = 'TELEPRO',
+  COMPTABLE = 'COMPTABLE',
 }
 
 /**
@@ -15,12 +15,12 @@ export enum Role {
  * Un rôle supérieur a automatiquement les permissions des rôles inférieurs
  */
 const ROLE_HIERARCHY: { [key: string]: number } = {
-  [Role.ADMIN]: 1,      // Niveau 1 : Le plus élevé
-  [Role.MANAGER]: 2,    // Niveau 2
+  [Role.ADMIN]: 1, // Niveau 1 : Le plus élevé
+  [Role.MANAGER]: 2, // Niveau 2
   [Role.COMMERCIAL]: 3, // Niveau 3
-  [Role.TELEPRO]: 4,    // Niveau 4
-  [Role.COMPTABLE]: 5,  // Niveau 5
-  [Role.USER]: 6,       // Niveau 6 : Le plus bas
+  [Role.TELEPRO]: 4, // Niveau 4
+  [Role.COMPTABLE]: 5, // Niveau 5
+  [Role.USER]: 6, // Niveau 6 : Le plus bas
 };
 
 /**
@@ -36,10 +36,10 @@ function getRoleLevel(role: string): number {
  */
 export function hasRole(userRole: string | undefined, requiredRole: Role): boolean {
   if (!userRole) return false;
-  
+
   const userLevel = getRoleLevel(userRole);
   const requiredLevel = getRoleLevel(requiredRole);
-  
+
   // L'utilisateur a le rôle requis s'il a le même rôle ou un rôle supérieur (niveau plus bas)
   return userLevel <= requiredLevel;
 }
@@ -90,12 +90,12 @@ export async function requireRole(headers: Headers, requiredRole: Role) {
   const session = await auth.api.getSession({ headers });
 
   if (!session) {
-    throw new Error("Non authentifié");
+    throw new Error('Non authentifié');
   }
 
   // Récupérer le rôle depuis la session ou depuis la base de données
   let userRole: string | undefined = (session.user as any).role;
-  
+
   // Si le rôle n'est pas dans la session, le récupérer depuis la base de données
   if (!userRole && session.user?.id) {
     const user = await prisma.user.findUnique({
@@ -106,7 +106,7 @@ export async function requireRole(headers: Headers, requiredRole: Role) {
   }
 
   if (!hasRole(userRole, requiredRole)) {
-    throw new Error("Permissions insuffisantes");
+    throw new Error('Permissions insuffisantes');
   }
 
   return session;
@@ -118,4 +118,3 @@ export async function requireRole(headers: Headers, requiredRole: Role) {
 export async function requireAdmin(headers: Headers) {
   return requireRole(headers, Role.ADMIN);
 }
-

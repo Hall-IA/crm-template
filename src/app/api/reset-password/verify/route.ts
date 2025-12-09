@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
@@ -7,11 +7,11 @@ export async function POST(request: NextRequest) {
     const { email, code } = body;
 
     if (!email || !code) {
-      return NextResponse.json({ error: "Email et code requis" }, { status: 400 });
+      return NextResponse.json({ error: 'Email et code requis' }, { status: 400 });
     }
 
     if (code.length !== 6 || !/^\d+$/.test(code)) {
-      return NextResponse.json({ error: "Code invalide" }, { status: 400 });
+      return NextResponse.json({ error: 'Code invalide' }, { status: 400 });
     }
 
     // Trouver le token de vérification
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!verification) {
-      return NextResponse.json({ error: "Code invalide ou expiré" }, { status: 400 });
+      return NextResponse.json({ error: 'Code invalide ou expiré' }, { status: 400 });
     }
 
     // Vérifier si l'utilisateur existe et a un compte
@@ -34,13 +34,13 @@ export async function POST(request: NextRequest) {
       where: { email },
       include: {
         accounts: {
-          where: { providerId: "credential" },
+          where: { providerId: 'credential' },
         },
       },
     });
 
     if (!user || user.accounts.length === 0) {
-      return NextResponse.json({ error: "Utilisateur non trouvé" }, { status: 404 });
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 });
     }
 
     // Générer un token pour la réinitialisation (différent du code)
@@ -68,8 +68,7 @@ export async function POST(request: NextRequest) {
       token: resetToken,
     });
   } catch (error) {
-    console.error("Erreur lors de la vérification:", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    console.error('Erreur lors de la vérification:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
-

@@ -1,21 +1,21 @@
-"use client";
+'use client';
 
-import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 function VerifyResetCodeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const email = searchParams.get("email") || "";
+  const email = searchParams.get('email') || '';
 
-  const [code, setCode] = useState(["", "", "", "", "", ""]);
-  const [error, setError] = useState("");
+  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!email) {
-      router.push("/reset-password");
+      router.push('/reset-password');
     }
   }, [email, router]);
 
@@ -34,7 +34,7 @@ function VerifyResetCodeContent() {
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && !code[index] && index > 0) {
+    if (e.key === 'Backspace' && !code[index] && index > 0) {
       const prevInput = document.getElementById(`code-${index - 1}`) as HTMLInputElement;
       prevInput?.focus();
     }
@@ -42,9 +42,9 @@ function VerifyResetCodeContent() {
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData("text").slice(0, 6);
+    const pastedData = e.clipboardData.getData('text').slice(0, 6);
     if (/^\d+$/.test(pastedData)) {
-      const newCode = pastedData.split("").concat(Array(6 - pastedData.length).fill(""));
+      const newCode = pastedData.split('').concat(Array(6 - pastedData.length).fill(''));
       setCode(newCode.slice(0, 6));
       const lastFilledIndex = Math.min(pastedData.length - 1, 5);
       const nextInput = document.getElementById(`code-${lastFilledIndex}`) as HTMLInputElement;
@@ -54,35 +54,35 @@ function VerifyResetCodeContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
 
-    const codeString = code.join("");
+    const codeString = code.join('');
     if (codeString.length !== 6) {
-      setError("Veuillez entrer le code complet à 6 chiffres");
+      setError('Veuillez entrer le code complet à 6 chiffres');
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await fetch("/api/reset-password/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/reset-password/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code: codeString }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Code invalide");
+        throw new Error(data.error || 'Code invalide');
       }
 
       // Rediriger vers la page de définition du nouveau mot de passe
       router.push(`/reset-password/complete?token=${data.token}`);
     } catch (err: any) {
-      setError(err.message || "Code invalide");
-      setCode(["", "", "", "", "", ""]);
-      const firstInput = document.getElementById("code-0") as HTMLInputElement;
+      setError(err.message || 'Code invalide');
+      setCode(['', '', '', '', '', '']);
+      const firstInput = document.getElementById('code-0') as HTMLInputElement;
       firstInput?.focus();
     } finally {
       setLoading(false);
@@ -96,17 +96,13 @@ function VerifyResetCodeContent() {
           {/* Header */}
           <div className="mb-6 text-center sm:mb-8">
             <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Vérifier le code</h1>
-            <p className="mt-2 text-sm text-gray-600">
-              Entrez le code à 6 chiffres envoyé à
-            </p>
-            <p className="mt-1 break-all text-sm font-medium text-gray-900">{email}</p>
+            <p className="mt-2 text-sm text-gray-600">Entrez le code à 6 chiffres envoyé à</p>
+            <p className="mt-1 text-sm font-medium break-all text-gray-900">{email}</p>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">
-              {error}
-            </div>
+            <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>
           )}
 
           {/* Form */}
@@ -123,7 +119,7 @@ function VerifyResetCodeContent() {
                   onChange={(e) => handleCodeChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={index === 0 ? handlePaste : undefined}
-                  className="h-12 w-12 rounded-lg border-2 border-gray-300 text-center text-xl font-bold text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:h-14 sm:w-14 sm:text-2xl"
+                  className="h-12 w-12 rounded-lg border-2 border-gray-300 text-center text-xl font-bold text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none sm:h-14 sm:w-14 sm:text-2xl"
                   autoFocus={index === 0}
                 />
               ))}
@@ -131,10 +127,10 @@ function VerifyResetCodeContent() {
 
             <button
               type="submit"
-              disabled={loading || code.join("").length !== 6}
-              className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={loading || code.join('').length !== 6}
+              className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? "Vérification..." : "Vérifier le code"}
+              {loading ? 'Vérification...' : 'Vérifier le code'}
             </button>
           </form>
 
@@ -142,12 +138,12 @@ function VerifyResetCodeContent() {
             <button
               onClick={async () => {
                 try {
-                  await fetch("/api/reset-password/request", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                  await fetch('/api/reset-password/request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email }),
                   });
-                  setError("");
+                  setError('');
                 } catch (err) {
                   // Ignorer les erreurs silencieusement
                 }
@@ -175,7 +171,7 @@ export default function VerifyResetCodePage() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl text-center">
+          <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
             <p className="text-gray-600">Chargement...</p>
           </div>
         </div>
@@ -185,4 +181,3 @@ export default function VerifyResetCodePage() {
     </Suspense>
   );
 }
-

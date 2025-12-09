@@ -1,33 +1,33 @@
-"use client";
+'use client';
 
-import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { signIn, signOut } from "@/lib/auth-client";
-import { Eye, EyeOff } from "lucide-react";
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { signIn, signOut } from '@/lib/auth-client';
+import { Eye, EyeOff } from 'lucide-react';
 
 function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    const message = searchParams.get("message");
+    const message = searchParams.get('message');
     if (message) {
       setSuccessMessage(message);
       // Nettoyer l'URL
-      router.replace("/signin", { scroll: false });
+      router.replace('/signin', { scroll: false });
     }
   }, [searchParams, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setLoading(true);
 
     try {
@@ -38,26 +38,26 @@ function SignInContent() {
 
       // Vérifier si le compte est actif
       try {
-        const res = await fetch("/api/auth/check-active", { method: "GET" });
+        const res = await fetch('/api/auth/check-active', { method: 'GET' });
         if (res.ok) {
           const data = await res.json();
           if (!data.active) {
             // Déconnecter immédiatement et afficher un message clair
             await signOut();
             setError(
-              "Votre compte a été désactivé. Merci de contacter un administrateur pour le réactiver."
+              'Votre compte a été désactivé. Merci de contacter un administrateur pour le réactiver.',
             );
             return;
           }
         }
       } catch (checkError) {
-        console.error("Erreur lors de la vérification du statut du compte:", checkError);
+        console.error('Erreur lors de la vérification du statut du compte:', checkError);
         // On ne bloque pas la connexion dans ce cas, mais on logue l'erreur
       }
 
-      router.push("/dashboard");
+      router.push('/dashboard');
     } catch (err) {
-      setError("Email ou mot de passe incorrect");
+      setError('Email ou mot de passe incorrect');
       console.error(err);
     } finally {
       setLoading(false);
@@ -71,9 +71,7 @@ function SignInContent() {
           {/* Header */}
           <div className="mb-6 text-center sm:mb-8">
             <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Connexion</h1>
-            <p className="mt-2 text-sm text-gray-600">
-              Connectez-vous à votre compte CRM
-            </p>
+            <p className="mt-2 text-sm text-gray-600">Connectez-vous à votre compte CRM</p>
           </div>
 
           {/* Success Message */}
@@ -85,18 +83,13 @@ function SignInContent() {
 
           {/* Error Message */}
           {error && (
-            <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">
-              {error}
-            </div>
+            <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>
           )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email
               </label>
               <input
@@ -105,33 +98,30 @@ function SignInContent() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 placeholder="vous@exemple.com"
               />
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Mot de passe
               </label>
               <div className="relative mt-1">
                 <input
                   id="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full rounded-lg border border-gray-300 px-4 py-3 pr-10 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="block w-full rounded-lg border border-gray-300 px-4 py-3 pr-10 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
                   className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3 text-gray-400 hover:text-gray-600"
-                  aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -141,9 +131,9 @@ function SignInContent() {
             <button
               type="submit"
               disabled={loading}
-              className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? "Connexion..." : "Se connecter"}
+              {loading ? 'Connexion...' : 'Se connecter'}
             </button>
           </form>
 
@@ -164,7 +154,7 @@ export default function SignInPage() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl text-center">
+          <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
             <p className="text-gray-600">Chargement...</p>
           </div>
         </div>
@@ -174,4 +164,3 @@ export default function SignInPage() {
     </Suspense>
   );
 }
-

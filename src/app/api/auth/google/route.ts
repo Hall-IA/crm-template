@@ -6,7 +6,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/auth/google/callback';
+  const redirectUri =
+    process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/auth/google/callback';
 
   if (!clientId) {
     return NextResponse.json({ error: 'GOOGLE_CLIENT_ID non configuré' }, { status: 500 });
@@ -30,4 +31,3 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.redirect(authUrl);
 }
-

@@ -6,7 +6,14 @@ interface InvitationEmailProps {
 
 export function InvitationEmailTemplate({ name, invitationUrl, signature }: InvitationEmailProps) {
   return (
-    <div style={{ fontFamily: 'Arial, sans-serif', padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
+    <div
+      style={{
+        fontFamily: 'Arial, sans-serif',
+        padding: '20px',
+        maxWidth: '600px',
+        margin: '0 auto',
+      }}
+    >
       <h1 style={{ color: '#1F2937', fontSize: '24px', marginBottom: '16px' }}>
         Bienvenue, {name} !
       </h1>
@@ -36,7 +43,9 @@ export function InvitationEmailTemplate({ name, invitationUrl, signature }: Invi
       <p style={{ color: '#6B7280', fontSize: '14px', lineHeight: '1.6', marginBottom: '8px' }}>
         Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :
       </p>
-      <p style={{ color: '#4F46E5', fontSize: '12px', wordBreak: 'break-all', marginBottom: '24px' }}>
+      <p
+        style={{ color: '#4F46E5', fontSize: '12px', wordBreak: 'break-all', marginBottom: '24px' }}
+      >
         {invitationUrl}
       </p>
       <p
@@ -48,7 +57,8 @@ export function InvitationEmailTemplate({ name, invitationUrl, signature }: Invi
           borderTop: '1px solid #E5E7EB',
         }}
       >
-        Ce lien est valide pendant 24 heures. Si vous n'avez pas demandé cette invitation, vous pouvez ignorer cet email.
+        Ce lien est valide pendant 24 heures. Si vous n'avez pas demandé cette invitation, vous
+        pouvez ignorer cet email.
       </p>
 
       {signature && (
@@ -67,4 +77,3 @@ export function InvitationEmailTemplate({ name, invitationUrl, signature }: Invi
     </div>
   );
 }
-

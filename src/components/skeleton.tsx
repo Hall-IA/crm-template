@@ -4,10 +4,7 @@
 
 export function Skeleton({ className = '' }: { className?: string }) {
   return (
-    <div
-      className={`animate-pulse rounded bg-gray-200 ${className}`}
-      aria-label="Chargement..."
-    />
+    <div className={`animate-pulse rounded bg-gray-200 ${className}`} aria-label="Chargement..." />
   );
 }
 
@@ -52,7 +49,7 @@ export function ContactTableSkeleton() {
               <td className="px-3 py-4 whitespace-nowrap sm:px-6">
                 <div className="flex items-center">
                   <Skeleton className="h-10 w-10 rounded-full" />
-                  <div className="ml-3 sm:ml-4 space-y-2">
+                  <div className="ml-3 space-y-2 sm:ml-4">
                     <Skeleton className="h-4 w-32" />
                     <Skeleton className="h-3 w-24" />
                   </div>
@@ -152,13 +149,8 @@ export function AgendaWeekSkeleton() {
         {Array.from({ length: 7 }).map((_, dayIndex) => (
           <div key={dayIndex} className="border-l border-gray-200">
             {HOURS.map((hour) => (
-              <div
-                key={hour}
-                className="relative h-16 border-b border-gray-100 px-1.5 py-0.5"
-              >
-                {Math.random() > 0.7 && (
-                  <Skeleton className="h-12 w-full rounded" />
-                )}
+              <div key={hour} className="relative h-16 border-b border-gray-100 px-1.5 py-0.5">
+                {Math.random() > 0.7 && <Skeleton className="h-12 w-full rounded" />}
               </div>
             ))}
           </div>
@@ -226,8 +218,8 @@ export function UsersTableSkeleton() {
             <tr key={i} className="hover:bg-gray-50">
               <td className="px-3 py-4 whitespace-nowrap sm:px-6">
                 <div className="flex items-center">
-                  <Skeleton className="h-8 w-8 sm:h-10 sm:w-10 rounded-full" />
-                  <div className="ml-2 sm:ml-4 space-y-1">
+                  <Skeleton className="h-8 w-8 rounded-full sm:h-10 sm:w-10" />
+                  <div className="ml-2 space-y-1 sm:ml-4">
                     <Skeleton className="h-4 w-32" />
                   </div>
                 </div>
@@ -286,13 +278,13 @@ export function TemplatesPageSkeleton() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="mb-2 flex items-center gap-2">
                     <Skeleton className="h-5 w-5" />
                     <Skeleton className="h-6 w-32" />
                   </div>
-                  <Skeleton className="h-6 w-20 rounded-full mb-2" />
-                  <Skeleton className="h-4 w-full mb-1" />
-                  <Skeleton className="h-4 w-3/4 mb-1" />
+                  <Skeleton className="mb-2 h-6 w-20 rounded-full" />
+                  <Skeleton className="mb-1 h-4 w-full" />
+                  <Skeleton className="mb-1 h-4 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
                 </div>
               </div>
@@ -307,4 +299,3 @@ export function TemplatesPageSkeleton() {
     </div>
   );
 }
-

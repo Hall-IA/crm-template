@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { handleContactDuplicate } from "@/lib/contact-duplicate";
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { handleContactDuplicate } from '@/lib/contact-duplicate';
 
 // GET /api/contacts - Récupérer tous les contacts avec filtres
 export async function GET(request: NextRequest) {
@@ -11,17 +11,17 @@ export async function GET(request: NextRequest) {
     });
 
     if (!session) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search") || "";
-    const statusId = searchParams.get("statusId");
-    const assignedCommercialId = searchParams.get("assignedCommercialId");
-    const assignedTeleproId = searchParams.get("assignedTeleproId");
-    const isCompany = searchParams.get("isCompany");
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const search = searchParams.get('search') || '';
+    const statusId = searchParams.get('statusId');
+    const assignedCommercialId = searchParams.get('assignedCommercialId');
+    const assignedTeleproId = searchParams.get('assignedTeleproId');
+    const isCompany = searchParams.get('isCompany');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '50');
     const skip = (page - 1) * limit;
 
     // Construire les filtres
@@ -29,10 +29,10 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       where.OR = [
-        { firstName: { contains: search, mode: "insensitive" } },
-        { lastName: { contains: search, mode: "insensitive" } },
-        { email: { contains: search, mode: "insensitive" } },
-        { phone: { contains: search, mode: "insensitive" } },
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       where.assignedTeleproId = assignedTeleproId;
     }
 
-    if (isCompany === "true") {
+    if (isCompany === 'true') {
       where.isCompany = true;
     }
 
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
             select: { id: true, name: true, email: true },
           },
         },
-        orderBy: { updatedAt: "desc" },
+        orderBy: { updatedAt: 'desc' },
         skip,
         take: limit,
       }),
@@ -87,11 +87,8 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error("Erreur lors de la récupération des contacts:", error);
-    return NextResponse.json(
-      { error: "Erreur serveur" },
-      { status: 500 }
-    );
+    console.error('Erreur lors de la récupération des contacts:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
@@ -103,7 +100,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!session) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -127,10 +124,7 @@ export async function POST(request: NextRequest) {
 
     // Validation
     if (!phone) {
-      return NextResponse.json(
-        { error: "Le téléphone est obligatoire" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Le téléphone est obligatoire' }, { status: 400 });
     }
 
     // Vérifier si c'est un doublon (nom, prénom ET email)
@@ -138,8 +132,8 @@ export async function POST(request: NextRequest) {
       firstName,
       lastName,
       email,
-      origin || "Création manuelle",
-      session.user.id
+      origin || 'Création manuelle',
+      session.user.id,
     );
 
     // Si c'est un doublon, retourner le contact existant
@@ -186,14 +180,14 @@ export async function POST(request: NextRequest) {
         createdById: session.user.id,
         interactions: {
           create: {
-            type: "NOTE",
-            title: "Contact créé",
-            content: `Contact créé le ${new Date().toLocaleDateString("fr-FR", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
+            type: 'NOTE',
+            title: 'Contact créé',
+            content: `Contact créé le ${new Date().toLocaleDateString('fr-FR', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
             })}`,
             userId: session.user.id,
             date: new Date(),
@@ -219,11 +213,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(contact, { status: 201 });
   } catch (error: any) {
-    console.error("Erreur lors de la création du contact:", error);
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+    console.error('Erreur lors de la création du contact:', error);
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-

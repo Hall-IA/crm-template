@@ -27,10 +27,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Erreur lors de la récupération du statut Google:', error);
-    return NextResponse.json(
-      { error: error.message || 'Erreur serveur' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-

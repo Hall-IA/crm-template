@@ -316,7 +316,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                 googleAccount.tokenExpiresAt,
               );
 
-              const googleEvent = await getGoogleCalendarEvent(accessToken, existingTask.googleEventId);
+              const googleEvent = await getGoogleCalendarEvent(
+                accessToken,
+                existingTask.googleEventId,
+              );
               if (googleEvent.attendees) {
                 googleEvent.attendees.forEach((attendee) => {
                   if (attendee.email && !allRecipients.includes(attendee.email)) {
@@ -542,7 +545,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                 });
               } catch (individualEmailError: any) {
                 // Logger l'erreur mais continuer avec les autres destinataires
-                console.error(`Erreur lors de l'envoi de l'email à ${recipientEmail}:`, individualEmailError);
+                console.error(
+                  `Erreur lors de l'envoi de l'email à ${recipientEmail}:`,
+                  individualEmailError,
+                );
               }
             }
           }
@@ -668,7 +674,7 @@ export async function DELETE(
           await deleteGoogleCalendarEvent(accessToken, task.googleEventId);
         }
       } catch (googleError: any) {
-        console.error('Erreur lors de la suppression de l\'événement Google Calendar:', googleError);
+        console.error("Erreur lors de la suppression de l'événement Google Calendar:", googleError);
         // On continue quand même la suppression de la tâche
       }
     }
@@ -685,7 +691,10 @@ export async function DELETE(
           task.type === 'VIDEO_CONFERENCE',
         );
       } catch (interactionError: any) {
-        console.error('Erreur lors de la création de l\'interaction d\'annulation:', interactionError);
+        console.error(
+          "Erreur lors de la création de l'interaction d'annulation:",
+          interactionError,
+        );
         // On continue même si l'interaction échoue
       }
     }
@@ -781,12 +790,16 @@ export async function DELETE(
                   <div style="margin-bottom: 10px;"><strong>Heure :</strong> ${formatTime(new Date(scheduledDate))}</div>
                   <div style="margin-bottom: 10px;"><strong>Durée :</strong> ${formatDuration(task.durationMinutes ?? 30)}</div>
                   <div style="margin-bottom: 10px;"><strong>Organisateur :</strong> ${organizerName}</div>
-                  ${task.description ? `
+                  ${
+                    task.description
+                      ? `
                     <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
                       <strong>Description :</strong>
                       <div style="margin-top: 10px;">${task.description}</div>
                     </div>
-                  ` : ''}
+                  `
+                      : ''
+                  }
                 </div>
                 <p style="font-size: 16px; margin-bottom: 20px; color: #666;">
                   Si vous souhaitez reprogrammer ce rendez-vous, n'hésitez pas à nous contacter.
@@ -841,7 +854,10 @@ ${smtpConfig.signature ? `\n\n${htmlToText(smtpConfig.signature)}` : ''}
                 });
               } catch (individualEmailError: any) {
                 // Logger l'erreur mais continuer avec les autres destinataires
-                console.error(`Erreur lors de l'envoi de l'email à ${recipientEmail}:`, individualEmailError);
+                console.error(
+                  `Erreur lors de l'envoi de l'email à ${recipientEmail}:`,
+                  individualEmailError,
+                );
               }
             }
           }

@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useMobileMenuContext } from "@/contexts/mobile-menu-context";
+import { useMobileMenuContext } from '@/contexts/mobile-menu-context';
 
 interface PageHeaderProps {
   title: string;
@@ -20,12 +20,7 @@ export function PageHeader({ title, description, action }: PageHeaderProps) {
           className="mt-1 shrink-0 cursor-pointer rounded-lg p-2 text-gray-700 transition-colors hover:bg-gray-100 lg:hidden"
           aria-label="Toggle menu"
         >
-          <svg
-            className="h-6 w-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {isOpen ? (
               <path
                 strokeLinecap="round"
@@ -44,23 +39,19 @@ export function PageHeader({ title, description, action }: PageHeaderProps) {
           </svg>
         </button>
 
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           {action ? (
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0 flex-1">
                 <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">{title}</h1>
-                {description && (
-                  <p className="mt-1 text-sm text-gray-600">{description}</p>
-                )}
+                {description && <p className="mt-1 text-sm text-gray-600">{description}</p>}
               </div>
               <div className="shrink-0">{action}</div>
             </div>
           ) : (
             <>
               <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">{title}</h1>
-              {description && (
-                <p className="mt-1 text-sm text-gray-600">{description}</p>
-              )}
+              {description && <p className="mt-1 text-sm text-gray-600">{description}</p>}
             </>
           )}
         </div>
@@ -68,4 +59,3 @@ export function PageHeader({ title, description, action }: PageHeaderProps) {
     </div>
   );
 }
-

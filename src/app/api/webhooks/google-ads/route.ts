@@ -106,7 +106,11 @@ export async function POST(request: NextRequest) {
       });
 
       if (defaultUser) {
-        if (defaultUser.role === 'COMMERCIAL' || defaultUser.role === 'ADMIN' || defaultUser.role === 'MANAGER') {
+        if (
+          defaultUser.role === 'COMMERCIAL' ||
+          defaultUser.role === 'ADMIN' ||
+          defaultUser.role === 'MANAGER'
+        ) {
           assignedCommercialId = config.defaultAssignedUserId;
         } else if (defaultUser.role === 'TELEPRO') {
           assignedTeleproId = config.defaultAssignedUserId;
@@ -121,7 +125,7 @@ export async function POST(request: NextRequest) {
       lastName,
       email,
       `Google Ads - ${config.name}`,
-      createdById
+      createdById,
     );
 
     let contact;
@@ -197,5 +201,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
-
-

@@ -1,21 +1,21 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { Eye, EyeOff } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function InvitePage() {
   const router = useRouter();
   const params = useParams();
   const token = params.token as string;
-  
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
+
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(true);
-  const [userEmail, setUserEmail] = useState("");
-  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState('');
+  const [userName, setUserName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -25,18 +25,18 @@ export default function InvitePage() {
       try {
         const response = await fetch(`/api/invite/validate?token=${token}`);
         const data = await response.json();
-        
+
         if (!response.ok) {
-          setError(data.error || "Lien invalide ou expiré");
+          setError(data.error || 'Lien invalide ou expiré');
           setValidating(false);
           return;
         }
-        
+
         setUserEmail(data.email);
-        setUserName(data.name || "");
+        setUserName(data.name || '');
         setValidating(false);
       } catch (err) {
-        setError("Erreur lors de la validation du lien");
+        setError('Erreur lors de la validation du lien');
         setValidating(false);
       }
     };
@@ -48,35 +48,37 @@ export default function InvitePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
 
     if (password !== confirmPassword) {
-      setError("Les mots de passe ne correspondent pas");
+      setError('Les mots de passe ne correspondent pas');
       return;
     }
 
     if (password.length < 6) {
-      setError("Le mot de passe doit contenir au moins 6 caractères");
+      setError('Le mot de passe doit contenir au moins 6 caractères');
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await fetch("/api/invite/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/invite/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, password }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de la définition du mot de passe");
+        throw new Error(data.error || 'Erreur lors de la définition du mot de passe');
       }
 
       // Rediriger vers la page de connexion
-      router.push("/signin?message=Mot de passe défini avec succès, vous pouvez maintenant vous connecter");
+      router.push(
+        '/signin?message=Mot de passe défini avec succès, vous pouvez maintenant vous connecter',
+      );
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -87,7 +89,7 @@ export default function InvitePage() {
   if (validating) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
-        <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl text-center">
+        <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
           <p className="text-gray-600">Vérification du lien...</p>
         </div>
       </div>
@@ -102,8 +104,8 @@ export default function InvitePage() {
             <h1 className="text-2xl font-bold text-red-600">Lien invalide</h1>
             <p className="mt-4 text-gray-600">{error}</p>
             <button
-              onClick={() => router.push("/signin")}
-              className="cursor-pointer mt-6 rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
+              onClick={() => router.push('/signin')}
+              className="mt-6 cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
             >
               Retour à la connexion
             </button>
@@ -117,50 +119,42 @@ export default function InvitePage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:p-8">
         <div className="mb-6 text-center sm:mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Définir votre mot de passe</h1>
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+            Définir votre mot de passe
+          </h1>
           {userName && (
             <p className="mt-2 text-sm text-gray-600">
               Bienvenue, <span className="font-semibold">{userName}</span>
             </p>
           )}
-          <p className="mt-1 break-all text-sm text-gray-500">
-            {userEmail}
-          </p>
+          <p className="mt-1 text-sm break-all text-gray-500">{userEmail}</p>
         </div>
 
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">
-            {error}
-          </div>
-        )}
+        {error && <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Mot de passe
-            </label>
+            <label className="block text-sm font-medium text-gray-700">Mot de passe</label>
             <div className="relative mt-1">
               <input
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? 'text' : 'password'}
                 required
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="block w-full rounded-lg border border-gray-300 px-4 py-3 pr-10 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="block w-full rounded-lg border border-gray-300 px-4 py-3 pr-10 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 placeholder="••••••••"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3 text-gray-400 hover:text-gray-600"
-                aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
               >
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
-            <p className="mt-1 text-xs text-gray-500">
-              Minimum 6 caractères
-            </p>
+            <p className="mt-1 text-xs text-gray-500">Minimum 6 caractères</p>
           </div>
 
           <div>
@@ -169,12 +163,12 @@ export default function InvitePage() {
             </label>
             <div className="relative mt-1">
               <input
-                type={showConfirmPassword ? "text" : "password"}
+                type={showConfirmPassword ? 'text' : 'password'}
                 required
                 minLength={6}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="block w-full rounded-lg border border-gray-300 px-4 py-3 pr-10 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="block w-full rounded-lg border border-gray-300 px-4 py-3 pr-10 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 placeholder="••••••••"
               />
               <button
@@ -183,15 +177,11 @@ export default function InvitePage() {
                 className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3 text-gray-400 hover:text-gray-600"
                 aria-label={
                   showConfirmPassword
-                    ? "Masquer la confirmation du mot de passe"
-                    : "Afficher la confirmation du mot de passe"
+                    ? 'Masquer la confirmation du mot de passe'
+                    : 'Afficher la confirmation du mot de passe'
                 }
               >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
+                {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
           </div>
@@ -199,13 +189,12 @@ export default function InvitePage() {
           <button
             type="submit"
             disabled={loading}
-            className="cursor-pointer w-full rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? "Création du compte..." : "Créer mon compte"}
+            {loading ? 'Création du compte...' : 'Créer mon compte'}
           </button>
         </form>
       </div>
     </div>
   );
 }
-

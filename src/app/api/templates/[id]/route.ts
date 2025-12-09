@@ -1,19 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 // GET /api/templates/[id] - Récupérer un template spécifique
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
     });
 
     if (!session) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     const { id } = await params;
@@ -26,34 +23,25 @@ export async function GET(
     });
 
     if (!template) {
-      return NextResponse.json(
-        { error: "Template non trouvé" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Template non trouvé' }, { status: 404 });
     }
 
     return NextResponse.json(template);
   } catch (error: any) {
-    console.error("Erreur lors de la récupération du template:", error);
-    return NextResponse.json(
-      { error: "Erreur serveur" },
-      { status: 500 }
-    );
+    console.error('Erreur lors de la récupération du template:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
 // PUT /api/templates/[id] - Mettre à jour un template
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
     });
 
     if (!session) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     const { id } = await params;
@@ -69,32 +57,29 @@ export async function PUT(
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Template non trouvé" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Template non trouvé' }, { status: 404 });
     }
 
     // Validation
     if (!name || !type || !content) {
       return NextResponse.json(
-        { error: "Le nom, le type et le contenu sont requis" },
-        { status: 400 }
+        { error: 'Le nom, le type et le contenu sont requis' },
+        { status: 400 },
       );
     }
 
-    if (!["EMAIL", "SMS", "NOTE"].includes(type)) {
+    if (!['EMAIL', 'SMS', 'NOTE'].includes(type)) {
       return NextResponse.json(
-        { error: "Type invalide. Doit être EMAIL, SMS ou NOTE" },
-        { status: 400 }
+        { error: 'Type invalide. Doit être EMAIL, SMS ou NOTE' },
+        { status: 400 },
       );
     }
 
     // Pour EMAIL, le sujet est requis
-    if (type === "EMAIL" && !subject) {
+    if (type === 'EMAIL' && !subject) {
       return NextResponse.json(
-        { error: "Le sujet est requis pour les templates EMAIL" },
-        { status: 400 }
+        { error: 'Le sujet est requis pour les templates EMAIL' },
+        { status: 400 },
       );
     }
 
@@ -103,25 +88,22 @@ export async function PUT(
       data: {
         name,
         type,
-        subject: type === "EMAIL" ? subject : null,
+        subject: type === 'EMAIL' ? subject : null,
         content,
       },
     });
 
     return NextResponse.json(template);
   } catch (error: any) {
-    console.error("Erreur lors de la mise à jour du template:", error);
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+    console.error('Erreur lors de la mise à jour du template:', error);
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
 
 // DELETE /api/templates/[id] - Supprimer un template
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth.api.getSession({
@@ -129,7 +111,7 @@ export async function DELETE(
     });
 
     if (!session) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     const { id } = await params;
@@ -143,23 +125,16 @@ export async function DELETE(
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Template non trouvé" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Template non trouvé' }, { status: 404 });
     }
 
     await prisma.template.delete({
       where: { id },
     });
 
-    return NextResponse.json({ success: true, message: "Template supprimé avec succès" });
+    return NextResponse.json({ success: true, message: 'Template supprimé avec succès' });
   } catch (error: any) {
-    console.error("Erreur lors de la suppression du template:", error);
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+    console.error('Erreur lors de la suppression du template:', error);
+    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }
-
