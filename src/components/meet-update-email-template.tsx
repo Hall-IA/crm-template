@@ -184,12 +184,6 @@ export function MeetUpdateEmailTemplate({
             dangerouslySetInnerHTML={{ __html: signature }}
           />
         )}
-
-        <p style={{ fontSize: '14px', color: '#666', marginTop: '30px' }}>
-          Cordialement,
-          <br />
-          {organizerName}
-        </p>
       </div>
     </div>
   );

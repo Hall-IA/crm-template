@@ -483,10 +483,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                 `
                     : ''
                 }
-                <p style="font-size: 14px; color: #666; margin-top: 30px;">
-                  Cordialement,<br>
-                  ${organizerName}
-                </p>
               </div>
             </div>
           `;
@@ -528,8 +524,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
             Lien de la réunion : ${task.googleMeetLink}
 
-            Cordialement,
-            ${organizerName}
             ${smtpConfig.signature ? `\n\n${htmlToText(smtpConfig.signature)}` : ''}
           `.trim();
 
@@ -799,10 +793,6 @@ export async function DELETE(
                 `
                     : ''
                 }
-                <p style="font-size: 14px; color: #666; margin-top: 30px;">
-                  Cordialement,<br>
-                  ${organizerName}
-                </p>
               </div>
             </div>
           `;
@@ -826,8 +816,6 @@ ${task.description ? `Description :\n${htmlToText(task.description)}\n` : ''}
 
 Si vous souhaitez reprogrammer ce rendez-vous, n'hésitez pas à nous contacter.
 
-Cordialement,
-${organizerName}
 ${smtpConfig.signature ? `\n\n${htmlToText(smtpConfig.signature)}` : ''}
           `.trim();
 

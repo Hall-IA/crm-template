@@ -303,10 +303,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 `
                     : ''
                 }
-                <p style="font-size: 14px; color: #666; margin-top: 30px;">
-                  Cordialement,<br>
-                  ${organizerName}
-                </p>
               </div>
             </div>
           `;
@@ -329,9 +325,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             ${description ? `Description :\n${htmlToText(description)}\n` : ''}
 
             Lien de la réunion : ${meetLink}
-
-            Cordialement,
-            ${organizerName}
+            
             ${smtpConfig.signature ? `\n\n${htmlToText(smtpConfig.signature)}` : ''}
           `.trim();
 
