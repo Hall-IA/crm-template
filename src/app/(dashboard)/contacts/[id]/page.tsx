@@ -231,6 +231,11 @@ export default function ContactDetailPage() {
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [viewingActivity, setViewingActivity] = useState<Interaction | null>(null);
 
+  // Modal de visualisation de rendez-vous
+  const [showViewAppointmentModal, setShowViewAppointmentModal] = useState(false);
+  const [viewingAppointment, setViewingAppointment] = useState<any | null>(null);
+  const [deleteAppointmentLoading, setDeleteAppointmentLoading] = useState(false);
+
   // Modals spécifiques pour chaque action
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
@@ -1217,6 +1222,44 @@ export default function ContactDetailPage() {
       setEditMeetError(err.message);
     } finally {
       setDeleteMeetLoading(false);
+    }
+  };
+
+  const handleDeleteAppointment = async () => {
+    if (!viewingAppointment) return;
+
+    // Demander confirmation
+    if (
+      !confirm(
+        'Êtes-vous sûr de vouloir annuler ce rendez-vous ? Une interaction sera créée dans le fil d\'actualité.',
+      )
+    ) {
+      return;
+    }
+
+    setDeleteAppointmentLoading(true);
+
+    try {
+      const response = await fetch(`/api/tasks/${viewingAppointment.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de l\'annulation du rendez-vous');
+      }
+
+      setShowViewAppointmentModal(false);
+      setViewingAppointment(null);
+      setSuccess('Rendez-vous annulé avec succès !');
+      fetchContact();
+      fetchTasks();
+
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setDeleteAppointmentLoading(false);
     }
   };
 
@@ -2234,81 +2277,9 @@ export default function ContactDetailPage() {
                                   : 'border-gray-200 bg-white shadow-sm'
                               }`}
                               onClick={() => {
-                                // Ouvrir le modal de modification
-                                if (isVideoConference) {
-                                  // Pour Google Meet, utiliser le modal existant
-                                  setEditingMeetTask(appointment);
-                                  // Convertir la date en heure locale (sans conversion UTC)
-                                  const scheduledDate = new Date(appointment.scheduledAt);
-                                  const year = scheduledDate.getFullYear();
-                                  const month = String(scheduledDate.getMonth() + 1).padStart(
-                                    2,
-                                    '0',
-                                  );
-                                  const day = String(scheduledDate.getDate()).padStart(2, '0');
-                                  const hours = String(scheduledDate.getHours()).padStart(2, '0');
-                                  const minutes = String(scheduledDate.getMinutes()).padStart(
-                                    2,
-                                    '0',
-                                  );
-                                  const localDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
-
-                                  // Récupérer les invités depuis Google Calendar si disponible
-                                  const fetchAttendees = async () => {
-                                    let attendeesList: string[] = [];
-                                    if (appointment.googleEventId) {
-                                      try {
-                                        const response = await fetch(
-                                          `/api/tasks/${appointment.id}/attendees`,
-                                        );
-                                        if (response.ok) {
-                                          const data = await response.json();
-                                          attendeesList = data.attendees || [];
-                                        }
-                                      } catch (error) {
-                                        console.error(
-                                          'Erreur lors de la récupération des invités:',
-                                          error,
-                                        );
-                                      }
-                                    }
-
-                                    setEditMeetData({
-                                      scheduledAt: localDateTime,
-                                      durationMinutes: appointment.durationMinutes || 30,
-                                      attendees: attendeesList,
-                                    });
-                                    setShowEditMeetModal(true);
-                                  };
-
-                                  fetchAttendees();
-                                } else {
-                                  // Pour les Rendez-vous normaux, ouvrir un nouveau modal
-                                  setEditingAppointment(appointment);
-                                  setEditAppointmentData({
-                                    title: appointment.title || '',
-                                    description: appointment.description || '',
-                                    scheduledAt: appointment.scheduledAt
-                                      ? new Date(appointment.scheduledAt).toISOString().slice(0, 16)
-                                      : '',
-                                    priority: appointment.priority || 'MEDIUM',
-                                    assignedUserId: appointment.assignedUserId || '',
-                                    reminderMinutesBefore:
-                                      appointment.reminderMinutesBefore || null,
-                                  });
-                                  setShowEditAppointmentModal(true);
-                                  // Injecter la description dans l'éditeur après un court délai pour s'assurer que l'éditeur est monté
-                                  setTimeout(() => {
-                                    if (
-                                      editAppointmentEditorRef.current &&
-                                      appointment.description
-                                    ) {
-                                      editAppointmentEditorRef.current.injectHTML(
-                                        appointment.description,
-                                      );
-                                    }
-                                  }, 200);
-                                }
+                                // Ouvrir le modal de visualisation
+                                setViewingAppointment(appointment);
+                                setShowViewAppointmentModal(true);
                               }}
                             >
                               <div className="flex items-start justify-between">
@@ -5023,6 +4994,300 @@ email2@example.com`}
                   className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
                 >
                   Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de visualisation de rendez-vous */}
+      {showViewAppointmentModal && viewingAppointment && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowViewAppointmentModal(false);
+              setViewingAppointment(null);
+            }
+          }}
+        >
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg bg-white shadow-xl">
+            {/* En-tête fixe */}
+            <div className="shrink-0 border-b border-gray-100 px-6 py-4">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    {viewingAppointment.type === 'VIDEO_CONFERENCE' ? (
+                      <Video className="h-6 w-6 text-indigo-600" />
+                    ) : (
+                      <CalendarIcon className="h-6 w-6 text-yellow-600" />
+                    )}
+                    <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">
+                      {viewingAppointment.title || 'Rendez-vous'}
+                    </h2>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        viewingAppointment.type === 'VIDEO_CONFERENCE'
+                          ? 'bg-indigo-100 text-indigo-700'
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}
+                    >
+                      {viewingAppointment.type === 'VIDEO_CONFERENCE'
+                        ? 'Google Meet'
+                        : 'Rendez-vous physique'}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
+                    <span>
+                      {new Date(viewingAppointment.scheduledAt).toLocaleDateString('fr-FR', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}{' '}
+                      à{' '}
+                      {new Date(viewingAppointment.scheduledAt).toLocaleTimeString('fr-FR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                    {viewingAppointment.type === 'VIDEO_CONFERENCE' &&
+                      viewingAppointment.durationMinutes && (
+                        <span>Durée : {viewingAppointment.durationMinutes} minutes</span>
+                      )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowViewAppointmentModal(false);
+                    setViewingAppointment(null);
+                  }}
+                  className="cursor-pointer rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                  aria-label="Fermer la modal"
+                  type="button"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu scrollable */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {/* Invités pour Google Meet */}
+              {viewingAppointment.type === 'VIDEO_CONFERENCE' && (
+                <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <p className="mb-2 text-sm font-medium text-gray-700">Invités :</p>
+                  <div className="space-y-1">
+                    {contact.email && (
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <MailIcon className="h-4 w-4 text-gray-500" />
+                        <span>{contact.email}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Lien Google Meet */}
+              {viewingAppointment.type === 'VIDEO_CONFERENCE' &&
+                viewingAppointment.googleMeetLink && (
+                  <div className="mb-4">
+                    <a
+                      href={viewingAppointment.googleMeetLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Rejoindre la réunion
+                    </a>
+                  </div>
+                )}
+
+              {/* Description */}
+              {viewingAppointment.description && (
+                <div className="mb-4">
+                  <p className="mb-2 text-sm font-medium text-gray-700">Description :</p>
+                  <div
+                    className="prose prose-sm max-w-none text-sm text-gray-700"
+                    dangerouslySetInnerHTML={{ __html: viewingAppointment.description }}
+                  />
+                </div>
+              )}
+
+              {/* Note personnelle */}
+              {viewingAppointment.internalNote && (
+                <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                  <p className="mb-1 text-xs font-medium text-blue-900">📝 Note personnelle</p>
+                  <p className="text-xs whitespace-pre-wrap text-blue-800">
+                    {viewingAppointment.internalNote}
+                  </p>
+                </div>
+              )}
+
+              {/* Informations supplémentaires pour rendez-vous physique */}
+              {viewingAppointment.type === 'MEETING' && (
+                <div className="space-y-2">
+                  {viewingAppointment.priority && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-700">Priorité :</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          viewingAppointment.priority === 'URGENT'
+                            ? 'bg-red-100 text-red-700'
+                            : viewingAppointment.priority === 'HIGH'
+                              ? 'bg-orange-100 text-orange-700'
+                              : viewingAppointment.priority === 'MEDIUM'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {viewingAppointment.priority === 'URGENT'
+                          ? 'Urgente'
+                          : viewingAppointment.priority === 'HIGH'
+                            ? 'Haute'
+                            : viewingAppointment.priority === 'MEDIUM'
+                              ? 'Moyenne'
+                              : 'Basse'}
+                      </span>
+                    </div>
+                  )}
+                  {viewingAppointment.reminderMinutesBefore && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-700">Rappel :</span>
+                      <span className="text-sm text-gray-600">
+                        {viewingAppointment.reminderMinutesBefore} minutes avant
+                      </span>
+                    </div>
+                  )}
+                  {viewingAppointment.assignedUser && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-700">Assigné à :</span>
+                      <span className="text-sm text-gray-600">
+                        {viewingAppointment.assignedUser.name || viewingAppointment.assignedUser.email}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Pied de modal fixe avec boutons */}
+            <div className="shrink-0 border-t border-gray-100 px-6 py-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowViewAppointmentModal(false);
+                    setViewingAppointment(null);
+                  }}
+                  className="cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  Fermer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowViewAppointmentModal(false);
+                    // Ouvrir le modal d'édition approprié
+                    if (viewingAppointment.type === 'VIDEO_CONFERENCE') {
+                      setEditingMeetTask(viewingAppointment);
+                      const scheduledDate = new Date(viewingAppointment.scheduledAt);
+                      const year = scheduledDate.getFullYear();
+                      const month = String(scheduledDate.getMonth() + 1).padStart(2, '0');
+                      const day = String(scheduledDate.getDate()).padStart(2, '0');
+                      const hours = String(scheduledDate.getHours()).padStart(2, '0');
+                      const minutes = String(scheduledDate.getMinutes()).padStart(2, '0');
+                      const localDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+                      const fetchAttendees = async () => {
+                        let attendeesList: string[] = [];
+                        if (viewingAppointment.googleEventId) {
+                          try {
+                            const response = await fetch(
+                              `/api/tasks/${viewingAppointment.id}/attendees`,
+                            );
+                            if (response.ok) {
+                              const data = await response.json();
+                              attendeesList = data.attendees || [];
+                            }
+                          } catch (error) {
+                            console.error('Erreur lors de la récupération des invités:', error);
+                          }
+                        }
+
+                        setEditMeetData({
+                          scheduledAt: localDateTime,
+                          durationMinutes: viewingAppointment.durationMinutes || 30,
+                          attendees: attendeesList,
+                        });
+                        setShowEditMeetModal(true);
+                      };
+
+                      fetchAttendees();
+                    } else {
+                      setEditingAppointment(viewingAppointment);
+                      setEditAppointmentData({
+                        title: viewingAppointment.title || '',
+                        description: viewingAppointment.description || '',
+                        scheduledAt: viewingAppointment.scheduledAt
+                          ? new Date(viewingAppointment.scheduledAt).toISOString().slice(0, 16)
+                          : '',
+                        priority: viewingAppointment.priority || 'MEDIUM',
+                        assignedUserId: viewingAppointment.assignedUserId || '',
+                        reminderMinutesBefore: viewingAppointment.reminderMinutesBefore || null,
+                      });
+                      setShowEditAppointmentModal(true);
+                      setTimeout(() => {
+                        if (
+                          editAppointmentEditorRef.current &&
+                          viewingAppointment.description
+                        ) {
+                          editAppointmentEditorRef.current.injectHTML(
+                            viewingAppointment.description,
+                          );
+                        }
+                      }, 200);
+                    }
+                    setViewingAppointment(null);
+                  }}
+                  className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+                >
+                  Modifier
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (viewingAppointment.type === 'VIDEO_CONFERENCE') {
+                      // Pour Google Meet, utiliser handleDeleteMeet
+                      setEditingMeetTask(viewingAppointment);
+                      setShowViewAppointmentModal(false);
+                      setViewingAppointment(null);
+                      await handleDeleteMeet();
+                    } else {
+                      // Pour rendez-vous physique, utiliser handleDeleteAppointment
+                      await handleDeleteAppointment();
+                    }
+                  }}
+                  disabled={deleteAppointmentLoading || deleteMeetLoading}
+                  className="cursor-pointer rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {deleteAppointmentLoading || deleteMeetLoading ? (
+                    'Annulation...'
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Trash2 className="h-4 w-4" />
+                      Annuler
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
