@@ -315,7 +315,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         if (smtpConfig && task.googleMeetLink) {
           // Récupérer les invités depuis Google Calendar
           let allRecipients: string[] = [];
-          if (task.contact.email) {
+          if (task.contact?.email) {
             allRecipients.push(task.contact.email);
           }
 
@@ -377,7 +377,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           });
 
           const contactName =
-            `${task.contact.firstName || ''} ${task.contact.lastName || ''}`.trim() ||
+            `${task.contact?.firstName || ''} ${task.contact?.lastName || ''}`.trim() ||
             'Cher client';
           const organizerName = organizer?.name || session.user.name || 'Organisateur';
 
