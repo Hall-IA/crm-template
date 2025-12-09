@@ -527,17 +527,24 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             ${smtpConfig.signature ? `\n\n${htmlToText(smtpConfig.signature)}` : ''}
           `.trim();
 
-          // Envoyer l'email à tous les destinataires
+          // Envoyer un email individuel à chaque destinataire pour préserver la confidentialité
           if (allRecipients.length > 0) {
-            await transporter.sendMail({
-              from: smtpConfig.fromName
-                ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
-                : smtpConfig.fromEmail,
-              to: allRecipients.join(', '),
-              subject: `Modification de rendez-vous : ${task.title || 'Rendez-vous'}`,
-              text: emailText,
-              html: emailHtml,
-            });
+            for (const recipientEmail of allRecipients) {
+              try {
+                await transporter.sendMail({
+                  from: smtpConfig.fromName
+                    ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
+                    : smtpConfig.fromEmail,
+                  to: recipientEmail,
+                  subject: `Modification de rendez-vous : ${task.title || 'Rendez-vous'}`,
+                  text: emailText,
+                  html: emailHtml,
+                });
+              } catch (individualEmailError: any) {
+                // Logger l'erreur mais continuer avec les autres destinataires
+                console.error(`Erreur lors de l'envoi de l'email à ${recipientEmail}:`, individualEmailError);
+              }
+            }
           }
         }
       } catch (emailError: any) {
@@ -819,17 +826,24 @@ Si vous souhaitez reprogrammer ce rendez-vous, n'hésitez pas à nous contacter.
 ${smtpConfig.signature ? `\n\n${htmlToText(smtpConfig.signature)}` : ''}
           `.trim();
 
-          // Envoyer l'email à tous les destinataires
+          // Envoyer un email individuel à chaque destinataire pour préserver la confidentialité
           if (allRecipients.length > 0) {
-            await transporter.sendMail({
-              from: smtpConfig.fromName
-                ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
-                : smtpConfig.fromEmail,
-              to: allRecipients.join(', '),
-              subject: `Annulation de rendez-vous : ${task.title || 'Rendez-vous'}`,
-              text: emailText,
-              html: emailHtml,
-            });
+            for (const recipientEmail of allRecipients) {
+              try {
+                await transporter.sendMail({
+                  from: smtpConfig.fromName
+                    ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
+                    : smtpConfig.fromEmail,
+                  to: recipientEmail,
+                  subject: `Annulation de rendez-vous : ${task.title || 'Rendez-vous'}`,
+                  text: emailText,
+                  html: emailHtml,
+                });
+              } catch (individualEmailError: any) {
+                // Logger l'erreur mais continuer avec les autres destinataires
+                console.error(`Erreur lors de l'envoi de l'email à ${recipientEmail}:`, individualEmailError);
+              }
+            }
           }
         }
       } catch (emailError: any) {

@@ -341,17 +341,24 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             }
           });
 
-          // Envoyer l'email à tous les destinataires
+          // Envoyer un email individuel à chaque destinataire pour préserver la confidentialité
           if (allRecipients.length > 0) {
-            await transporter.sendMail({
-              from: smtpConfig.fromName
-                ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
-                : smtpConfig.fromEmail,
-              to: allRecipients.join(', '),
-              subject: `Confirmation de rendez-vous : ${title}`,
-              text: emailText,
-              html: emailHtml,
-            });
+            for (const recipientEmail of allRecipients) {
+              try {
+                await transporter.sendMail({
+                  from: smtpConfig.fromName
+                    ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
+                    : smtpConfig.fromEmail,
+                  to: recipientEmail,
+                  subject: `Confirmation de rendez-vous : ${title}`,
+                  text: emailText,
+                  html: emailHtml,
+                });
+              } catch (individualEmailError: any) {
+                // Logger l'erreur mais continuer avec les autres destinataires
+                console.error(`Erreur lors de l'envoi de l'email à ${recipientEmail}:`, individualEmailError);
+              }
+            }
           }
         }
       } catch (emailError: any) {
