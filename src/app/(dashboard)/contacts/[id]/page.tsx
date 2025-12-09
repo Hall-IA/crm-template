@@ -15,7 +15,6 @@ import {
   ExternalLink,
   Activity,
   RefreshCw,
-  Settings,
   Plus,
   Tag,
   Edit,
@@ -221,6 +220,7 @@ export default function ContactDetailPage() {
     priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
     assignedUserId: string;
     reminderMinutesBefore: number | null;
+    notifyContact: boolean;
   }>({
     title: '',
     description: '',
@@ -228,6 +228,7 @@ export default function ContactDetailPage() {
     priority: 'MEDIUM',
     assignedUserId: '',
     reminderMinutesBefore: null,
+    notifyContact: false,
   });
   const [editAppointmentLoading, setEditAppointmentLoading] = useState(false);
   const [editAppointmentError, setEditAppointmentError] = useState('');
@@ -241,6 +242,7 @@ export default function ContactDetailPage() {
   const [showViewAppointmentModal, setShowViewAppointmentModal] = useState(false);
   const [viewingAppointment, setViewingAppointment] = useState<any | null>(null);
   const [deleteAppointmentLoading, setDeleteAppointmentLoading] = useState(false);
+  const [deleteAppointmentNotifyContact, setDeleteAppointmentNotifyContact] = useState(false);
 
   // Modals spécifiques pour chaque action
   const [showMeetingModal, setShowMeetingModal] = useState(false);
@@ -258,6 +260,7 @@ export default function ContactDetailPage() {
     priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
     assignedUserId: '',
     reminderMinutesBefore: null as number | null,
+    notifyContact: false,
   });
   const [callData, setCallData] = useState({
     title: '',
@@ -899,6 +902,7 @@ export default function ContactDetailPage() {
           contactId: contactId,
           assignedUserId: meetingData.assignedUserId || undefined,
           reminderMinutesBefore: meetingData.reminderMinutesBefore ?? null,
+          notifyContact: meetingData.notifyContact,
         }),
       });
 
@@ -916,6 +920,7 @@ export default function ContactDetailPage() {
         priority: 'MEDIUM',
         assignedUserId: '',
         reminderMinutesBefore: null,
+        notifyContact: false,
       });
       setSuccess('Rendez-vous créé avec succès !');
       fetchContact();
@@ -1248,6 +1253,10 @@ export default function ContactDetailPage() {
     try {
       const response = await fetch(`/api/tasks/${viewingAppointment.id}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notifyContact: deleteAppointmentNotifyContact,
+        }),
       });
 
       const data = await response.json();
@@ -1257,6 +1266,7 @@ export default function ContactDetailPage() {
 
       setShowViewAppointmentModal(false);
       setViewingAppointment(null);
+      setDeleteAppointmentNotifyContact(false);
       setSuccess('Rendez-vous annulé avec succès !');
       fetchContact();
       fetchTasks();
@@ -1295,6 +1305,7 @@ export default function ContactDetailPage() {
           priority: editAppointmentData.priority,
           assignedUserId: editAppointmentData.assignedUserId || undefined,
           reminderMinutesBefore: editAppointmentData.reminderMinutesBefore,
+          notifyContact: editAppointmentData.notifyContact,
         }),
       });
 
@@ -1312,6 +1323,7 @@ export default function ContactDetailPage() {
         priority: 'MEDIUM',
         assignedUserId: '',
         reminderMinutesBefore: null,
+        notifyContact: false,
       });
       setSuccess('Rendez-vous modifié avec succès !');
       fetchContact();
@@ -1659,6 +1671,7 @@ export default function ContactDetailPage() {
                   priority: 'MEDIUM',
                   assignedUserId: '',
                   reminderMinutesBefore: null,
+                  notifyContact: false,
                 });
                 setError('');
                 setSuccess('');
@@ -2947,6 +2960,35 @@ export default function ContactDetailPage() {
                 />
               </div>
 
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={editAppointmentData.notifyContact}
+                    onChange={(e) =>
+                      setEditAppointmentData({
+                        ...editAppointmentData,
+                        notifyContact: e.target.checked,
+                      })
+                    }
+                    className="mt-0.5 h-4 w-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-blue-900">Prévenir le contact</p>
+                    <p className="mt-1 text-xs text-blue-700">
+                      {editingAppointment?.notifyContact
+                        ? 'Le contact avait été prévenu lors de la création. Il sera automatiquement informé des modifications.'
+                        : 'Un email de modification sera envoyé au contact.'}
+                    </p>
+                    {!contact.email && (
+                      <p className="mt-1 text-xs font-medium text-orange-700">
+                        ⚠️ Le contact n'a pas d'adresse email configurée.
+                      </p>
+                    )}
+                  </div>
+                </label>
+              </div>
+
               {editAppointmentError && (
                 <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
                   {editAppointmentError}
@@ -3705,6 +3747,7 @@ export default function ContactDetailPage() {
                       priority: 'MEDIUM',
                       assignedUserId: '',
                       reminderMinutesBefore: null,
+                      notifyContact: false,
                     });
                     setError('');
                   }}
@@ -3870,6 +3913,31 @@ export default function ContactDetailPage() {
                 </p>
               </div>
 
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={meetingData.notifyContact}
+                    onChange={(e) =>
+                      setMeetingData({ ...meetingData, notifyContact: e.target.checked })
+                    }
+                    className="mt-0.5 h-4 w-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-blue-900">Prévenir le contact</p>
+                    <p className="mt-1 text-xs text-blue-700">
+                      Un email de confirmation sera envoyé au contact après la création du
+                      rendez-vous.
+                    </p>
+                    {!contact.email && (
+                      <p className="mt-1 text-xs font-medium text-orange-700">
+                        ⚠️ Le contact n'a pas d'adresse email configurée.
+                      </p>
+                    )}
+                  </div>
+                </label>
+              </div>
+
               {error && (
                 <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>
               )}
@@ -3889,6 +3957,7 @@ export default function ContactDetailPage() {
                       priority: 'MEDIUM',
                       assignedUserId: '',
                       reminderMinutesBefore: null,
+                      notifyContact: false,
                     });
                     setError('');
                   }}
@@ -5332,6 +5401,7 @@ email2@example.com`}
                         priority: viewingAppointment.priority || 'MEDIUM',
                         assignedUserId: viewingAppointment.assignedUserId || '',
                         reminderMinutesBefore: viewingAppointment.reminderMinutesBefore || null,
+                        notifyContact: viewingAppointment.notifyContact || false,
                       });
                       setShowEditAppointmentModal(true);
                       setTimeout(() => {
@@ -5351,6 +5421,31 @@ email2@example.com`}
                 >
                   Modifier
                 </button>
+                {viewingAppointment.type === 'MEETING' && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                    <label className="flex cursor-pointer items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={deleteAppointmentNotifyContact}
+                        onChange={(e) => setDeleteAppointmentNotifyContact(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-blue-900">Prévenir le contact</p>
+                        <p className="mt-1 text-xs text-blue-700">
+                          {viewingAppointment.notifyContact
+                            ? 'Le contact avait été prévenu lors de la création. Il sera automatiquement informé de l\'annulation.'
+                            : 'Un email d\'annulation sera envoyé au contact.'}
+                        </p>
+                        {!contact.email && (
+                          <p className="mt-1 text-xs font-medium text-orange-700">
+                            ⚠️ Le contact n'a pas d'adresse email configurée.
+                          </p>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={async () => {

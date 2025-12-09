@@ -109,6 +109,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       reminderMinutesBefore,
       durationMinutes,
       attendees,
+      notifyContact,
     } = body;
 
     // Vérifier que la tâche existe
@@ -143,6 +144,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
     if (durationMinutes !== undefined) {
       updateData.durationMinutes = durationMinutes || null;
+    }
+    if (notifyContact !== undefined) {
+      updateData.notifyContact = notifyContact === true;
     }
     if (completed !== undefined) {
       updateData.completed = completed;
@@ -285,12 +289,23 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       },
     });
 
-    // Envoyer un email de modification si c'est un Google Meet et que la date/heure ou la durée a changé
-    if (
+    // Déterminer si on doit envoyer un email de modification
+    const shouldNotifyForGoogleMeet =
       existingTask.googleEventId &&
       task.contact?.email &&
-      (hasDateChanged || hasDurationChanged)
-    ) {
+      (hasDateChanged || hasDurationChanged);
+
+    // Pour les rendez-vous physiques, envoyer un email si :
+    // - Le contact avait été prévenu initialement (existingTask.notifyContact === true)
+    // - OU l'utilisateur demande explicitement de prévenir (notifyContact === true)
+    const shouldNotifyForPhysicalMeeting =
+      existingTask.type === 'MEETING' &&
+      !existingTask.googleEventId &&
+      task.contact?.email &&
+      (existingTask.notifyContact === true || notifyContact === true);
+
+    // Envoyer un email de modification si nécessaire
+    if (shouldNotifyForGoogleMeet || shouldNotifyForPhysicalMeeting) {
       try {
         // Récupérer la configuration SMTP
         const smtpConfig = await prisma.smtpConfig.findUnique({
@@ -304,33 +319,36 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             allRecipients.push(task.contact.email);
           }
 
-          try {
-            const googleAccount = await prisma.userGoogleAccount.findUnique({
-              where: { userId: session.user.id },
-            });
+          // Pour Google Meet uniquement, récupérer les invités depuis Google Calendar
+          if (existingTask.googleEventId && task.googleMeetLink) {
+            try {
+              const googleAccount = await prisma.userGoogleAccount.findUnique({
+                where: { userId: session.user.id },
+              });
 
-            if (googleAccount && existingTask.googleEventId) {
-              const accessToken = await getValidAccessToken(
-                googleAccount.accessToken,
-                googleAccount.refreshToken,
-                googleAccount.tokenExpiresAt,
-              );
+              if (googleAccount && existingTask.googleEventId) {
+                const accessToken = await getValidAccessToken(
+                  googleAccount.accessToken,
+                  googleAccount.refreshToken,
+                  googleAccount.tokenExpiresAt,
+                );
 
-              const googleEvent = await getGoogleCalendarEvent(
-                accessToken,
-                existingTask.googleEventId,
-              );
-              if (googleEvent.attendees) {
-                googleEvent.attendees.forEach((attendee) => {
-                  if (attendee.email && !allRecipients.includes(attendee.email)) {
-                    allRecipients.push(attendee.email);
-                  }
-                });
+                const googleEvent = await getGoogleCalendarEvent(
+                  accessToken,
+                  existingTask.googleEventId,
+                );
+                if (googleEvent.attendees) {
+                  googleEvent.attendees.forEach((attendee) => {
+                    if (attendee.email && !allRecipients.includes(attendee.email)) {
+                      allRecipients.push(attendee.email);
+                    }
+                  });
+                }
               }
+            } catch (googleError: any) {
+              console.error('Erreur lors de la récupération des invités:', googleError);
+              // On continue avec au moins le contact
             }
-          } catch (googleError: any) {
-            console.error('Erreur lors de la récupération des invités:', googleError);
-            // On continue avec au moins le contact
           }
 
           // Déchiffrer le mot de passe SMTP
@@ -395,6 +413,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           const newScheduledAt = task.scheduledAt.toISOString();
           const oldDuration = existingTask.durationMinutes ?? 30;
           const newDuration = task.durationMinutes ?? 30;
+          const isGoogleMeet = !!task.googleMeetLink;
 
           // Générer le contenu HTML de l'email
           const emailHtml = `
@@ -433,7 +452,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                   `
                   }
                   ${
-                    hasDurationChanged
+                    isGoogleMeet && hasDurationChanged
                       ? `
                     <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ddd;">
                       <div style="margin-bottom: 10px;">
@@ -450,9 +469,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                       </div>
                     </div>
                   `
-                      : `
+                      : isGoogleMeet
+                        ? `
                     <div style="margin-bottom: 10px;"><strong>Durée :</strong> ${formatDuration(newDuration)}</div>
                   `
+                        : ''
                   }
                   <div style="margin-bottom: 10px;"><strong>Organisateur :</strong> ${organizerName}</div>
                   ${
@@ -466,6 +487,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                       : ''
                   }
                 </div>
+                ${
+                  isGoogleMeet && task.googleMeetLink
+                    ? `
                 <div style="margin-bottom: 30px; text-align: center;">
                   <a href="${task.googleMeetLink}" style="display: inline-block; background-color: #4285f4; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-size: 16px; font-weight: bold;">
                     Rejoindre la réunion Google Meet
@@ -477,6 +501,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                     <a href="${task.googleMeetLink}" style="color: #4285f4; word-break: break-all;">${task.googleMeetLink}</a>
                   </p>
                 </div>
+              `
+                    : ''
+                }
                 ${
                   smtpConfig.signature
                     ? `
@@ -512,20 +539,22 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             `
             }
             ${
-              hasDurationChanged
+              isGoogleMeet && hasDurationChanged
                 ? `
             Ancienne durée : ${formatDuration(oldDuration)}
             Nouvelle durée : ${formatDuration(newDuration)}
             `
-                : `
+                : isGoogleMeet
+                  ? `
             Durée : ${formatDuration(newDuration)}
             `
+                  : ''
             }
             Organisateur : ${organizerName}
 
             ${task.description ? `Description :\n${htmlToText(task.description)}\n` : ''}
 
-            Lien de la réunion : ${task.googleMeetLink}
+            ${isGoogleMeet && task.googleMeetLink ? `Lien de la réunion : ${task.googleMeetLink}` : ''}
 
             ${smtpConfig.signature ? `\n\n${htmlToText(smtpConfig.signature)}` : ''}
           `.trim();
@@ -581,6 +610,8 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const body = await request.json().catch(() => ({}));
+    const { notifyContact } = body;
 
     // Vérifier que la tâche existe
     const task = await prisma.task.findUnique({
@@ -704,8 +735,21 @@ export async function DELETE(
       where: { id },
     });
 
-    // Envoyer un email d'annulation à tous les invités si c'est un Google Meet
-    if (task.googleEventId && allRecipients.length > 0 && task.googleMeetLink) {
+    // Déterminer si on doit envoyer un email d'annulation
+    const shouldNotifyForGoogleMeet =
+      task.googleEventId && allRecipients.length > 0 && task.googleMeetLink;
+
+    // Pour les rendez-vous physiques, envoyer un email si :
+    // - Le contact avait été prévenu initialement (task.notifyContact === true)
+    // - OU l'utilisateur demande explicitement de prévenir (notifyContact === true)
+    const shouldNotifyForPhysicalMeeting =
+      task.type === 'MEETING' &&
+      !task.googleEventId &&
+      taskWithContact?.contact?.email &&
+      (task.notifyContact === true || notifyContact === true);
+
+    // Envoyer un email d'annulation si nécessaire
+    if (shouldNotifyForGoogleMeet || shouldNotifyForPhysicalMeeting) {
       try {
         // Récupérer la configuration SMTP
         const smtpConfig = await prisma.smtpConfig.findUnique({
@@ -788,7 +832,7 @@ export async function DELETE(
                   <h2 style="color: #1a1a1a; font-size: 20px; margin-bottom: 15px;">${task.title || 'Rendez-vous'}</h2>
                   <div style="margin-bottom: 10px;"><strong>Date :</strong> ${formatDate(new Date(scheduledDate))}</div>
                   <div style="margin-bottom: 10px;"><strong>Heure :</strong> ${formatTime(new Date(scheduledDate))}</div>
-                  <div style="margin-bottom: 10px;"><strong>Durée :</strong> ${formatDuration(task.durationMinutes ?? 30)}</div>
+                  ${task.googleMeetLink ? `<div style="margin-bottom: 10px;"><strong>Durée :</strong> ${formatDuration(task.durationMinutes ?? 30)}</div>` : ''}
                   <div style="margin-bottom: 10px;"><strong>Organisateur :</strong> ${organizerName}</div>
                   ${
                     task.description
@@ -829,8 +873,7 @@ ${task.title || 'Rendez-vous'}
 
 Date : ${formatDate(new Date(scheduledDate))}
 Heure : ${formatTime(new Date(scheduledDate))}
-Durée : ${formatDuration(task.durationMinutes ?? 30)}
-Organisateur : ${organizerName}
+${task.googleMeetLink ? `Durée : ${formatDuration(task.durationMinutes ?? 30)}\n` : ''}Organisateur : ${organizerName}
 
 ${task.description ? `Description :\n${htmlToText(task.description)}\n` : ''}
 

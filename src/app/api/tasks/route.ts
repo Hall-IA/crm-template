@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logAppointmentCreated, createInteraction } from '@/lib/contact-interactions';
+import nodemailer from 'nodemailer';
+import { decrypt } from '@/lib/encryption';
+
+function htmlToText(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 
 // GET /api/tasks - Récupérer les tâches de l'utilisateur
 export async function GET(request: NextRequest) {
@@ -114,6 +126,7 @@ export async function POST(request: NextRequest) {
       contactId,
       assignedUserId,
       reminderMinutesBefore,
+      notifyContact,
     } = body;
 
     // Validation
@@ -163,6 +176,7 @@ export async function POST(request: NextRequest) {
         createdById: session.user.id,
         reminderMinutesBefore:
           typeof reminderMinutesBefore === 'number' ? reminderMinutesBefore : null,
+        notifyContact: notifyContact === true,
       },
       include: {
         contact: {
@@ -203,6 +217,129 @@ export async function POST(request: NextRequest) {
             title,
             session.user.id,
           );
+
+          // Envoyer un email de notification si demandé
+          if (notifyContact && task.contact?.email) {
+            try {
+              // Récupérer la configuration SMTP
+              const smtpConfig = await prisma.smtpConfig.findUnique({
+                where: { userId: session.user.id },
+              });
+
+              if (smtpConfig) {
+                // Déchiffrer le mot de passe SMTP
+                let password: string;
+                try {
+                  password = decrypt(smtpConfig.password);
+                } catch (error) {
+                  password = smtpConfig.password;
+                }
+
+                // Créer le transporteur SMTP
+                const transporter = nodemailer.createTransport({
+                  host: smtpConfig.host,
+                  port: smtpConfig.port,
+                  secure: smtpConfig.secure,
+                  auth: {
+                    user: smtpConfig.username,
+                    pass: password,
+                  },
+                });
+
+                // Récupérer le nom de l'organisateur
+                const organizer = await prisma.user.findUnique({
+                  where: { id: session.user.id },
+                  select: { name: true },
+                });
+
+                const contactName =
+                  `${task.contact.firstName || ''} ${task.contact.lastName || ''}`.trim() ||
+                  'Cher client';
+                const organizerName = organizer?.name || session.user.name || 'Organisateur';
+
+                const formatDate = (date: Date) => {
+                  return date.toLocaleDateString('fr-FR', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  });
+                };
+
+                const formatTime = (date: Date) => {
+                  return date.toLocaleTimeString('fr-FR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  });
+                };
+
+                const scheduledDate = new Date(scheduledAt);
+
+                // Générer le contenu HTML de l'email
+                const emailHtml = `
+                  <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                      <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 20px;">
+                        Confirmation de rendez-vous
+                      </h1>
+                      <p style="font-size: 16px; margin-bottom: 20px;">Bonjour ${contactName},</p>
+                      <p style="font-size: 16px; margin-bottom: 20px;">
+                        Votre rendez-vous a été confirmé avec succès.
+                      </p>
+                      <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                        <h2 style="color: #1a1a1a; font-size: 20px; margin-bottom: 15px;">${title || 'Rendez-vous'}</h2>
+                        <div style="margin-bottom: 10px;"><strong>Date :</strong> ${formatDate(scheduledDate)}</div>
+                        <div style="margin-bottom: 10px;"><strong>Heure :</strong> ${formatTime(scheduledDate)}</div>
+                        <div style="margin-bottom: 10px;"><strong>Organisateur :</strong> ${organizerName}</div>
+                        ${
+                          description
+                            ? `
+                          <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                            <strong>Description :</strong>
+                            <div style="margin-top: 10px;">${description}</div>
+                          </div>
+                        `
+                            : ''
+                        }
+                      </div>
+                      <p style="font-size: 14px; color: #666; margin-top: 20px;">
+                        Nous vous remercions de votre confiance et restons à votre disposition pour toute question.
+                      </p>
+                    </div>
+                  </div>
+                `;
+
+                const emailText = htmlToText(emailHtml);
+
+                // Ajouter la signature si définie
+                let finalHtml = emailHtml;
+                let finalText = emailText;
+                if (smtpConfig.signature) {
+                  const signatureContent = smtpConfig.signature.trim();
+                  if (emailHtml.length > 0) {
+                    finalHtml = `${emailHtml}<br>${signatureContent}`;
+                  } else {
+                    finalHtml = signatureContent;
+                  }
+                  finalText = `${emailText}\n\n${htmlToText(signatureContent)}`;
+                }
+
+                // Envoyer l'email
+                await transporter.sendMail({
+                  from: smtpConfig.fromName
+                    ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
+                    : smtpConfig.fromEmail,
+                  to: task.contact.email,
+                  subject: `Confirmation de rendez-vous${title ? ` : ${title}` : ''}`,
+                  text: finalText,
+                  html: finalHtml,
+                });
+              }
+            } catch (emailError: any) {
+              // Ne pas faire échouer la création de la tâche si l'email échoue
+              console.error("Erreur lors de l'envoi de l'email de notification:", emailError);
+            }
+          }
         } else {
           // Pour les autres types de tâches, créer une interaction standard
           const interactionTypeMap: Record<string, string> = {

@@ -279,6 +279,7 @@ model Task {
   googleMeetLink        String? // URL du Google Meet
   durationMinutes       Int? // Durée de la réunion en minutes (pour Google Meet)
   internalNote          String? // Note personnelle (non partagée dans les emails)
+  notifyContact         Boolean? // Si le contact a été prévenu lors de la création
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
 
