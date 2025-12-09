@@ -61,6 +61,12 @@ interface Interaction {
   user: User;
   createdAt: string;
   updatedAt: string;
+  emailTracking?: {
+    id: string;
+    openCount: number;
+    firstOpenedAt: string | null;
+    lastOpenedAt: string | null;
+  } | null;
 }
 
 interface Contact {
@@ -2114,10 +2120,24 @@ export default function ContactDetailPage() {
                                           {getInteractionIcon(interaction.type)}
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                          <p className="wrap-break-words text-sm font-medium text-gray-900">
-                                            {getInteractionLabel(interaction.type)}
-                                            {interaction.title && `: ${interaction.title}`}
-                                          </p>
+                                          <div className="flex items-center gap-2">
+                                            <p className="wrap-break-words text-sm font-medium text-gray-900">
+                                              {getInteractionLabel(interaction.type)}
+                                              {interaction.title && `: ${interaction.title}`}
+                                            </p>
+                                            {interaction.type === 'EMAIL' && interaction.emailTracking && (
+                                              <span
+                                                className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                  interaction.emailTracking.openCount > 0
+                                                    ? 'bg-green-100 text-green-700'
+                                                    : 'bg-gray-100 text-gray-600'
+                                                }`}
+                                                title={`${interaction.emailTracking.openCount} ouverture${interaction.emailTracking.openCount > 1 ? 's' : ''}`}
+                                              >
+                                                👁️ {interaction.emailTracking.openCount}
+                                              </span>
+                                            )}
+                                          </div>
                                           {interaction.content && (
                                             <p className="wrap-break-words mt-1 line-clamp-2 text-xs text-gray-700">
                                               {interaction.content
@@ -2535,10 +2555,24 @@ export default function ContactDetailPage() {
                                       {getInteractionIcon(interaction.type)}
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                      <p className="wrap-break-words text-sm font-medium text-gray-900">
-                                        {getInteractionLabel(interaction.type)}
-                                        {interaction.title && `: ${interaction.title}`}
-                                      </p>
+                                      <div className="flex items-center gap-2">
+                                        <p className="wrap-break-words text-sm font-medium text-gray-900">
+                                          {getInteractionLabel(interaction.type)}
+                                          {interaction.title && `: ${interaction.title}`}
+                                        </p>
+                                        {interaction.emailTracking && (
+                                          <span
+                                            className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                                              interaction.emailTracking.openCount > 0
+                                                ? 'bg-green-100 text-green-700'
+                                                : 'bg-gray-100 text-gray-600'
+                                            }`}
+                                            title={`${interaction.emailTracking.openCount} ouverture${interaction.emailTracking.openCount > 1 ? 's' : ''}`}
+                                          >
+                                            👁️ {interaction.emailTracking.openCount}
+                                          </span>
+                                        )}
+                                      </div>
                                       {interaction.content && (
                                         <p className="wrap-break-words mt-1 line-clamp-2 text-xs text-gray-700">
                                           {interaction.content
@@ -4891,6 +4925,60 @@ email2@example.com`}
                       )}
                   </div>
                 )}
+
+              {/* Statistiques de tracking pour les emails */}
+              {viewingActivity.type === 'EMAIL' && viewingActivity.emailTracking && (
+                <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                  <p className="mb-2 text-sm font-medium text-blue-900">📊 Statistiques d'ouverture</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-blue-800">Nombre d'ouvertures :</span>
+                      <span className="text-sm font-semibold text-blue-900">
+                        {viewingActivity.emailTracking.openCount}
+                      </span>
+                    </div>
+                    {viewingActivity.emailTracking.firstOpenedAt && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-blue-800">Première ouverture :</span>
+                        <span className="text-sm text-blue-900">
+                          {new Date(viewingActivity.emailTracking.firstOpenedAt).toLocaleDateString(
+                            'fr-FR',
+                            {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            },
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    {viewingActivity.emailTracking.lastOpenedAt && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-blue-800">Dernière ouverture :</span>
+                        <span className="text-sm text-blue-900">
+                          {new Date(viewingActivity.emailTracking.lastOpenedAt).toLocaleDateString(
+                            'fr-FR',
+                            {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            },
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    {viewingActivity.emailTracking.openCount === 0 && (
+                      <p className="text-xs text-blue-700 italic">
+                        L'email n'a pas encore été ouvert
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Pièces jointes pour les emails */}
               {viewingActivity.type === 'EMAIL' &&

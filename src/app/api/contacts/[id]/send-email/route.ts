@@ -141,7 +141,60 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
     }
 
-    // Envoyer l'email
+    // Créer d'abord l'interaction pour avoir son ID
+    const attachmentNames = attachments.map((att) => att.filename);
+    const metadata: any = {};
+    if (attachmentNames.length > 0) {
+      metadata.attachments = attachmentNames;
+    }
+    if (ccEmails.length > 0) {
+      metadata.cc = ccEmails;
+    }
+    if (bccEmails.length > 0) {
+      metadata.bcc = bccEmails;
+    }
+    metadata.to = toEmails;
+    metadata.htmlContent = `${baseHtml}${signatureHtml}`; // Stocker le HTML original (sans tracking) pour l'affichage
+
+    const interaction = await prisma.interaction.create({
+      data: {
+        contactId: id,
+        type: 'EMAIL',
+        title: subject,
+        content: baseText, // Texte brut pour la recherche/affichage simple
+        userId: session.user.id,
+        date: new Date(),
+        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+      },
+    });
+
+    // Créer le tracking pour cet email
+    const emailTracking = await prisma.emailTracking.create({
+      data: {
+        interactionId: interaction.id,
+        openCount: 0,
+      },
+    });
+
+    // Ajouter le pixel de tracking dans le HTML
+    // Utiliser l'URL absolue depuis les variables d'environnement
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || 'http://localhost:3000';
+    // Ajouter un timestamp pour éviter le cache du client email
+    const timestamp = Date.now();
+    const trackingPixelUrl = `${baseUrl}/api/email/track/${emailTracking.id}?t=${timestamp}`;
+    
+    const trackingPixel = `<img src="${trackingPixelUrl}" width="1" height="1" style="display:none;" alt="" />`;
+    
+    // Insérer le pixel de tracking avant la fermeture du body ou à la fin du contenu
+    let htmlWithTracking = `${baseHtml}${signatureHtml}`;
+    // Si le HTML contient déjà une balise </body>, insérer avant, sinon à la fin
+    if (htmlWithTracking.includes('</body>')) {
+      htmlWithTracking = htmlWithTracking.replace('</body>', `${trackingPixel}</body>`);
+    } else {
+      htmlWithTracking = `${htmlWithTracking}${trackingPixel}`;
+    }
+
+    // Envoyer l'email avec le pixel de tracking
     const mailOptions: any = {
       from: smtpConfig.fromName
         ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`
@@ -149,7 +202,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       to: toEmails.join(', '),
       subject: subject,
       text: `${baseText}${signatureText}`,
-      html: `${baseHtml}${signatureHtml}`,
+      html: htmlWithTracking,
     };
 
     if (ccEmails.length > 0) {
@@ -166,32 +219,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     await transporter.sendMail(mailOptions);
 
-    // Préparer les métadonnées pour les pièces jointes
-    const attachmentNames = attachments.map((att) => att.filename);
-    const metadata: any = {};
-    if (attachmentNames.length > 0) {
-      metadata.attachments = attachmentNames;
-    }
-    if (ccEmails.length > 0) {
-      metadata.cc = ccEmails;
-    }
-    if (bccEmails.length > 0) {
-      metadata.bcc = bccEmails;
-    }
-    metadata.to = toEmails;
-    metadata.htmlContent = `${baseHtml}${signatureHtml}`; // Stocker le HTML pour l'affichage
-
-    // Créer une interaction de type EMAIL (contenu HTML dans metadata, texte brut dans content)
-    const interaction = await prisma.interaction.create({
-      data: {
-        contactId: id,
-        type: 'EMAIL',
-        title: subject,
-        content: baseText, // Texte brut pour la recherche/affichage simple
-        userId: session.user.id,
-        date: new Date(),
-        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
-      },
+    // Récupérer l'interaction avec les relations pour la réponse
+    const interactionWithUser = await prisma.interaction.findUnique({
+      where: { id: interaction.id },
       include: {
         user: {
           select: { id: true, name: true, email: true },
@@ -202,7 +232,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({
       success: true,
       message: 'Email envoyé avec succès',
-      interaction,
+      interaction: interactionWithUser,
     });
   } catch (error: any) {
     console.error("Erreur lors de l'envoi de l'email:", error);

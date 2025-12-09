@@ -238,10 +238,25 @@ model Interaction {
   date      DateTime? // Date de l'interaction (pour RDV, appels, etc.)
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
+  emailTracking EmailTracking?
 
   @@index([contactId])
   @@index([userId])
   @@map("interaction")
+}
+
+model EmailTracking {
+  id            String      @id @default(cuid())
+  interactionId String      @unique
+  interaction   Interaction @relation(fields: [interactionId], references: [id], onDelete: Cascade)
+  openCount     Int         @default(0) // Nombre d'ouvertures
+  firstOpenedAt DateTime?   // Date de la première ouverture
+  lastOpenedAt  DateTime?   // Date de la dernière ouverture
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([interactionId])
+  @@map("email_tracking")
 }
 
 model Task {

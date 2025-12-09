@@ -40,6 +40,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             user: {
               select: { id: true, name: true, email: true },
             },
+            emailTracking: {
+              select: {
+                id: true,
+                openCount: true,
+                firstOpenedAt: true,
+                lastOpenedAt: true,
+              },
+            },
           },
           orderBy: { createdAt: 'desc' },
         },
