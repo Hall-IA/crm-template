@@ -837,7 +837,7 @@ export default function AgendaPage() {
       {/* Modal d'édition de Google Meet */}
       {showEditMeetModal && editingMeetTask && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 p-4 backdrop-blur-sm sm:p-6">
-          <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg bg-white p-6 shadow-xl sm:p-8">
             {/* En-tête fixe */}
             <div className="shrink-0 border-b border-gray-100 pb-4">
               <div className="flex items-center justify-between">
