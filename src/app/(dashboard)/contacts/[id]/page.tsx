@@ -180,6 +180,7 @@ export default function ContactDetailPage() {
     durationMinutes: 30,
     attendees: [] as string[],
     reminderMinutesBefore: null as number | null,
+    internalNote: '',
   });
   const meetEditorRef = useRef<DefaultTemplateRef | null>(null);
   const [googleAccountConnected, setGoogleAccountConnected] = useState(false);
@@ -930,6 +931,7 @@ export default function ContactDetailPage() {
           durationMinutes: meetData.durationMinutes,
           attendees: meetData.attendees.filter((email) => email.trim() !== ''),
           reminderMinutesBefore: meetData.reminderMinutesBefore,
+          internalNote: meetData.internalNote || null,
         }),
       });
 
@@ -947,6 +949,7 @@ export default function ContactDetailPage() {
         durationMinutes: 30,
         attendees: [],
         reminderMinutesBefore: null,
+        internalNote: '',
       });
       setSuccess('Google Meet créé avec succès !');
       fetchContact(); // Recharger pour afficher la nouvelle tâche/interaction
@@ -1463,6 +1466,7 @@ export default function ContactDetailPage() {
                   durationMinutes: 30,
                   attendees: [],
                   reminderMinutesBefore: null,
+                  internalNote: '',
                 });
                 setError('');
                 setSuccess('');
@@ -2090,6 +2094,16 @@ export default function ContactDetailPage() {
                                     <p className="mt-2 line-clamp-2 text-sm text-gray-600">
                                       {appointment.description.replace(/<[^>]+>/g, '')}
                                     </p>
+                                  )}
+                                  {appointment.internalNote && (
+                                    <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-2">
+                                      <p className="mb-1 text-xs font-medium text-blue-900">
+                                        📝 Note personnelle
+                                      </p>
+                                      <p className="text-xs whitespace-pre-wrap text-blue-800">
+                                        {appointment.internalNote}
+                                      </p>
+                                    </div>
                                   )}
                                   {isVideoConference && appointment.googleMeetLink && (
                                     <a
@@ -3964,6 +3978,7 @@ export default function ContactDetailPage() {
                       durationMinutes: 30,
                       attendees: [],
                       reminderMinutesBefore: null,
+                      internalNote: '',
                     });
                     setError('');
                   }}
@@ -3986,7 +4001,7 @@ export default function ContactDetailPage() {
             <form
               id="meet-form"
               onSubmit={handleCreateMeet}
-              className="flex-1 space-y-4 overflow-y-auto pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="flex-1 space-y-4 overflow-y-auto px-1 pt-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
               <div>
                 <label className="block text-sm font-medium text-gray-700">
@@ -4106,7 +4121,8 @@ export default function ContactDetailPage() {
                   }
                   rows={4}
                   className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  placeholder="email1@example.com&#10;email2@example.com"
+                  placeholder={`email1@example.com
+email2@example.com`}
                 />
                 <p className="mt-1 text-xs text-gray-500">
                   Le contact sera automatiquement invité si son email est renseigné
@@ -4117,7 +4133,25 @@ export default function ContactDetailPage() {
                 <label className="block text-sm font-medium text-gray-700">Description</label>
                 <Editor ref={meetEditorRef} />
                 <p className="text-xs text-gray-500">
-                  Ajoutez des détails sur cette réunion (ordre du jour, points à aborder…).
+                  Ajoutez des détails sur cette réunion (ordre du jour, points à aborder…). Cette
+                  description sera partagée avec les participants.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Note personnelle (optionnel)
+                </label>
+                <textarea
+                  value={meetData.internalNote}
+                  onChange={(e) => setMeetData({ ...meetData, internalNote: e.target.value })}
+                  rows={3}
+                  className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Ajoutez une note personnelle qui ne sera pas partagée dans l'email..."
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Cette note est uniquement visible dans le CRM et ne sera pas envoyée aux
+                  participants.
                 </p>
               </div>
 
@@ -4140,6 +4174,7 @@ export default function ContactDetailPage() {
                       durationMinutes: 30,
                       attendees: [],
                       reminderMinutesBefore: null,
+                      internalNote: '',
                     });
                     setError('');
                   }}

@@ -46,7 +46,7 @@ model User {
   googleAdsLeadConfigs           GoogleAdsLeadConfig[]
   googleSheetSyncConfigsOwned    GoogleSheetSyncConfig[] @relation("GoogleSheetOwner")
   googleSheetSyncConfigsAssigned GoogleSheetSyncConfig[] @relation("GoogleSheetAssignedUser")
-  templates                      Template[]               @relation("TemplateCreatedBy")
+  templates                      Template[]              @relation("TemplateCreatedBy")
 
   @@unique([email])
   @@map("user")
@@ -262,6 +262,7 @@ model Task {
   googleEventId         String? // ID de l'évènement Google Calendar
   googleMeetLink        String? // URL du Google Meet
   durationMinutes       Int? // Durée de la réunion en minutes (pour Google Meet)
+  internalNote          String? // Note personnelle (non partagée dans les emails)
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
 
@@ -354,11 +355,11 @@ enum TemplateType {
 
 model Template {
   id        String       @id @default(cuid())
-  name      String       // Nom du template
+  name      String // Nom du template
   type      TemplateType // Type de template (EMAIL, SMS, NOTE)
-  subject   String?      // Sujet (pour EMAIL uniquement)
-  content   String       // Contenu du template (HTML pour EMAIL, texte pour SMS et NOTE)
-  userId    String       // Utilisateur qui a créé le template
+  subject   String? // Sujet (pour EMAIL uniquement)
+  content   String // Contenu du template (HTML pour EMAIL, texte pour SMS et NOTE)
+  userId    String // Utilisateur qui a créé le template
   user      User         @relation("TemplateCreatedBy", fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt

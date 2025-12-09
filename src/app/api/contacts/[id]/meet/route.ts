@@ -42,6 +42,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       durationMinutes = 30,
       attendees = [],
       reminderMinutesBefore,
+      internalNote,
     } = body;
 
     // Validation
@@ -148,6 +149,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         googleEventId: googleEvent.id,
         googleMeetLink: meetLink,
         durationMinutes,
+        internalNote: internalNote || null,
       },
       include: {
         contact: {
