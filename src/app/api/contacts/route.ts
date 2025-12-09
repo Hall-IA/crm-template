@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       city,
       postalCode,
       origin,
-      company,
+      companyName,
       isCompany,
       companyId,
       statusId,
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
         where: { id: duplicateContactId },
         include: {
           status: true,
-          company: {
+          companyRelation: {
             select: { id: true, firstName: true, lastName: true, isCompany: true },
           },
           assignedCommercial: {
@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
         city: city || null,
         postalCode: postalCode || null,
         origin: origin || null,
-        company: company || null,
+        companyName: companyName || null,
         isCompany: isCompany === true,
         companyId: companyId || null,
         statusId: statusId || null,

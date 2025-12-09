@@ -75,7 +75,7 @@ interface Contact {
   city: string | null;
   postalCode: string | null;
   origin: string | null;
-  company: string | null;
+  companyName: string | null;
   isCompany: boolean;
   companyId: string | null;
   companyRelation: Contact | null;
@@ -454,7 +454,7 @@ export default function ContactDetailPage() {
           city: data.city || '',
           postalCode: data.postalCode || '',
           origin: data.origin || '',
-          company: data.company || '',
+          company: data.companyName || '',
           isCompany: data.isCompany || false,
           companyId: data.companyId || '',
           statusId: data.statusId || '',
@@ -1608,12 +1608,12 @@ export default function ContactDetailPage() {
               <h2 className="truncate text-base font-bold text-gray-900 sm:text-lg">
                 {contactName}
               </h2>
-              {contact.company && (
+              {contact.companyName && (
                 <p className="mt-1 truncate text-xs text-gray-500 sm:text-sm">
-                  {contact.company}
+                  {contact.companyName}
                 </p>
               )}
-              {!contact.company && contact.companyRelation && (
+              {!contact.companyName && contact.companyRelation && (
                 <p className="mt-1 truncate text-xs text-gray-500 sm:text-sm">
                   {contact.companyRelation.firstName || contact.companyRelation.lastName || 'Entreprise sans nom'}
                 </p>
@@ -3027,8 +3027,8 @@ export default function ContactDetailPage() {
                             address: contact.address,
                             city: contact.city,
                             postalCode: contact.postalCode,
-                            companyName: contact.company
-                              ? contact.company
+                            companyName: contact.companyName
+                              ? contact.companyName
                               : contact.companyRelation
                                 ? `${contact.companyRelation.firstName || ''} ${contact.companyRelation.lastName || ''}`.trim()
                                 : null,
@@ -3261,8 +3261,8 @@ export default function ContactDetailPage() {
                             address: contact.address,
                             city: contact.city,
                             postalCode: contact.postalCode,
-                            companyName: contact.company
-                              ? contact.company
+                            companyName: contact.companyName
+                              ? contact.companyName
                               : contact.companyRelation
                                 ? `${contact.companyRelation.firstName || ''} ${contact.companyRelation.lastName || ''}`.trim()
                                 : null,
@@ -4177,8 +4177,8 @@ export default function ContactDetailPage() {
                             address: contact.address,
                             city: contact.city,
                             postalCode: contact.postalCode,
-                            companyName: contact.company
-                              ? contact.company
+                            companyName: contact.companyName
+                              ? contact.companyName
                               : contact.companyRelation
                                 ? `${contact.companyRelation.firstName || ''} ${contact.companyRelation.lastName || ''}`.trim()
                                 : null,

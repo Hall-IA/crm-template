@@ -81,7 +81,7 @@ export async function logContactUpdate(
       postalCode: 'Code postal',
       civility: 'Civilité',
       origin: 'Origine',
-      company: 'Entreprise',
+      companyName: 'Entreprise',
     };
 
     const fieldName = fieldNames[field] || field;

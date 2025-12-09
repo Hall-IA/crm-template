@@ -33,9 +33,10 @@ interface Contact {
   city: string | null;
   postalCode: string | null;
   origin: string | null;
+  companyName: string | null;
   isCompany: boolean;
   companyId: string | null;
-  company: Contact | null;
+  companyRelation: Contact | null;
   statusId: string | null;
   status: Status | null;
   assignedCommercialId: string | null;
@@ -196,7 +197,7 @@ export default function ContactsPage() {
         body: JSON.stringify({
           ...formData,
           civility: formData.civility || null,
-          company: formData.company || null,
+          companyName: formData.company || null,
           isCompany: formData.isCompany || false,
           companyId: formData.companyId || null,
           assignedCommercialId: formData.assignedCommercialId || null,
@@ -282,6 +283,7 @@ export default function ContactsPage() {
       city: contact.city || '',
       postalCode: contact.postalCode || '',
       origin: contact.origin || '',
+      company: contact.companyName || '',
       isCompany: contact.isCompany || false,
       companyId: contact.companyId || '',
       statusId: contact.statusId || '',
@@ -306,6 +308,7 @@ export default function ContactsPage() {
       origin: '',
       isCompany: false,
       companyId: '',
+      company: '',
       statusId: '',
       assignedCommercialId: '',
       assignedTeleproId: '',
@@ -678,10 +681,15 @@ export default function ContactsPage() {
                               </span>
                             )}
                           </div>
-                          {contact.company && (
+                          {contact.companyName && (
+                            <div className="text-xs text-gray-500">
+                              Entreprise: {contact.companyName}
+                            </div>
+                          )}
+                          {!contact.companyName && contact.companyRelation && (
                             <div className="text-xs text-gray-500">
                               Entreprise:{' '}
-                              {contact.company.firstName || contact.company.lastName || 'Sans nom'}
+                              {contact.companyRelation.firstName || contact.companyRelation.lastName || 'Sans nom'}
                             </div>
                           )}
                           {contact.city && (

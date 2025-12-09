@@ -81,7 +81,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       city,
       postalCode,
       origin,
-      company,
+      companyName,
       isCompany,
       companyId,
       statusId,
@@ -128,7 +128,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       city: city !== undefined ? city || null : existing.city,
       postalCode: postalCode !== undefined ? postalCode || null : existing.postalCode,
       origin: origin !== undefined ? origin || null : existing.origin,
-      company: company !== undefined ? company || null : existing.company,
+      companyName: companyName !== undefined ? companyName || null : existing.companyName,
       isCompany: isCompany !== undefined ? isCompany === true : existing.isCompany,
       companyId: companyId !== undefined ? companyId || null : existing.companyId,
       statusId: statusId !== undefined ? statusId || null : existing.statusId,
@@ -174,8 +174,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (origin !== undefined && origin !== existing.origin) {
       changes.origin = { old: existing.origin, new: origin };
     }
-    if (company !== undefined && company !== existing.company) {
-      changes.company = { old: existing.company, new: company };
+    if (companyName !== undefined && companyName !== existing.companyName) {
+      changes.companyName = { old: existing.companyName, new: companyName };
     }
 
     // Mettre à jour le contact

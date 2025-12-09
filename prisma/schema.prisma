@@ -198,7 +198,7 @@ model Contact {
   city                 String?
   postalCode           String?
   origin               String? // Origine du contact
-  company              String? // Nom de l'entreprise (texte brut)
+  companyName          String? // Nom de l'entreprise (texte brut)
   isCompany            Boolean       @default(false) // Indique si le contact est une entreprise
   companyId            String? // ID de l'entreprise à laquelle ce contact est lié
   companyRelation      Contact?      @relation("ContactCompany", fields: [companyId], references: [id], onDelete: SetNull)
