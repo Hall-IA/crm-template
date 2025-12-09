@@ -84,6 +84,39 @@ export function TaskReminderProvider({ children }: { children: React.ReactNode }
     return () => clearInterval(interval);
   }, [session, isAdmin]);
 
+  // Supprimer les notifications des tâches qui n'existent plus
+  useEffect(() => {
+    if (!session) return;
+
+    const taskIds = new Set(tasks.map((task) => task.id));
+    setNotifications((prev) =>
+      prev.filter((notif) => {
+        // Extraire l'ID de la tâche depuis l'ID de la notification
+        // Format: `${task.id}-due` ou `${task.id}-reminder`
+        let taskId: string;
+        if (notif.id.endsWith('-due')) {
+          taskId = notif.id.slice(0, -4); // Retirer '-due'
+        } else if (notif.id.endsWith('-reminder')) {
+          taskId = notif.id.slice(0, -9); // Retirer '-reminder'
+        } else {
+          // Format inattendu, on garde la notification pour éviter de la supprimer par erreur
+          return true;
+        }
+        return taskIds.has(taskId);
+      }),
+    );
+
+    // Nettoyer aussi les clés de notification des tâches supprimées
+    const validKeys = new Set<string>();
+    tasks.forEach((task) => {
+      validKeys.add(`${task.id}-due`);
+      validKeys.add(`${task.id}-reminder`);
+    });
+    notifiedKeysRef.current = new Set(
+      Array.from(notifiedKeysRef.current).filter((key) => validKeys.has(key)),
+    );
+  }, [tasks, session]);
+
   // Génération des notifications
   useEffect(() => {
     if (!session) return;
