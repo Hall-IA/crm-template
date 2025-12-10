@@ -2713,16 +2713,29 @@ export default function ContactDetailPage() {
                                   </span>
                                   <span>•</span>
                                   <span>
-                                    {new Date(file.createdAt).toLocaleDateString('fr-FR', {
-                                      day: 'numeric',
-                                      month: 'short',
-                                      year: 'numeric',
-                                    })}{' '}
-                                    à{' '}
-                                    {new Date(file.createdAt).toLocaleTimeString('fr-FR', {
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                    })}
+                                    {(() => {
+                                      // Utiliser updatedAt si le fichier a été modifié, sinon createdAt
+                                      const displayDate =
+                                        file.updatedAt &&
+                                        new Date(file.updatedAt).getTime() !==
+                                          new Date(file.createdAt).getTime()
+                                          ? new Date(file.updatedAt)
+                                          : new Date(file.createdAt);
+                                      return (
+                                        <>
+                                          {displayDate.toLocaleDateString('fr-FR', {
+                                            day: 'numeric',
+                                            month: 'short',
+                                            year: 'numeric',
+                                          })}{' '}
+                                          à{' '}
+                                          {displayDate.toLocaleTimeString('fr-FR', {
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                          })}
+                                        </>
+                                      );
+                                    })()}
                                   </span>
                                 </div>
                               </div>

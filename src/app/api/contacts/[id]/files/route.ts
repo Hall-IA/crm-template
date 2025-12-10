@@ -191,6 +191,7 @@ export async function POST(
       webViewLink,
       uploadedBy: contactFile.uploadedBy,
       createdAt: contactFile.createdAt,
+      updatedAt: contactFile.updatedAt,
     });
   } catch (error: any) {
     console.error('Erreur lors de l\'upload du fichier:', error);
@@ -261,6 +262,7 @@ export async function GET(
               webViewLink: fileInfo.webViewLink,
               uploadedBy: file.uploadedBy,
               createdAt: file.createdAt,
+              updatedAt: file.updatedAt,
             };
           }
         } catch (error) {
@@ -275,6 +277,7 @@ export async function GET(
           webViewLink: `https://drive.google.com/file/d/${file.googleDriveFileId}/view`,
           uploadedBy: file.uploadedBy,
           createdAt: file.createdAt,
+          updatedAt: file.updatedAt,
         };
       }),
     );
