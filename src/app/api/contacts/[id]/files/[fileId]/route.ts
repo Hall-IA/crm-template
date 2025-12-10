@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { deleteFileFromDrive } from '@/lib/google-drive';
+import { logFileDeleted } from '@/lib/contact-interactions';
 
 // DELETE /api/contacts/[id]/files/[fileId] - Supprimer un fichier
 export async function DELETE(
@@ -54,6 +55,10 @@ export async function DELETE(
       );
     }
 
+    // Sauvegarder les informations du fichier avant suppression pour l'interaction
+    const fileName = file.fileName;
+    const fileSize = file.fileSize;
+
     // Supprimer le fichier de Google Drive
     try {
       await deleteFileFromDrive(session.user.id, file.googleDriveFileId);
@@ -66,6 +71,22 @@ export async function DELETE(
     await prisma.contactFile.delete({
       where: { id: fileId },
     });
+
+    // Créer une interaction pour la suppression du fichier
+    try {
+      await logFileDeleted(
+        contactId,
+        fileName,
+        fileSize,
+        session.user.id,
+      );
+    } catch (interactionError: any) {
+      console.error(
+        "Erreur lors de la création de l'interaction de suppression:",
+        interactionError,
+      );
+      // On continue même si l'interaction échoue
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

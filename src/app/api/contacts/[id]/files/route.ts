@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { uploadFileToDrive, getFileInfo } from '@/lib/google-drive';
-import { logFileUploaded } from '@/lib/contact-interactions';
+import { logFileUploaded, logFileReplaced } from '@/lib/contact-interactions';
 
 // POST /api/contacts/[id]/files - Uploader un fichier
 export async function POST(
@@ -66,51 +66,122 @@ export async function POST(
     // Nom du contact pour le dossier
     const contactName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || `Contact ${contactId}`;
 
-    // Uploader le fichier vers Google Drive
-    const { fileId, webViewLink } = await uploadFileToDrive(
-      session.user.id,
-      contactId,
-      contactName,
-      file,
-    );
-
-    // Enregistrer les métadonnées dans la base de données
-    const contactFile = await prisma.contactFile.create({
-      data: {
+    // Vérifier si un fichier avec le même nom existe déjà pour ce contact
+    const existingFile = await prisma.contactFile.findFirst({
+      where: {
         contactId,
         fileName: file.name,
-        fileSize: file.size,
-        mimeType: file.type || 'application/octet-stream',
-        googleDriveFileId: fileId,
-        uploadedById: session.user.id,
-      },
-      include: {
-        uploadedBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
       },
     });
 
-    // Créer une interaction pour l'upload du fichier
-    try {
-      await logFileUploaded(
-        contactId,
-        contactFile.id,
-        file.name,
-        file.size,
+    let contactFile;
+
+    if (existingFile) {
+      // Si le fichier existe déjà, supprimer l'ancien fichier de Google Drive
+      try {
+        const { deleteFileFromDrive } = await import('@/lib/google-drive');
+        await deleteFileFromDrive(session.user.id, existingFile.googleDriveFileId);
+      } catch (error) {
+        console.error('Erreur lors de la suppression de l\'ancien fichier:', error);
+        // On continue même si la suppression échoue
+      }
+
+      // Uploader le nouveau fichier vers Google Drive
+      const { fileId } = await uploadFileToDrive(
         session.user.id,
+        contactId,
+        contactName,
+        file,
       );
-    } catch (interactionError: any) {
-      console.error(
-        "Erreur lors de la création de l'interaction d'upload:",
-        interactionError,
+
+      // Mettre à jour l'enregistrement existant
+      contactFile = await prisma.contactFile.update({
+        where: { id: existingFile.id },
+        data: {
+          fileSize: file.size,
+          mimeType: file.type || 'application/octet-stream',
+          googleDriveFileId: fileId,
+          uploadedById: session.user.id,
+          updatedAt: new Date(),
+        },
+        include: {
+          uploadedBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      // Créer une interaction pour le remplacement du fichier
+      try {
+        await logFileReplaced(
+          contactId,
+          contactFile.id,
+          file.name,
+          file.size,
+          session.user.id,
+        );
+      } catch (interactionError: any) {
+        console.error(
+          "Erreur lors de la création de l'interaction de remplacement:",
+          interactionError,
+        );
+        // On continue même si l'interaction échoue
+      }
+    } else {
+      // Uploader le fichier vers Google Drive
+      const { fileId } = await uploadFileToDrive(
+        session.user.id,
+        contactId,
+        contactName,
+        file,
       );
-      // On continue même si l'interaction échoue
+
+      // Créer un nouvel enregistrement dans la base de données
+      contactFile = await prisma.contactFile.create({
+        data: {
+          contactId,
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: file.type || 'application/octet-stream',
+          googleDriveFileId: fileId,
+          uploadedById: session.user.id,
+        },
+        include: {
+          uploadedBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      // Créer une interaction pour l'upload du fichier (seulement si c'est un nouveau fichier)
+      try {
+        await logFileUploaded(
+          contactId,
+          contactFile.id,
+          file.name,
+          file.size,
+          session.user.id,
+        );
+      } catch (interactionError: any) {
+        console.error(
+          "Erreur lors de la création de l'interaction d'upload:",
+          interactionError,
+        );
+        // On continue même si l'interaction échoue
+      }
     }
+
+    // Récupérer le webViewLink pour la réponse
+    const fileInfo = await getFileInfo(session.user.id, contactFile.googleDriveFileId);
+    const webViewLink = fileInfo.webViewLink;
 
     return NextResponse.json({
       id: contactFile.id,

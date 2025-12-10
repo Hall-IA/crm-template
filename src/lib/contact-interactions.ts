@@ -274,13 +274,77 @@ export async function logFileUploaded(
   return await createInteraction({
     contactId,
     type: 'NOTE',
-    title: `Fichier ajouté : ${fileName}`,
+    title: `Fichier ajouté (${fileName})`,
     content: `Fichier "${fileName}" (${formatFileSize(fileSize)}) a été ajouté.`,
     userId,
     metadata: {
       fileId,
       fileName,
       fileSize,
+    },
+  });
+}
+
+/**
+ * Crée une interaction pour le remplacement d'un fichier (doublon)
+ */
+export async function logFileReplaced(
+  contactId: string,
+  fileId: string,
+  fileName: string,
+  fileSize: number,
+  userId: string,
+) {
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  return await createInteraction({
+    contactId,
+    type: 'NOTE',
+    title: `Fichier remplacé (${fileName})`,
+    content: `Le fichier "${fileName}" (${formatFileSize(fileSize)}) a été remplacé par une nouvelle version.`,
+    userId,
+    metadata: {
+      fileId,
+      fileName,
+      fileSize,
+      replaced: true,
+    },
+  });
+}
+
+/**
+ * Crée une interaction pour la suppression d'un fichier
+ */
+export async function logFileDeleted(
+  contactId: string,
+  fileName: string,
+  fileSize: number,
+  userId: string,
+) {
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  return await createInteraction({
+    contactId,
+    type: 'NOTE',
+    title: `Fichier supprimé (${fileName})`,
+    content: `Le fichier "${fileName}" (${formatFileSize(fileSize)}) a été supprimé.`,
+    userId,
+    metadata: {
+      fileName,
+      fileSize,
+      deleted: true,
     },
   });
 }

@@ -2717,6 +2717,11 @@ export default function ContactDetailPage() {
                                       day: 'numeric',
                                       month: 'short',
                                       year: 'numeric',
+                                    })}{' '}
+                                    à{' '}
+                                    {new Date(file.createdAt).toLocaleTimeString('fr-FR', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
                                     })}
                                   </span>
                                 </div>
