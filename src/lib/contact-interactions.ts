@@ -166,10 +166,14 @@ export async function logAppointmentCreated(
     minute: '2-digit',
   });
 
+  const interactionTitle = title 
+    ? `Rendez-vous créé : ${title}`
+    : 'Rendez-vous créé';
+
   return await createInteraction({
     contactId,
     type: 'APPOINTMENT_CREATED',
-    title: title || 'Rendez-vous créé',
+    title: interactionTitle,
     content: `Rendez-vous programmé le ${formattedDate}`,
     userId,
     date: scheduledAt,
@@ -200,12 +204,14 @@ export async function logAppointmentCancelled(
   });
 
   const appointmentType = isGoogleMeet ? 'Google Meet' : 'Rendez-vous';
-  const appointmentTitle = title || appointmentType;
+  const interactionTitle = title 
+    ? `${appointmentType} annulé : ${title}`
+    : `${appointmentType} annulé`;
 
   return await createInteraction({
     contactId,
     type: 'MEETING',
-    title: `${appointmentType} annulé : ${appointmentTitle}`,
+    title: interactionTitle,
     content: `${appointmentType} prévu le ${formattedDate} a été annulé.`,
     userId,
     date: scheduledAt,
