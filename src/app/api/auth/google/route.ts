@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
   const scopes = [
     'https://www.googleapis.com/auth/calendar.events',
     'https://www.googleapis.com/auth/spreadsheets.readonly',
+    'https://www.googleapis.com/auth/drive.file', // Accès aux fichiers créés par l'application
   ];
 
   const params = new URLSearchParams({

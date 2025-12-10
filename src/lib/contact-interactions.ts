@@ -252,3 +252,35 @@ export async function logAppointmentChanged(
     },
   });
 }
+
+/**
+ * Crée une interaction pour l'upload d'un fichier
+ */
+export async function logFileUploaded(
+  contactId: string,
+  fileId: string,
+  fileName: string,
+  fileSize: number,
+  userId: string,
+) {
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  return await createInteraction({
+    contactId,
+    type: 'NOTE',
+    title: `Fichier ajouté : ${fileName}`,
+    content: `Fichier "${fileName}" (${formatFileSize(fileSize)}) a été ajouté.`,
+    userId,
+    metadata: {
+      fileId,
+      fileName,
+      fileSize,
+    },
+  });
+}

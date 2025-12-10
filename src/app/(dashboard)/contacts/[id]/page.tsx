@@ -19,6 +19,9 @@ import {
   Tag,
   Edit,
   Trash2,
+  Upload,
+  Download,
+  File,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Editor, type DefaultTemplateRef } from '@/components/editor';
@@ -247,6 +250,11 @@ export default function ContactDetailPage() {
   const [deleteAppointmentLoading, setDeleteAppointmentLoading] = useState(false);
   const [deleteAppointmentNotifyContact, setDeleteAppointmentNotifyContact] = useState(false);
 
+  // Fichiers
+  const [files, setFiles] = useState<any[]>([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
+
   // Modals spécifiques pour chaque action
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
@@ -425,6 +433,7 @@ export default function ContactDetailPage() {
       fetchCompanies();
       fetchTemplates();
       fetchTasks();
+      fetchFiles();
     }
   }, [contactId]);
 
@@ -561,6 +570,87 @@ export default function ContactDetailPage() {
     } catch (error) {
       console.error('Erreur lors du chargement des tâches:', error);
     }
+  };
+
+  const fetchFiles = async () => {
+    try {
+      const response = await fetch(`/api/contacts/${contactId}/files`);
+      if (response.ok) {
+        const data = await response.json();
+        setFiles(data);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des fichiers:', error);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileInput = e.target;
+    const files = fileInput.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingFile(true);
+    setError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', files[0]);
+
+      const response = await fetch(`/api/contacts/${contactId}/files`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de l\'upload du fichier');
+      }
+
+      setSuccess('Fichier ajouté avec succès');
+      await fetchFiles();
+      fileInput.value = ''; // Réinitialiser l'input
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const handleFileDelete = async (fileId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce fichier ?')) {
+      return;
+    }
+
+    setDeletingFileId(fileId);
+    setError('');
+
+    try {
+      const response = await fetch(`/api/contacts/${contactId}/files/${fileId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la suppression du fichier');
+      }
+
+      setSuccess('Fichier supprimé avec succès');
+      await fetchFiles();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setDeletingFileId(null);
+    }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -2586,10 +2676,82 @@ export default function ContactDetailPage() {
 
                 {activeTab === 'files' && (
                   <div>
-                    <div className="mb-4">
+                    <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <h3 className="text-lg font-semibold text-gray-900">Fichiers</h3>
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
+                        <Upload className="h-4 w-4" />
+                        {uploadingFile ? 'Ajout en cours...' : 'Ajouter un fichier'}
+                        <input
+                          type="file"
+                          className="hidden"
+                          onChange={handleFileUpload}
+                          disabled={uploadingFile}
+                        />
+                      </label>
                     </div>
-                    <p className="py-8 text-center text-sm text-gray-500">Aucun fichier</p>
+
+                    {files.length === 0 ? (
+                      <p className="py-8 text-center text-sm text-gray-500">Aucun fichier</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {files.map((file) => (
+                          <div
+                            key={file.id}
+                            className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 hover:bg-gray-50"
+                          >
+                            <div className="flex min-w-0 flex-1 items-center gap-3">
+                              <File className="h-5 w-5 shrink-0 text-gray-400" />
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium text-gray-900">
+                                  {file.fileName}
+                                </p>
+                                <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                                  <span>{formatFileSize(file.fileSize)}</span>
+                                  <span>•</span>
+                                  <span>
+                                    Ajouté par {file.uploadedBy?.name || 'Utilisateur inconnu'}
+                                  </span>
+                                  <span>•</span>
+                                  <span>
+                                    {new Date(file.createdAt).toLocaleDateString('fr-FR', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      year: 'numeric',
+                                    })}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={file.webViewLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                                Ouvrir
+                              </a>
+                              <a
+                                href={`/api/contacts/${contactId}/files/${file.id}/download`}
+                                className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                                Télécharger
+                              </a>
+                              <button
+                                onClick={() => handleFileDelete(file.id)}
+                                disabled={deletingFileId === file.id}
+                                className="inline-flex items-center gap-1 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                {deletingFileId === file.id ? 'Suppression...' : 'Supprimer'}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

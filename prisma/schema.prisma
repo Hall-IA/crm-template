@@ -47,6 +47,7 @@ model User {
   googleSheetSyncConfigsOwned    GoogleSheetSyncConfig[] @relation("GoogleSheetOwner")
   googleSheetSyncConfigsAssigned GoogleSheetSyncConfig[] @relation("GoogleSheetAssignedUser")
   templates                      Template[]              @relation("TemplateCreatedBy")
+  filesUploaded                  ContactFile[]           @relation("ContactFileUploadedBy")
 
   @@unique([email])
   @@map("user")
@@ -217,6 +218,7 @@ model Contact {
   updatedAt            DateTime      @updatedAt
   interactions         Interaction[]
   tasks                Task[]
+  files                ContactFile[]
 
   @@index([statusId])
   @@index([assignedCommercialId])
@@ -305,6 +307,24 @@ model UserGoogleAccount {
   updatedAt      DateTime @updatedAt
 
   @@map("user_google_account")
+}
+
+model ContactFile {
+  id              String   @id @default(cuid())
+  contactId       String
+  contact         Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  fileName        String   // Nom original du fichier
+  fileSize        Int      // Taille en octets
+  mimeType        String   // Type MIME du fichier
+  googleDriveFileId String // ID du fichier dans Google Drive
+  uploadedById    String   // Utilisateur qui a uploadé le fichier
+  uploadedBy      User     @relation("ContactFileUploadedBy", fields: [uploadedById], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([contactId])
+  @@index([uploadedById])
+  @@map("contact_file")
 }
 
 model MetaLeadConfig {
