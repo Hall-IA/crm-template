@@ -110,6 +110,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       durationMinutes,
       attendees,
       notifyContact,
+      internalNote,
     } = body;
 
     // Vérifier que la tâche existe
@@ -147,6 +148,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
     if (notifyContact !== undefined) {
       updateData.notifyContact = notifyContact === true;
+    }
+    if (internalNote !== undefined) {
+      updateData.internalNote = internalNote || null;
     }
     if (completed !== undefined) {
       updateData.completed = completed;
@@ -315,7 +319,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         if (smtpConfig && task.googleMeetLink) {
           // Récupérer les invités depuis Google Calendar
           let allRecipients: string[] = [];
-          if (task.contact.email) {
+          if (task.contact?.email) {
             allRecipients.push(task.contact.email);
           }
 
@@ -377,7 +381,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           });
 
           const contactName =
-            `${task.contact.firstName || ''} ${task.contact.lastName || ''}`.trim() ||
+            `${task.contact?.firstName || ''} ${task.contact?.lastName || ''}`.trim() ||
             'Cher client';
           const organizerName = organizer?.name || session.user.name || 'Organisateur';
 

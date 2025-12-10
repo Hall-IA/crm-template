@@ -221,6 +221,7 @@ export default function ContactDetailPage() {
     assignedUserId: string;
     reminderMinutesBefore: number | null;
     notifyContact: boolean;
+    internalNote?: string;
   }>({
     title: '',
     description: '',
@@ -261,6 +262,7 @@ export default function ContactDetailPage() {
     assignedUserId: '',
     reminderMinutesBefore: null as number | null,
     notifyContact: false,
+    internalNote: '',
   });
   const [callData, setCallData] = useState({
     title: '',
@@ -903,6 +905,7 @@ export default function ContactDetailPage() {
           assignedUserId: meetingData.assignedUserId || undefined,
           reminderMinutesBefore: meetingData.reminderMinutesBefore ?? null,
           notifyContact: meetingData.notifyContact,
+          internalNote: meetingData.internalNote || null,
         }),
       });
 
@@ -921,6 +924,7 @@ export default function ContactDetailPage() {
         assignedUserId: '',
         reminderMinutesBefore: null,
         notifyContact: false,
+        internalNote: '',
       });
       setSuccess('Rendez-vous créé avec succès !');
       fetchContact();
@@ -1242,7 +1246,7 @@ export default function ContactDetailPage() {
     // Demander confirmation
     if (
       !confirm(
-        'Êtes-vous sûr de vouloir annuler ce rendez-vous ? Une interaction sera créée dans le fil d\'actualité.',
+        "Êtes-vous sûr de vouloir annuler ce rendez-vous ? Une interaction sera créée dans le fil d'actualité.",
       )
     ) {
       return;
@@ -1261,7 +1265,7 @@ export default function ContactDetailPage() {
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || 'Erreur lors de l\'annulation du rendez-vous');
+        throw new Error(data.error || "Erreur lors de l'annulation du rendez-vous");
       }
 
       setShowViewAppointmentModal(false);
@@ -1306,6 +1310,7 @@ export default function ContactDetailPage() {
           assignedUserId: editAppointmentData.assignedUserId || undefined,
           reminderMinutesBefore: editAppointmentData.reminderMinutesBefore,
           notifyContact: editAppointmentData.notifyContact,
+          internalNote: editAppointmentData.internalNote || null,
         }),
       });
 
@@ -1324,6 +1329,7 @@ export default function ContactDetailPage() {
         assignedUserId: '',
         reminderMinutesBefore: null,
         notifyContact: false,
+        internalNote: '',
       });
       setSuccess('Rendez-vous modifié avec succès !');
       fetchContact();
@@ -1633,7 +1639,9 @@ export default function ContactDetailPage() {
               )}
               {!contact.companyName && contact.companyRelation && (
                 <p className="mt-1 truncate text-xs text-gray-500 sm:text-sm">
-                  {contact.companyRelation.firstName || contact.companyRelation.lastName || 'Entreprise sans nom'}
+                  {contact.companyRelation.firstName ||
+                    contact.companyRelation.lastName ||
+                    'Entreprise sans nom'}
                 </p>
               )}
             </div>
@@ -1672,6 +1680,7 @@ export default function ContactDetailPage() {
                   assignedUserId: '',
                   reminderMinutesBefore: null,
                   notifyContact: false,
+                  internalNote: '',
                 });
                 setError('');
                 setSuccess('');
@@ -1924,9 +1933,7 @@ export default function ContactDetailPage() {
 
                 {/* Entreprise - Toujours affichée */}
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Entreprise
-                  </label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Entreprise</label>
                   <input
                     type="text"
                     value={formData.company || ''}
@@ -1949,7 +1956,6 @@ export default function ContactDetailPage() {
                     className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
-
 
                 {/* Statut */}
                 <div>
@@ -2138,18 +2144,19 @@ export default function ContactDetailPage() {
                                               {getInteractionLabel(interaction.type)}
                                               {interaction.title && `: ${interaction.title}`}
                                             </p>
-                                            {interaction.type === 'EMAIL' && interaction.emailTracking && (
-                                              <span
-                                                className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-                                                  interaction.emailTracking.openCount > 0
-                                                    ? 'bg-green-100 text-green-700'
-                                                    : 'bg-gray-100 text-gray-600'
-                                                }`}
-                                                title={`${interaction.emailTracking.openCount} ouverture${interaction.emailTracking.openCount > 1 ? 's' : ''}`}
-                                              >
-                                                👁️ {interaction.emailTracking.openCount}
-                                              </span>
-                                            )}
+                                            {interaction.type === 'EMAIL' &&
+                                              interaction.emailTracking && (
+                                                <span
+                                                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                    interaction.emailTracking.openCount > 0
+                                                      ? 'bg-green-100 text-green-700'
+                                                      : 'bg-gray-100 text-gray-600'
+                                                  }`}
+                                                  title={`${interaction.emailTracking.openCount} ouverture${interaction.emailTracking.openCount > 1 ? 's' : ''}`}
+                                                >
+                                                  👁️ {interaction.emailTracking.openCount}
+                                                </span>
+                                              )}
                                           </div>
                                           {interaction.content && (
                                             <p className="wrap-break-words mt-1 line-clamp-2 text-xs text-gray-700">
@@ -2989,6 +2996,22 @@ export default function ContactDetailPage() {
                 </label>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Note personnelle</label>
+                <p className="mt-1 text-xs text-gray-500">
+                  Cette note ne sera pas visible par le contact s'il est prévenu par email.
+                </p>
+                <textarea
+                  value={editAppointmentData.internalNote}
+                  onChange={(e) =>
+                    setEditAppointmentData({ ...editAppointmentData, internalNote: e.target.value })
+                  }
+                  rows={3}
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Ajoutez une note personnelle sur ce rendez-vous..."
+                />
+              </div>
+
               {editAppointmentError && (
                 <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
                   {editAppointmentError}
@@ -3748,6 +3771,7 @@ export default function ContactDetailPage() {
                       assignedUserId: '',
                       reminderMinutesBefore: null,
                       notifyContact: false,
+                      internalNote: '',
                     });
                     setError('');
                   }}
@@ -3938,6 +3962,20 @@ export default function ContactDetailPage() {
                 </label>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Note personnelle</label>
+                <p className="mt-1 text-xs text-gray-500">
+                  Cette note ne sera pas visible par le contact s'il est prévenu par email.
+                </p>
+                <textarea
+                  value={meetingData.internalNote}
+                  onChange={(e) => setMeetingData({ ...meetingData, internalNote: e.target.value })}
+                  rows={3}
+                  className="mt-1 block w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Ajoutez une note personnelle sur ce rendez-vous..."
+                />
+              </div>
+
               {error && (
                 <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>
               )}
@@ -3958,6 +3996,7 @@ export default function ContactDetailPage() {
                       assignedUserId: '',
                       reminderMinutesBefore: null,
                       notifyContact: false,
+                      internalNote: '',
                     });
                     setError('');
                   }}
@@ -4998,7 +5037,9 @@ email2@example.com`}
               {/* Statistiques de tracking pour les emails */}
               {viewingActivity.type === 'EMAIL' && viewingActivity.emailTracking && (
                 <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
-                  <p className="mb-2 text-sm font-medium text-blue-900">📊 Statistiques d'ouverture</p>
+                  <p className="mb-2 text-sm font-medium text-blue-900">
+                    📊 Statistiques d'ouverture
+                  </p>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-blue-800">Nombre d'ouvertures :</span>
@@ -5329,7 +5370,8 @@ email2@example.com`}
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-gray-700">Assigné à :</span>
                       <span className="text-sm text-gray-600">
-                        {viewingAppointment.assignedUser.name || viewingAppointment.assignedUser.email}
+                        {viewingAppointment.assignedUser.name ||
+                          viewingAppointment.assignedUser.email}
                       </span>
                     </div>
                   )}
@@ -5402,13 +5444,11 @@ email2@example.com`}
                         assignedUserId: viewingAppointment.assignedUserId || '',
                         reminderMinutesBefore: viewingAppointment.reminderMinutesBefore || null,
                         notifyContact: viewingAppointment.notifyContact || false,
+                        internalNote: viewingAppointment.internalNote || '',
                       });
                       setShowEditAppointmentModal(true);
                       setTimeout(() => {
-                        if (
-                          editAppointmentEditorRef.current &&
-                          viewingAppointment.description
-                        ) {
+                        if (editAppointmentEditorRef.current && viewingAppointment.description) {
                           editAppointmentEditorRef.current.injectHTML(
                             viewingAppointment.description,
                           );
@@ -5434,8 +5474,8 @@ email2@example.com`}
                         <p className="text-sm font-medium text-blue-900">Prévenir le contact</p>
                         <p className="mt-1 text-xs text-blue-700">
                           {viewingAppointment.notifyContact
-                            ? 'Le contact avait été prévenu lors de la création. Il sera automatiquement informé de l\'annulation.'
-                            : 'Un email d\'annulation sera envoyé au contact.'}
+                            ? "Le contact avait été prévenu lors de la création. Il sera automatiquement informé de l'annulation."
+                            : "Un email d'annulation sera envoyé au contact."}
                         </p>
                         {!contact.email && (
                           <p className="mt-1 text-xs font-medium text-orange-700">

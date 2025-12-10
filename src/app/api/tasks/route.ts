@@ -127,6 +127,7 @@ export async function POST(request: NextRequest) {
       assignedUserId,
       reminderMinutesBefore,
       notifyContact,
+      internalNote,
     } = body;
 
     // Validation
@@ -177,6 +178,7 @@ export async function POST(request: NextRequest) {
         reminderMinutesBefore:
           typeof reminderMinutesBefore === 'number' ? reminderMinutesBefore : null,
         notifyContact: notifyContact === true,
+        internalNote: internalNote || null,
       },
       include: {
         contact: {
