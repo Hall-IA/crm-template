@@ -5381,94 +5381,16 @@ email2@example.com`}
 
             {/* Pied de modal fixe avec boutons */}
             <div className="shrink-0 border-t border-gray-100 px-6 py-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowViewAppointmentModal(false);
-                    setViewingAppointment(null);
-                  }}
-                  className="cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-                >
-                  Fermer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowViewAppointmentModal(false);
-                    // Ouvrir le modal d'édition approprié
-                    if (viewingAppointment.type === 'VIDEO_CONFERENCE') {
-                      setEditingMeetTask(viewingAppointment);
-                      const scheduledDate = new Date(viewingAppointment.scheduledAt);
-                      const year = scheduledDate.getFullYear();
-                      const month = String(scheduledDate.getMonth() + 1).padStart(2, '0');
-                      const day = String(scheduledDate.getDate()).padStart(2, '0');
-                      const hours = String(scheduledDate.getHours()).padStart(2, '0');
-                      const minutes = String(scheduledDate.getMinutes()).padStart(2, '0');
-                      const localDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
-
-                      const fetchAttendees = async () => {
-                        let attendeesList: string[] = [];
-                        if (viewingAppointment.googleEventId) {
-                          try {
-                            const response = await fetch(
-                              `/api/tasks/${viewingAppointment.id}/attendees`,
-                            );
-                            if (response.ok) {
-                              const data = await response.json();
-                              attendeesList = data.attendees || [];
-                            }
-                          } catch (error) {
-                            console.error('Erreur lors de la récupération des invités:', error);
-                          }
-                        }
-
-                        setEditMeetData({
-                          scheduledAt: localDateTime,
-                          durationMinutes: viewingAppointment.durationMinutes || 30,
-                          attendees: attendeesList,
-                        });
-                        setShowEditMeetModal(true);
-                      };
-
-                      fetchAttendees();
-                    } else {
-                      setEditingAppointment(viewingAppointment);
-                      setEditAppointmentData({
-                        title: viewingAppointment.title || '',
-                        description: viewingAppointment.description || '',
-                        scheduledAt: viewingAppointment.scheduledAt
-                          ? new Date(viewingAppointment.scheduledAt).toISOString().slice(0, 16)
-                          : '',
-                        priority: viewingAppointment.priority || 'MEDIUM',
-                        assignedUserId: viewingAppointment.assignedUserId || '',
-                        reminderMinutesBefore: viewingAppointment.reminderMinutesBefore || null,
-                        notifyContact: viewingAppointment.notifyContact || false,
-                        internalNote: viewingAppointment.internalNote || '',
-                      });
-                      setShowEditAppointmentModal(true);
-                      setTimeout(() => {
-                        if (editAppointmentEditorRef.current && viewingAppointment.description) {
-                          editAppointmentEditorRef.current.injectHTML(
-                            viewingAppointment.description,
-                          );
-                        }
-                      }, 200);
-                    }
-                    setViewingAppointment(null);
-                  }}
-                  className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
-                >
-                  Modifier
-                </button>
+              <div className="flex flex-col gap-3">
+                {/* Checkbox pour prévenir le contact (uniquement pour rendez-vous physique) */}
                 {viewingAppointment.type === 'MEETING' && (
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
                     <label className="flex cursor-pointer items-start gap-3">
                       <input
                         type="checkbox"
                         checked={deleteAppointmentNotifyContact}
                         onChange={(e) => setDeleteAppointmentNotifyContact(e.target.checked)}
-                        className="mt-0.5 h-4 w-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                       />
                       <div className="flex-1">
                         <p className="text-sm font-medium text-blue-900">Prévenir le contact</p>
@@ -5486,32 +5408,115 @@ email2@example.com`}
                     </label>
                   </div>
                 )}
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (viewingAppointment.type === 'VIDEO_CONFERENCE') {
-                      // Pour Google Meet, utiliser handleDeleteMeet
-                      setEditingMeetTask(viewingAppointment);
+
+                {/* Boutons d'action */}
+                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
                       setShowViewAppointmentModal(false);
                       setViewingAppointment(null);
-                      await handleDeleteMeet();
-                    } else {
-                      // Pour rendez-vous physique, utiliser handleDeleteAppointment
-                      await handleDeleteAppointment();
-                    }
-                  }}
-                  disabled={deleteAppointmentLoading || deleteMeetLoading}
-                  className="cursor-pointer rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {deleteAppointmentLoading || deleteMeetLoading ? (
-                    'Annulation...'
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <Trash2 className="h-4 w-4" />
-                      Annuler
-                    </span>
-                  )}
-                </button>
+                    }}
+                    className="h-fit cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    Fermer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowViewAppointmentModal(false);
+                      // Ouvrir le modal d'édition approprié
+                      if (viewingAppointment.type === 'VIDEO_CONFERENCE') {
+                        setEditingMeetTask(viewingAppointment);
+                        const scheduledDate = new Date(viewingAppointment.scheduledAt);
+                        const year = scheduledDate.getFullYear();
+                        const month = String(scheduledDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(scheduledDate.getDate()).padStart(2, '0');
+                        const hours = String(scheduledDate.getHours()).padStart(2, '0');
+                        const minutes = String(scheduledDate.getMinutes()).padStart(2, '0');
+                        const localDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+                        const fetchAttendees = async () => {
+                          let attendeesList: string[] = [];
+                          if (viewingAppointment.googleEventId) {
+                            try {
+                              const response = await fetch(
+                                `/api/tasks/${viewingAppointment.id}/attendees`,
+                              );
+                              if (response.ok) {
+                                const data = await response.json();
+                                attendeesList = data.attendees || [];
+                              }
+                            } catch (error) {
+                              console.error('Erreur lors de la récupération des invités:', error);
+                            }
+                          }
+
+                          setEditMeetData({
+                            scheduledAt: localDateTime,
+                            durationMinutes: viewingAppointment.durationMinutes || 30,
+                            attendees: attendeesList,
+                          });
+                          setShowEditMeetModal(true);
+                        };
+
+                        fetchAttendees();
+                      } else {
+                        setEditingAppointment(viewingAppointment);
+                        setEditAppointmentData({
+                          title: viewingAppointment.title || '',
+                          description: viewingAppointment.description || '',
+                          scheduledAt: viewingAppointment.scheduledAt
+                            ? new Date(viewingAppointment.scheduledAt).toISOString().slice(0, 16)
+                            : '',
+                          priority: viewingAppointment.priority || 'MEDIUM',
+                          assignedUserId: viewingAppointment.assignedUserId || '',
+                          reminderMinutesBefore: viewingAppointment.reminderMinutesBefore || null,
+                          notifyContact: viewingAppointment.notifyContact || false,
+                          internalNote: viewingAppointment.internalNote || '',
+                        });
+                        setShowEditAppointmentModal(true);
+                        setTimeout(() => {
+                          if (editAppointmentEditorRef.current && viewingAppointment.description) {
+                            editAppointmentEditorRef.current.injectHTML(
+                              viewingAppointment.description,
+                            );
+                          }
+                        }, 200);
+                      }
+                      setViewingAppointment(null);
+                    }}
+                    className="h-fit cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+                  >
+                    Modifier
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (viewingAppointment.type === 'VIDEO_CONFERENCE') {
+                        // Pour Google Meet, utiliser handleDeleteMeet
+                        setEditingMeetTask(viewingAppointment);
+                        setShowViewAppointmentModal(false);
+                        setViewingAppointment(null);
+                        await handleDeleteMeet();
+                      } else {
+                        // Pour rendez-vous physique, utiliser handleDeleteAppointment
+                        await handleDeleteAppointment();
+                      }
+                    }}
+                    disabled={deleteAppointmentLoading || deleteMeetLoading}
+                    className="h-fit cursor-pointer rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {deleteAppointmentLoading || deleteMeetLoading ? (
+                      'Annulation...'
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <Trash2 className="h-4 w-4" />
+                        Annuler
+                      </span>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
