@@ -253,7 +253,11 @@ export default function ContactDetailPage() {
   // Fichiers
   const [files, setFiles] = useState<any[]>([]);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadingFileName, setUploadingFileName] = useState<string | null>(null);
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
+  const [showDeleteFileModal, setShowDeleteFileModal] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<{ id: string; name: string } | null>(null);
 
   // Modals spécifiques pour chaque action
   const [showMeetingModal, setShowMeetingModal] = useState(false);
@@ -589,17 +593,34 @@ export default function ContactDetailPage() {
     const files = fileInput.files;
     if (!files || files.length === 0) return;
 
+    const file = files[0];
     setUploadingFile(true);
+    setUploadProgress(0);
+    setUploadingFileName(file.name);
     setError('');
 
     try {
       const formData = new FormData();
-      formData.append('file', files[0]);
+      formData.append('file', file);
+
+      // Simuler la progression (l'API ne supporte pas encore le suivi de progression)
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
 
       const response = await fetch(`/api/contacts/${contactId}/files`, {
         method: 'POST',
         body: formData,
       });
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
 
       const data = await response.json();
 
@@ -608,25 +629,38 @@ export default function ContactDetailPage() {
       }
 
       setSuccess('Fichier ajouté avec succès');
+      setTimeout(() => setSuccess(''), 5000);
       await fetchFiles();
       fileInput.value = ''; // Réinitialiser l'input
+      
+      // Réinitialiser après un court délai pour voir la progression complète
+      setTimeout(() => {
+        setUploadingFile(false);
+        setUploadProgress(0);
+        setUploadingFileName(null);
+      }, 500);
     } catch (err: any) {
       setError(err.message);
-    } finally {
       setUploadingFile(false);
+      setUploadProgress(0);
+      setUploadingFileName(null);
     }
   };
 
-  const handleFileDelete = async (fileId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce fichier ?')) {
-      return;
-    }
+  const handleFileDeleteClick = (fileId: string, fileName: string) => {
+    setFileToDelete({ id: fileId, name: fileName });
+    setShowDeleteFileModal(true);
+  };
 
-    setDeletingFileId(fileId);
+  const handleFileDeleteConfirm = async () => {
+    if (!fileToDelete) return;
+
+    setDeletingFileId(fileToDelete.id);
     setError('');
+    setShowDeleteFileModal(false);
 
     try {
-      const response = await fetch(`/api/contacts/${contactId}/files/${fileId}`, {
+      const response = await fetch(`/api/contacts/${contactId}/files/${fileToDelete.id}`, {
         method: 'DELETE',
       });
 
@@ -637,11 +671,13 @@ export default function ContactDetailPage() {
       }
 
       setSuccess('Fichier supprimé avec succès');
+      setTimeout(() => setSuccess(''), 5000);
       await fetchFiles();
     } catch (err: any) {
       setError(err.message);
     } finally {
       setDeletingFileId(null);
+      setFileToDelete(null);
     }
   };
 
@@ -1618,6 +1654,28 @@ export default function ContactDetailPage() {
                   <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="h-6 w-32 animate-pulse rounded bg-gray-200" />
                     <div className="h-9 w-40 animate-pulse rounded-lg bg-gray-200" />
+                  </div>
+                  {/* Skeleton pour l'onglet Fichiers */}
+                  <div className="space-y-2">
+                    {[...Array(2)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4"
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <div className="h-5 w-5 shrink-0 animate-pulse rounded bg-gray-200" />
+                          <div className="min-w-0 flex-1 space-y-2">
+                            <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
+                            <div className="h-3 w-48 animate-pulse rounded bg-gray-200" />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="h-7 w-20 animate-pulse rounded-lg bg-gray-200" />
+                          <div className="h-7 w-24 animate-pulse rounded-lg bg-gray-200" />
+                          <div className="h-7 w-20 animate-pulse rounded-lg bg-gray-200" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                   <div className="space-y-6">
                     {[...Array(3)].map((_, i) => (
@@ -2690,6 +2748,29 @@ export default function ContactDetailPage() {
                       </label>
                     </div>
 
+                    {/* Loader d'upload avec progression */}
+                    {uploadingFile && uploadingFileName && (
+                      <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+                        <div className="mb-2 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+                            <span className="text-sm font-medium text-indigo-900">
+                              Upload de {uploadingFileName}
+                            </span>
+                          </div>
+                          <span className="text-sm font-medium text-indigo-600">
+                            {uploadProgress}%
+                          </span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-indigo-200">
+                          <div
+                            className="h-full bg-indigo-600 transition-all duration-300 ease-out"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     {files.length === 0 ? (
                       <p className="py-8 text-center text-sm text-gray-500">Aucun fichier</p>
                     ) : (
@@ -2758,12 +2839,21 @@ export default function ContactDetailPage() {
                                 Télécharger
                               </a>
                               <button
-                                onClick={() => handleFileDelete(file.id)}
+                                onClick={() => handleFileDeleteClick(file.id, file.fileName)}
                                 disabled={deletingFileId === file.id}
                                 className="inline-flex items-center gap-1 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50"
                               >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                {deletingFileId === file.id ? 'Suppression...' : 'Supprimer'}
+                                {deletingFileId === file.id ? (
+                                  <>
+                                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-red-700 border-t-transparent" />
+                                    <span>Suppression...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    <span>Supprimer</span>
+                                  </>
+                                )}
                               </button>
                             </div>
                           </div>
@@ -5743,6 +5833,42 @@ email2@example.com`}
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmation de suppression de fichier */}
+      {showDeleteFileModal && fileToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/20 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-lg bg-white shadow-xl">
+            <div className="border-b border-gray-200 px-6 py-4">
+              <h3 className="text-lg font-semibold text-gray-900">Supprimer le fichier</h3>
+            </div>
+            <div className="px-6 py-4">
+              <p className="text-sm text-gray-600">
+                Êtes-vous sûr de vouloir supprimer le fichier <strong>{fileToDelete.name}</strong> ?
+                Cette action est irréversible.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteFileModal(false);
+                  setFileToDelete(null);
+                }}
+                className="cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleFileDeleteConfirm}
+                className="cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+              >
+                Supprimer
+              </button>
             </div>
           </div>
         </div>
