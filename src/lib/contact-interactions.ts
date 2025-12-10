@@ -4,10 +4,10 @@ import { InteractionType } from '../../generated/prisma/client';
 interface CreateInteractionParams {
   contactId: string;
   type: InteractionType;
-  title?: string;
+  title?: string | null;
   content: string;
   userId: string;
-  date?: Date;
+  date?: Date | null;
   metadata?: Record<string, any>;
 }
 
@@ -21,11 +21,11 @@ export async function createInteraction(params: CreateInteractionParams) {
     data: {
       contactId,
       type,
-      title: title || null,
+      title: title ?? null,
       content,
       userId,
-      date: date || null,
-      metadata: metadata || undefined,
+      date: date ?? null,
+      metadata: metadata ?? undefined,
     },
   });
 }
@@ -166,14 +166,10 @@ export async function logAppointmentCreated(
     minute: '2-digit',
   });
 
-  const interactionTitle = title 
-    ? `Rendez-vous créé : ${title}`
-    : 'Rendez-vous créé';
-
   return await createInteraction({
     contactId,
     type: 'APPOINTMENT_CREATED',
-    title: interactionTitle,
+    title: title ?? null, // Enregistrer seulement le titre
     content: `Rendez-vous programmé le ${formattedDate}`,
     userId,
     date: scheduledAt,
@@ -204,14 +200,11 @@ export async function logAppointmentCancelled(
   });
 
   const appointmentType = isGoogleMeet ? 'Google Meet' : 'Rendez-vous';
-  const interactionTitle = title 
-    ? `${appointmentType} annulé : ${title}`
-    : `${appointmentType} annulé`;
 
   return await createInteraction({
     contactId,
-    type: 'MEETING',
-    title: interactionTitle,
+    type: 'APPOINTMENT_DELETED',
+    title: title ?? null, // Enregistrer seulement le titre
     content: `${appointmentType} prévu le ${formattedDate} a été annulé.`,
     userId,
     date: scheduledAt,
@@ -219,6 +212,42 @@ export async function logAppointmentCancelled(
       taskId,
       scheduledAt: scheduledAt.toISOString(),
       cancelled: true,
+      isGoogleMeet,
+    },
+  });
+}
+
+/**
+ * Crée une interaction pour la modification d'un rendez-vous
+ */
+export async function logAppointmentChanged(
+  contactId: string,
+  taskId: string,
+  scheduledAt: Date,
+  title: string | null,
+  userId: string,
+  isGoogleMeet: boolean = false,
+) {
+  const formattedDate = scheduledAt.toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const appointmentType = isGoogleMeet ? 'Google Meet' : 'Rendez-vous';
+
+  return await createInteraction({
+    contactId,
+    type: 'APPOINTMENT_CHANGED',
+    title: title ?? null, // Enregistrer seulement le titre
+    content: `${appointmentType} programmé le ${formattedDate} a été modifié.`,
+    userId,
+    date: scheduledAt,
+    metadata: {
+      taskId,
+      scheduledAt: scheduledAt.toISOString(),
       isGoogleMeet,
     },
   });

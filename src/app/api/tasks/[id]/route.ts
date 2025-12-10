@@ -10,7 +10,7 @@ import {
 } from '@/lib/google-calendar';
 import nodemailer from 'nodemailer';
 import { decrypt } from '@/lib/encryption';
-import { logAppointmentCancelled } from '@/lib/contact-interactions';
+import { logAppointmentCancelled, logAppointmentChanged } from '@/lib/contact-interactions';
 
 function htmlToText(html: string): string {
   if (!html) return '';
@@ -292,6 +292,26 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         },
       },
     });
+
+    // Créer une interaction pour la modification si c'est un rendez-vous
+    if (task.contactId && (existingTask.type === 'MEETING' || existingTask.type === 'VIDEO_CONFERENCE')) {
+      try {
+        await logAppointmentChanged(
+          task.contactId,
+          task.id,
+          task.scheduledAt,
+          task.title,
+          session.user.id,
+          existingTask.type === 'VIDEO_CONFERENCE',
+        );
+      } catch (interactionError: any) {
+        console.error(
+          "Erreur lors de la création de l'interaction de modification:",
+          interactionError,
+        );
+        // On continue même si l'interaction échoue
+      }
+    }
 
     // Déterminer si on doit envoyer un email de modification
     const shouldNotifyForGoogleMeet =
@@ -717,6 +737,12 @@ export async function DELETE(
     // Créer une interaction pour l'annulation si c'est un Google Meet ou un RDV
     if (task.contactId && (task.type === 'VIDEO_CONFERENCE' || task.type === 'MEETING')) {
       try {
+        console.log('Création interaction annulation pour task:', {
+          contactId: task.contactId,
+          taskId: task.id,
+          type: task.type,
+          title: task.title,
+        });
         await logAppointmentCancelled(
           task.contactId,
           task.id,
@@ -725,6 +751,7 @@ export async function DELETE(
           session.user.id,
           task.type === 'VIDEO_CONFERENCE',
         );
+        console.log('Interaction d\'annulation créée avec succès');
       } catch (interactionError: any) {
         console.error(
           "Erreur lors de la création de l'interaction d'annulation:",
@@ -732,6 +759,11 @@ export async function DELETE(
         );
         // On continue même si l'interaction échoue
       }
+    } else {
+      console.log('Pas de création d\'interaction - conditions non remplies:', {
+        contactId: task.contactId,
+        type: task.type,
+      });
     }
 
     // Supprimer la tâche

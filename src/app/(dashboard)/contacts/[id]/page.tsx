@@ -51,6 +51,8 @@ interface Interaction {
     | 'STATUS_CHANGE'
     | 'CONTACT_UPDATE'
     | 'APPOINTMENT_CREATED'
+    | 'APPOINTMENT_DELETED'
+    | 'APPOINTMENT_CHANGED'
     | 'ASSIGNMENT_CHANGE';
   title: string | null;
   content: string;
@@ -291,7 +293,16 @@ export default function ContactDetailPage() {
   const groupedActivities = useMemo(() => {
     if (!contact) return {};
     // Types d'activités : actions effectuées par l'utilisateur
-    const activityTypes = ['EMAIL', 'CALL', 'SMS', 'NOTE', 'MEETING', 'APPOINTMENT_CREATED'];
+    const activityTypes = [
+      'EMAIL',
+      'CALL',
+      'SMS',
+      'NOTE',
+      'MEETING',
+      'APPOINTMENT_CREATED',
+      'APPOINTMENT_DELETED',
+      'APPOINTMENT_CHANGED',
+    ];
     const activities = contact.interactions
       .filter((interaction) => activityTypes.includes(interaction.type))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -1361,6 +1372,10 @@ export default function ContactDetailPage() {
         return <Edit className="h-5 w-5 text-indigo-600" />;
       case 'APPOINTMENT_CREATED':
         return <CalendarIcon className="h-5 w-5 text-orange-600" />;
+      case 'APPOINTMENT_DELETED':
+        return <CalendarIcon className="h-5 w-5 text-yellow-600" />;
+      case 'APPOINTMENT_CHANGED':
+        return <CalendarIcon className="h-5 w-5 text-blue-600" />;
       case 'ASSIGNMENT_CHANGE':
         return <User className="h-5 w-5 text-teal-600" />;
       default:
@@ -1386,11 +1401,41 @@ export default function ContactDetailPage() {
         return 'Modification';
       case 'APPOINTMENT_CREATED':
         return 'Rendez-vous créé';
+      case 'APPOINTMENT_DELETED':
+        return 'Rendez-vous annulé';
+      case 'APPOINTMENT_CHANGED':
+        return 'Rendez-vous modifié';
       case 'ASSIGNMENT_CHANGE':
         return "Changement d'assignation";
       default:
         return 'Interaction';
     }
+  };
+
+  const formatInteractionTitle = (interaction: Interaction) => {
+    const { type, title } = interaction;
+
+    // Pour les types APPOINTMENT, formater comme "Rendez-vous [action] : [titre]"
+    if (
+      type === 'APPOINTMENT_CREATED' ||
+      type === 'APPOINTMENT_DELETED' ||
+      type === 'APPOINTMENT_CHANGED'
+    ) {
+      const action =
+        type === 'APPOINTMENT_CREATED'
+          ? 'créé'
+          : type === 'APPOINTMENT_DELETED'
+            ? 'annulé'
+            : 'modifié';
+      if (title) {
+        return `Rendez-vous ${action} : ${title}`;
+      }
+      return `Rendez-vous ${action}`;
+    }
+
+    // Pour les autres types, utiliser le label + titre
+    const label = getInteractionLabel(type);
+    return title ? `${label} : ${title}` : label;
   };
 
   if (loading) {
@@ -2118,6 +2163,10 @@ export default function ContactDetailPage() {
                                         return 'bg-yellow-50 border-yellow-200';
                                       case 'APPOINTMENT_CREATED':
                                         return 'bg-orange-50 border-orange-200';
+                                      case 'APPOINTMENT_DELETED':
+                                        return 'bg-yellow-50 border-yellow-200';
+                                      case 'APPOINTMENT_CHANGED':
+                                        return 'bg-blue-50 border-blue-200';
                                       default:
                                         return 'bg-gray-50 border-gray-200';
                                     }
@@ -2141,8 +2190,7 @@ export default function ContactDetailPage() {
                                         <div className="min-w-0 flex-1">
                                           <div className="flex items-center gap-2">
                                             <p className="wrap-break-words text-sm font-medium text-gray-900">
-                                              {getInteractionLabel(interaction.type)}
-                                              {interaction.title && `: ${interaction.title}`}
+                                              {formatInteractionTitle(interaction)}
                                             </p>
                                             {interaction.type === 'EMAIL' &&
                                               interaction.emailTracking && (
@@ -2238,8 +2286,7 @@ export default function ContactDetailPage() {
                                         </div>
                                         <div className="min-w-0 flex-1">
                                           <p className="wrap-break-words text-sm font-medium text-gray-900">
-                                            {getInteractionLabel(interaction.type)}
-                                            {interaction.title && `: ${interaction.title}`}
+                                            {formatInteractionTitle(interaction)}
                                           </p>
                                           {interaction.content && (
                                             <p className="wrap-break-words mt-1 text-sm text-gray-700">
@@ -2423,8 +2470,7 @@ export default function ContactDetailPage() {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                       <p className="wrap-break-words text-sm font-medium text-gray-900">
-                                        {getInteractionLabel(interaction.type)}
-                                        {interaction.title && `: ${interaction.title}`}
+                                        {formatInteractionTitle(interaction)}
                                       </p>
                                       {interaction.content && (
                                         <p className="wrap-break-words mt-1 line-clamp-2 text-xs text-gray-700">
@@ -2491,8 +2537,7 @@ export default function ContactDetailPage() {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                       <p className="wrap-break-words text-sm font-medium text-gray-900">
-                                        {getInteractionLabel(interaction.type)}
-                                        {interaction.title && `: ${interaction.title}`}
+                                        {formatInteractionTitle(interaction)}
                                       </p>
                                       {interaction.content && (
                                         <p className="wrap-break-words mt-1 line-clamp-2 text-xs text-gray-700">
