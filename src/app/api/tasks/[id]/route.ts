@@ -11,6 +11,10 @@ import {
 import nodemailer from 'nodemailer';
 import { decrypt } from '@/lib/encryption';
 import { logAppointmentCancelled, logAppointmentChanged } from '@/lib/contact-interactions';
+import { render } from '@react-email/render';
+import { MeetUpdateEmailTemplate } from '@/components/meet-update-email-template';
+import { MeetCancellationEmailTemplate } from '@/components/meet-cancellation-email-template';
+import React from 'react';
 
 function htmlToText(html: string): string {
   if (!html) return '';
@@ -254,14 +258,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Vérifier si la date/heure ou la durée a changé pour un Google Meet
-    const hasDateChanged =
+    const hasDateChanged = Boolean(
       existingTask.googleEventId &&
-      scheduledAt !== undefined &&
-      new Date(scheduledAt).getTime() !== existingTask.scheduledAt.getTime();
-    const hasDurationChanged =
+        scheduledAt !== undefined &&
+        new Date(scheduledAt).getTime() !== existingTask.scheduledAt.getTime(),
+    );
+    const hasDurationChanged = Boolean(
       existingTask.googleEventId &&
-      durationMinutes !== undefined &&
-      durationMinutes !== existingTask.durationMinutes;
+        durationMinutes !== undefined &&
+        durationMinutes !== existingTask.durationMinutes,
+    );
 
     const task = await prisma.task.update({
       where: { id },
@@ -294,7 +300,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     });
 
     // Créer une interaction pour la modification si c'est un rendez-vous
-    if (task.contactId && (existingTask.type === 'MEETING' || existingTask.type === 'VIDEO_CONFERENCE')) {
+    if (
+      task.contactId &&
+      (existingTask.type === 'MEETING' || existingTask.type === 'VIDEO_CONFERENCE')
+    ) {
       try {
         await logAppointmentChanged(
           task.contactId,
@@ -315,9 +324,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     // Déterminer si on doit envoyer un email de modification
     const shouldNotifyForGoogleMeet =
-      existingTask.googleEventId &&
-      task.contact?.email &&
-      (hasDateChanged || hasDurationChanged);
+      existingTask.googleEventId && task.contact?.email && (hasDateChanged || hasDurationChanged);
 
     // Pour les rendez-vous physiques, envoyer un email si :
     // - Le contact avait été prévenu initialement (existingTask.notifyContact === true)
@@ -405,183 +412,29 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             'Cher client';
           const organizerName = organizer?.name || session.user.name || 'Organisateur';
 
-          const formatDate = (date: Date) => {
-            return date.toLocaleDateString('fr-FR', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            });
-          };
-
-          const formatTime = (date: Date) => {
-            return date.toLocaleTimeString('fr-FR', {
-              hour: '2-digit',
-              minute: '2-digit',
-            });
-          };
-
-          const formatDuration = (minutes: number) => {
-            if (minutes < 60) {
-              return `${minutes} minutes`;
-            }
-            const hours = Math.floor(minutes / 60);
-            const mins = minutes % 60;
-            if (mins === 0) {
-              return `${hours} heure${hours > 1 ? 's' : ''}`;
-            }
-            return `${hours} heure${hours > 1 ? 's' : ''} ${mins} minute${mins > 1 ? 's' : ''}`;
-          };
-
           const oldScheduledAt = existingTask.scheduledAt.toISOString();
           const newScheduledAt = task.scheduledAt.toISOString();
           const oldDuration = existingTask.durationMinutes ?? 30;
           const newDuration = task.durationMinutes ?? 30;
-          const isGoogleMeet = !!task.googleMeetLink;
 
-          // Générer le contenu HTML de l'email
-          const emailHtml = `
-            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-              <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 20px;">
-                  Modification de rendez-vous
-                </h1>
-                <p style="font-size: 16px; margin-bottom: 20px;">Bonjour ${contactName},</p>
-                <p style="font-size: 16px; margin-bottom: 20px;">
-                  Les informations de votre rendez-vous ont été modifiées.
-                </p>
-                <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                  <h2 style="color: #1a1a1a; font-size: 20px; margin-bottom: 15px;">${task.title || 'Rendez-vous'}</h2>
-                  ${
-                    hasDateChanged
-                      ? `
-                    <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ddd;">
-                      <div style="margin-bottom: 10px;">
-                        <strong>Ancienne date :</strong>
-                        <span style="text-decoration: line-through; color: #999;">
-                          ${formatDate(new Date(oldScheduledAt))} à ${formatTime(new Date(oldScheduledAt))}
-                        </span>
-                      </div>
-                      <div style="margin-bottom: 10px;">
-                        <strong>Nouvelle date :</strong>
-                        <span style="color: #10B981; font-weight: bold;">
-                          ${formatDate(new Date(newScheduledAt))} à ${formatTime(new Date(newScheduledAt))}
-                        </span>
-                      </div>
-                    </div>
-                  `
-                      : `
-                    <div style="margin-bottom: 10px;"><strong>Date :</strong> ${formatDate(new Date(newScheduledAt))}</div>
-                    <div style="margin-bottom: 10px;"><strong>Heure :</strong> ${formatTime(new Date(newScheduledAt))}</div>
-                  `
-                  }
-                  ${
-                    isGoogleMeet && hasDurationChanged
-                      ? `
-                    <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ddd;">
-                      <div style="margin-bottom: 10px;">
-                        <strong>Ancienne durée :</strong>
-                        <span style="text-decoration: line-through; color: #999;">
-                          ${formatDuration(oldDuration)}
-                        </span>
-                      </div>
-                      <div style="margin-bottom: 10px;">
-                        <strong>Nouvelle durée :</strong>
-                        <span style="color: #10B981; font-weight: bold;">
-                          ${formatDuration(newDuration)}
-                        </span>
-                      </div>
-                    </div>
-                  `
-                      : isGoogleMeet
-                        ? `
-                    <div style="margin-bottom: 10px;"><strong>Durée :</strong> ${formatDuration(newDuration)}</div>
-                  `
-                        : ''
-                  }
-                  <div style="margin-bottom: 10px;"><strong>Organisateur :</strong> ${organizerName}</div>
-                  ${
-                    task.description
-                      ? `
-                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
-                      <strong>Description :</strong>
-                      <div style="margin-top: 10px;">${task.description}</div>
-                    </div>
-                  `
-                      : ''
-                  }
-                </div>
-                ${
-                  isGoogleMeet && task.googleMeetLink
-                    ? `
-                <div style="margin-bottom: 30px; text-align: center;">
-                  <a href="${task.googleMeetLink}" style="display: inline-block; background-color: #4285f4; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-size: 16px; font-weight: bold;">
-                    Rejoindre la réunion Google Meet
-                  </a>
-                </div>
-                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
-                  <p style="font-size: 14px; color: #666;">
-                    <strong>Lien de la réunion :</strong><br>
-                    <a href="${task.googleMeetLink}" style="color: #4285f4; word-break: break-all;">${task.googleMeetLink}</a>
-                  </p>
-                </div>
-              `
-                    : ''
-                }
-                ${
-                  smtpConfig.signature
-                    ? `
-                  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 14px;">
-                    ${smtpConfig.signature}
-                  </div>
-                `
-                    : ''
-                }
-              </div>
-            </div>
-          `;
+          // Générer le contenu HTML de l'email avec le composant React
+          const emailComponent = React.createElement(MeetUpdateEmailTemplate, {
+            contactName,
+            title: task.title || 'Rendez-vous',
+            oldScheduledAt,
+            newScheduledAt,
+            oldDuration,
+            newDuration,
+            hasDateChanged,
+            hasDurationChanged,
+            meetLink: task.googleMeetLink || undefined,
+            description: task.description,
+            organizerName,
+            signature: smtpConfig.signature || undefined,
+          });
 
-          // Générer le contenu texte de l'email
-          const emailText = `
-            Modification de rendez-vous
-
-            Bonjour ${contactName},
-
-            Les informations de votre rendez-vous ont été modifiées.
-
-            ${task.title || 'Rendez-vous'}
-
-            ${
-              hasDateChanged
-                ? `
-            Ancienne date : ${formatDate(new Date(oldScheduledAt))} à ${formatTime(new Date(oldScheduledAt))}
-            Nouvelle date : ${formatDate(new Date(newScheduledAt))} à ${formatTime(new Date(newScheduledAt))}
-            `
-                : `
-            Date : ${formatDate(new Date(newScheduledAt))}
-            Heure : ${formatTime(new Date(newScheduledAt))}
-            `
-            }
-            ${
-              isGoogleMeet && hasDurationChanged
-                ? `
-            Ancienne durée : ${formatDuration(oldDuration)}
-            Nouvelle durée : ${formatDuration(newDuration)}
-            `
-                : isGoogleMeet
-                  ? `
-            Durée : ${formatDuration(newDuration)}
-            `
-                  : ''
-            }
-            Organisateur : ${organizerName}
-
-            ${task.description ? `Description :\n${htmlToText(task.description)}\n` : ''}
-
-            ${isGoogleMeet && task.googleMeetLink ? `Lien de la réunion : ${task.googleMeetLink}` : ''}
-
-            ${smtpConfig.signature ? `\n\n${htmlToText(smtpConfig.signature)}` : ''}
-          `.trim();
+          const emailHtml = await render(emailComponent);
+          const emailText = htmlToText(emailHtml);
 
           // Envoyer un email individuel à chaque destinataire pour préserver la confidentialité
           if (allRecipients.length > 0) {
@@ -751,7 +604,7 @@ export async function DELETE(
           session.user.id,
           task.type === 'VIDEO_CONFERENCE',
         );
-        console.log('Interaction d\'annulation créée avec succès');
+        console.log("Interaction d'annulation créée avec succès");
       } catch (interactionError: any) {
         console.error(
           "Erreur lors de la création de l'interaction d'annulation:",
@@ -760,7 +613,7 @@ export async function DELETE(
         // On continue même si l'interaction échoue
       }
     } else {
-      console.log('Pas de création d\'interaction - conditions non remplies:', {
+      console.log("Pas de création d'interaction - conditions non remplies:", {
         contactId: task.contactId,
         type: task.type,
       });
@@ -823,100 +676,20 @@ export async function DELETE(
             'Cher client';
           const organizerName = organizer?.name || session.user.name || 'Organisateur';
 
-          const formatDate = (date: Date) => {
-            return date.toLocaleDateString('fr-FR', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            });
-          };
+          // Générer le contenu HTML de l'email avec le composant React
+          const emailComponent = React.createElement(MeetCancellationEmailTemplate, {
+            contactName,
+            title: task.title || 'Rendez-vous',
+            scheduledAt: task.scheduledAt.toISOString(),
+            durationMinutes: task.googleMeetLink ? (task.durationMinutes ?? 30) : undefined,
+            meetLink: task.googleMeetLink || undefined,
+            description: task.description,
+            organizerName,
+            signature: smtpConfig.signature || undefined,
+          });
 
-          const formatTime = (date: Date) => {
-            return date.toLocaleTimeString('fr-FR', {
-              hour: '2-digit',
-              minute: '2-digit',
-            });
-          };
-
-          const formatDuration = (minutes: number) => {
-            if (minutes < 60) {
-              return `${minutes} minutes`;
-            }
-            const hours = Math.floor(minutes / 60);
-            const mins = minutes % 60;
-            if (mins === 0) {
-              return `${hours} heure${hours > 1 ? 's' : ''}`;
-            }
-            return `${hours} heure${hours > 1 ? 's' : ''} ${mins} minute${mins > 1 ? 's' : ''}`;
-          };
-
-          const scheduledDate = task.scheduledAt;
-
-          // Générer le contenu HTML de l'email
-          const emailHtml = `
-            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-              <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h1 style="color: #EF4444; font-size: 24px; margin-bottom: 20px;">
-                  Annulation de rendez-vous
-                </h1>
-                <p style="font-size: 16px; margin-bottom: 20px;">Bonjour ${contactName},</p>
-                <p style="font-size: 16px; margin-bottom: 20px;">
-                  Nous vous informons que votre rendez-vous a été annulé.
-                </p>
-                <div style="background-color: #FEF2F2; border-left: 4px solid #EF4444; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                  <h2 style="color: #1a1a1a; font-size: 20px; margin-bottom: 15px;">${task.title || 'Rendez-vous'}</h2>
-                  <div style="margin-bottom: 10px;"><strong>Date :</strong> ${formatDate(new Date(scheduledDate))}</div>
-                  <div style="margin-bottom: 10px;"><strong>Heure :</strong> ${formatTime(new Date(scheduledDate))}</div>
-                  ${task.googleMeetLink ? `<div style="margin-bottom: 10px;"><strong>Durée :</strong> ${formatDuration(task.durationMinutes ?? 30)}</div>` : ''}
-                  <div style="margin-bottom: 10px;"><strong>Organisateur :</strong> ${organizerName}</div>
-                  ${
-                    task.description
-                      ? `
-                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
-                      <strong>Description :</strong>
-                      <div style="margin-top: 10px;">${task.description}</div>
-                    </div>
-                  `
-                      : ''
-                  }
-                </div>
-                <p style="font-size: 16px; margin-bottom: 20px; color: #666;">
-                  Si vous souhaitez reprogrammer ce rendez-vous, n'hésitez pas à nous contacter.
-                </p>
-                ${
-                  smtpConfig.signature
-                    ? `
-                  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 14px;">
-                    ${smtpConfig.signature}
-                  </div>
-                `
-                    : ''
-                }
-              </div>
-            </div>
-          `;
-
-          // Générer le contenu texte de l'email
-          const emailText = `
-Annulation de rendez-vous
-
-Bonjour ${contactName},
-
-Nous vous informons que votre rendez-vous a été annulé.
-
-${task.title || 'Rendez-vous'}
-
-Date : ${formatDate(new Date(scheduledDate))}
-Heure : ${formatTime(new Date(scheduledDate))}
-${task.googleMeetLink ? `Durée : ${formatDuration(task.durationMinutes ?? 30)}\n` : ''}Organisateur : ${organizerName}
-
-${task.description ? `Description :\n${htmlToText(task.description)}\n` : ''}
-
-Si vous souhaitez reprogrammer ce rendez-vous, n'hésitez pas à nous contacter.
-
-${smtpConfig.signature ? `\n\n${htmlToText(smtpConfig.signature)}` : ''}
-          `.trim();
+          const emailHtml = await render(emailComponent);
+          const emailText = htmlToText(emailHtml);
 
           // Envoyer un email individuel à chaque destinataire pour préserver la confidentialité
           if (allRecipients.length > 0) {

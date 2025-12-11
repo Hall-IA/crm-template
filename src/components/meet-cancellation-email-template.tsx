@@ -1,17 +1,15 @@
-import React from 'react';
-
-interface MeetConfirmationEmailTemplateProps {
+interface MeetCancellationEmailTemplateProps {
   contactName: string;
   title: string;
   scheduledAt: string;
-  durationMinutes: number;
+  durationMinutes?: number;
   meetLink?: string;
   description?: string;
   organizerName: string;
   signature?: string;
 }
 
-export function MeetConfirmationEmailTemplate({
+export function MeetCancellationEmailTemplate({
   contactName,
   title,
   scheduledAt,
@@ -20,7 +18,7 @@ export function MeetConfirmationEmailTemplate({
   description,
   organizerName,
   signature,
-}: MeetConfirmationEmailTemplateProps) {
+}: MeetCancellationEmailTemplateProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', {
@@ -54,19 +52,20 @@ export function MeetConfirmationEmailTemplate({
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', lineHeight: '1.6', color: '#333' }}>
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
-        <h1 style={{ color: '#1a1a1a', fontSize: '24px', marginBottom: '20px' }}>
-          Confirmation de rendez-vous
+        <h1 style={{ color: '#EF4444', fontSize: '24px', marginBottom: '20px' }}>
+          Annulation de rendez-vous
         </h1>
 
         <p style={{ fontSize: '16px', marginBottom: '20px' }}>Bonjour {contactName},</p>
 
         <p style={{ fontSize: '16px', marginBottom: '20px' }}>
-          Votre rendez-vous a été confirmé avec succès.
+          Nous vous informons que votre rendez-vous a été annulé.
         </p>
 
         <div
           style={{
-            backgroundColor: '#f5f5f5',
+            backgroundColor: '#FEF2F2',
+            borderLeft: '4px solid #EF4444',
             padding: '20px',
             borderRadius: '8px',
             marginBottom: '20px',
@@ -80,7 +79,7 @@ export function MeetConfirmationEmailTemplate({
           <div style={{ marginBottom: '10px' }}>
             <strong>Heure :</strong> {formatTime(scheduledAt)}
           </div>
-          {durationMinutes > 0 && (
+          {meetLink && durationMinutes && (
             <div style={{ marginBottom: '10px' }}>
               <strong>Durée :</strong> {formatDuration(durationMinutes)}
             </div>
@@ -100,50 +99,15 @@ export function MeetConfirmationEmailTemplate({
           )}
         </div>
 
-        {meetLink && (
-          <>
-            <div style={{ marginBottom: '30px', textAlign: 'center' }}>
-              <a
-                href={meetLink}
-                style={{
-                  display: 'inline-block',
-                  backgroundColor: '#4285f4',
-                  color: '#ffffff',
-                  padding: '12px 24px',
-                  textDecoration: 'none',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                }}
-              >
-                Rejoindre la réunion Google Meet
-              </a>
-            </div>
-
-            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #ddd' }}>
-              <p style={{ fontSize: '14px', color: '#666' }}>
-                <strong>Lien de la réunion :</strong>
-                <br />
-                <a href={meetLink} style={{ color: '#4285f4', wordBreak: 'break-all' }}>
-                  {meetLink}
-                </a>
-              </p>
-            </div>
-          </>
-        )}
-
-        {!meetLink && (
-          <p style={{ fontSize: '14px', color: '#666', marginTop: '20px' }}>
-            Nous vous remercions de votre confiance et restons à votre disposition pour toute
-            question.
-          </p>
-        )}
+        <p style={{ fontSize: '16px', marginBottom: '20px', color: '#666' }}>
+          Si vous souhaitez reprogrammer ce rendez-vous, n'hésitez pas à nous contacter.
+        </p>
 
         {signature && (
           <div
             style={{
               marginTop: '30px',
-              paddingTop: '15px',
+              paddingTop: '20px',
               borderTop: '1px solid #ddd',
               fontSize: '14px',
             }}

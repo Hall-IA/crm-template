@@ -4,6 +4,9 @@ import { prisma } from '@/lib/prisma';
 import { logAppointmentCreated, createInteraction } from '@/lib/contact-interactions';
 import nodemailer from 'nodemailer';
 import { decrypt } from '@/lib/encryption';
+import { render } from '@react-email/render';
+import { MeetConfirmationEmailTemplate } from '@/components/meet-confirmation-email-template';
+import React from 'react';
 
 function htmlToText(html: string): string {
   if (!html) return '';
@@ -258,73 +261,21 @@ export async function POST(request: NextRequest) {
                   `${task.contact.firstName || ''} ${task.contact.lastName || ''}`.trim() ||
                   'Cher client';
                 const organizerName = organizer?.name || session.user.name || 'Organisateur';
-
-                const formatDate = (date: Date) => {
-                  return date.toLocaleDateString('fr-FR', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  });
-                };
-
-                const formatTime = (date: Date) => {
-                  return date.toLocaleTimeString('fr-FR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  });
-                };
-
                 const scheduledDate = new Date(scheduledAt);
 
-                // Générer le contenu HTML de l'email
-                const emailHtml = `
-                  <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                      <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 20px;">
-                        Confirmation de rendez-vous
-                      </h1>
-                      <p style="font-size: 16px; margin-bottom: 20px;">Bonjour ${contactName},</p>
-                      <p style="font-size: 16px; margin-bottom: 20px;">
-                        Votre rendez-vous a été confirmé avec succès.
-                      </p>
-                      <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                        <h2 style="color: #1a1a1a; font-size: 20px; margin-bottom: 15px;">${title || 'Rendez-vous'}</h2>
-                        <div style="margin-bottom: 10px;"><strong>Date :</strong> ${formatDate(scheduledDate)}</div>
-                        <div style="margin-bottom: 10px;"><strong>Heure :</strong> ${formatTime(scheduledDate)}</div>
-                        <div style="margin-bottom: 10px;"><strong>Organisateur :</strong> ${organizerName}</div>
-                        ${
-                          description
-                            ? `
-                          <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
-                            <strong>Description :</strong>
-                            <div style="margin-top: 10px;">${description}</div>
-                          </div>
-                        `
-                            : ''
-                        }
-                      </div>
-                      <p style="font-size: 14px; color: #666; margin-top: 20px;">
-                        Nous vous remercions de votre confiance et restons à votre disposition pour toute question.
-                      </p>
-                    </div>
-                  </div>
-                `;
+                // Générer le contenu HTML de l'email avec le composant React
+                const emailComponent = React.createElement(MeetConfirmationEmailTemplate, {
+                  contactName,
+                  title: title || 'Rendez-vous',
+                  scheduledAt: scheduledDate.toISOString(),
+                  durationMinutes: 0, // Pas de durée pour les rendez-vous physiques
+                  description,
+                  organizerName,
+                  signature: smtpConfig.signature || undefined,
+                });
 
+                const emailHtml = await render(emailComponent);
                 const emailText = htmlToText(emailHtml);
-
-                // Ajouter la signature si définie
-                let finalHtml = emailHtml;
-                let finalText = emailText;
-                if (smtpConfig.signature) {
-                  const signatureContent = smtpConfig.signature.trim();
-                  if (emailHtml.length > 0) {
-                    finalHtml = `${emailHtml}<br>${signatureContent}`;
-                  } else {
-                    finalHtml = signatureContent;
-                  }
-                  finalText = `${emailText}\n\n${htmlToText(signatureContent)}`;
-                }
 
                 // Envoyer l'email
                 await transporter.sendMail({
@@ -333,8 +284,8 @@ export async function POST(request: NextRequest) {
                     : smtpConfig.fromEmail,
                   to: task.contact.email,
                   subject: `Confirmation de rendez-vous${title ? ` : ${title}` : ''}`,
-                  text: finalText,
-                  html: finalHtml,
+                  text: emailText,
+                  html: emailHtml,
                 });
               }
             } catch (emailError: any) {

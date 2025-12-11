@@ -5,9 +5,11 @@ interface MeetUpdateEmailTemplateProps {
   title: string;
   oldScheduledAt: string;
   newScheduledAt: string;
-  oldDurationMinutes: number;
-  newDurationMinutes: number;
-  meetLink: string;
+  oldDuration?: number;
+  newDuration?: number;
+  hasDateChanged: boolean;
+  hasDurationChanged: boolean;
+  meetLink?: string;
   description?: string;
   organizerName: string;
   signature?: string;
@@ -18,8 +20,10 @@ export function MeetUpdateEmailTemplate({
   title,
   oldScheduledAt,
   newScheduledAt,
-  oldDurationMinutes,
-  newDurationMinutes,
+  oldDuration,
+  newDuration,
+  hasDateChanged,
+  hasDurationChanged,
   meetLink,
   description,
   organizerName,
@@ -55,8 +59,7 @@ export function MeetUpdateEmailTemplate({
     return `${hours} heure${hours > 1 ? 's' : ''} ${mins} minute${mins > 1 ? 's' : ''}`;
   };
 
-  const hasDateChanged = oldScheduledAt !== newScheduledAt;
-  const hasDurationChanged = oldDurationMinutes !== newDurationMinutes;
+  const isGoogleMeet = !!meetLink;
 
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', lineHeight: '1.6', color: '#333' }}>
@@ -81,7 +84,7 @@ export function MeetUpdateEmailTemplate({
         >
           <h2 style={{ color: '#1a1a1a', fontSize: '20px', marginBottom: '15px' }}>{title}</h2>
 
-          {hasDateChanged && (
+          {hasDateChanged ? (
             <div
               style={{
                 marginBottom: '15px',
@@ -90,27 +93,30 @@ export function MeetUpdateEmailTemplate({
               }}
             >
               <div style={{ marginBottom: '10px' }}>
-                <strong>Ancienne date :</strong>{' '}
-                <span style={{ textDecoration: 'line-through', color: '#999' }}>
+                <strong>Ancienne date :</strong>
+                <span style={{ textDecoration: 'line-through', color: '#999', marginLeft: '8px' }}>
                   {formatDate(oldScheduledAt)} à {formatTime(oldScheduledAt)}
                 </span>
               </div>
               <div style={{ marginBottom: '10px' }}>
-                <strong>Nouvelle date :</strong>{' '}
-                <span style={{ color: '#10B981', fontWeight: 'bold' }}>
+                <strong>Nouvelle date :</strong>
+                <span style={{ color: '#10B981', fontWeight: 'bold', marginLeft: '8px' }}>
                   {formatDate(newScheduledAt)} à {formatTime(newScheduledAt)}
                 </span>
               </div>
             </div>
+          ) : (
+            <>
+              <div style={{ marginBottom: '10px' }}>
+                <strong>Date :</strong> {formatDate(newScheduledAt)}
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <strong>Heure :</strong> {formatTime(newScheduledAt)}
+              </div>
+            </>
           )}
 
-          {!hasDateChanged && (
-            <div style={{ marginBottom: '10px' }}>
-              <strong>Date :</strong> {formatDate(newScheduledAt)}
-            </div>
-          )}
-
-          {hasDurationChanged && (
+          {isGoogleMeet && hasDurationChanged && oldDuration && newDuration && (
             <div
               style={{
                 marginBottom: '15px',
@@ -119,29 +125,23 @@ export function MeetUpdateEmailTemplate({
               }}
             >
               <div style={{ marginBottom: '10px' }}>
-                <strong>Ancienne durée :</strong>{' '}
-                <span style={{ textDecoration: 'line-through', color: '#999' }}>
-                  {formatDuration(oldDurationMinutes)}
+                <strong>Ancienne durée :</strong>
+                <span style={{ textDecoration: 'line-through', color: '#999', marginLeft: '8px' }}>
+                  {formatDuration(oldDuration)}
                 </span>
               </div>
               <div style={{ marginBottom: '10px' }}>
-                <strong>Nouvelle durée :</strong>{' '}
-                <span style={{ color: '#10B981', fontWeight: 'bold' }}>
-                  {formatDuration(newDurationMinutes)}
+                <strong>Nouvelle durée :</strong>
+                <span style={{ color: '#10B981', fontWeight: 'bold', marginLeft: '8px' }}>
+                  {formatDuration(newDuration)}
                 </span>
               </div>
             </div>
           )}
 
-          {!hasDurationChanged && (
+          {isGoogleMeet && !hasDurationChanged && newDuration && (
             <div style={{ marginBottom: '10px' }}>
-              <strong>Durée :</strong> {formatDuration(newDurationMinutes)}
-            </div>
-          )}
-
-          {!hasDateChanged && (
-            <div style={{ marginBottom: '10px' }}>
-              <strong>Heure :</strong> {formatTime(newScheduledAt)}
+              <strong>Durée :</strong> {formatDuration(newDuration)}
             </div>
           )}
 
@@ -160,39 +160,43 @@ export function MeetUpdateEmailTemplate({
           )}
         </div>
 
-        <div style={{ marginBottom: '30px', textAlign: 'center' }}>
-          <a
-            href={meetLink}
-            style={{
-              display: 'inline-block',
-              backgroundColor: '#4285f4',
-              color: '#ffffff',
-              padding: '12px 24px',
-              textDecoration: 'none',
-              borderRadius: '4px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-            }}
-          >
-            Rejoindre la réunion Google Meet
-          </a>
-        </div>
+        {meetLink && (
+          <>
+            <div style={{ marginBottom: '30px', textAlign: 'center' }}>
+              <a
+                href={meetLink}
+                style={{
+                  display: 'inline-block',
+                  backgroundColor: '#4285f4',
+                  color: '#ffffff',
+                  padding: '12px 24px',
+                  textDecoration: 'none',
+                  borderRadius: '4px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                }}
+              >
+                Rejoindre la réunion Google Meet
+              </a>
+            </div>
 
-        <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #ddd' }}>
-          <p style={{ fontSize: '14px', color: '#666' }}>
-            <strong>Lien de la réunion :</strong>
-            <br />
-            <a href={meetLink} style={{ color: '#4285f4', wordBreak: 'break-all' }}>
-              {meetLink}
-            </a>
-          </p>
-        </div>
+            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #ddd' }}>
+              <p style={{ fontSize: '14px', color: '#666' }}>
+                <strong>Lien de la réunion :</strong>
+                <br />
+                <a href={meetLink} style={{ color: '#4285f4', wordBreak: 'break-all' }}>
+                  {meetLink}
+                </a>
+              </p>
+            </div>
+          </>
+        )}
 
         {signature && (
           <div
             style={{
               marginTop: '30px',
-              paddingTop: '20px',
+              paddingTop: '15px',
               borderTop: '1px solid #ddd',
               fontSize: '14px',
             }}

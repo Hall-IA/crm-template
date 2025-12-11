@@ -8,6 +8,9 @@ import {
 } from '@/lib/google-calendar';
 import nodemailer from 'nodemailer';
 import { decrypt } from '@/lib/encryption';
+import { render } from '@react-email/render';
+import { MeetConfirmationEmailTemplate } from '@/components/meet-confirmation-email-template';
+import React from 'react';
 
 function htmlToText(html: string): string {
   if (!html) return '';
@@ -229,107 +232,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || 'Cher client';
           const organizerName = organizer?.name || session.user.name || 'Organisateur';
 
-          const formatDate = (date: Date) => {
-            return date.toLocaleDateString('fr-FR', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            });
-          };
+          // Générer le contenu HTML de l'email avec le composant React
+          const emailComponent = React.createElement(MeetConfirmationEmailTemplate, {
+            contactName,
+            title,
+            scheduledAt: startDate.toISOString(),
+            durationMinutes,
+            meetLink: meetLink,
+            description,
+            organizerName,
+            signature: smtpConfig.signature || undefined,
+          });
 
-          const formatTime = (date: Date) => {
-            return date.toLocaleTimeString('fr-FR', {
-              hour: '2-digit',
-              minute: '2-digit',
-            });
-          };
-
-          const formatDuration = (minutes: number) => {
-            if (minutes < 60) {
-              return `${minutes} minutes`;
-            }
-            const hours = Math.floor(minutes / 60);
-            const mins = minutes % 60;
-            if (mins === 0) {
-              return `${hours} heure${hours > 1 ? 's' : ''}`;
-            }
-            return `${hours} heure${hours > 1 ? 's' : ''} ${mins} minute${mins > 1 ? 's' : ''}`;
-          };
-
-          // Générer le contenu HTML de l'email
-          const emailHtml = `
-            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-              <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 20px;">
-                  Confirmation de rendez-vous
-                </h1>
-                <p style="font-size: 16px; margin-bottom: 20px;">Bonjour ${contactName},</p>
-                <p style="font-size: 16px; margin-bottom: 20px;">
-                  Votre rendez-vous a été confirmé avec succès.
-                </p>
-                <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                  <h2 style="color: #1a1a1a; font-size: 20px; margin-bottom: 15px;">${title}</h2>
-                  <div style="margin-bottom: 10px;"><strong>Date :</strong> ${formatDate(startDate)}</div>
-                  <div style="margin-bottom: 10px;"><strong>Heure :</strong> ${formatTime(startDate)}</div>
-                  <div style="margin-bottom: 10px;"><strong>Durée :</strong> ${formatDuration(durationMinutes)}</div>
-                  <div style="margin-bottom: 10px;"><strong>Organisateur :</strong> ${organizerName}</div>
-                  ${
-                    description
-                      ? `
-                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
-                      <strong>Description :</strong>
-                      <div style="margin-top: 10px;">${description}</div>
-                    </div>
-                  `
-                      : ''
-                  }
-                </div>
-                <div style="margin-bottom: 30px; text-align: center;">
-                  <a href="${meetLink}" style="display: inline-block; background-color: #4285f4; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-size: 16px; font-weight: bold;">
-                    Rejoindre la réunion Google Meet
-                  </a>
-                </div>
-                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
-                  <p style="font-size: 14px; color: #666;">
-                    <strong>Lien de la réunion :</strong><br>
-                    <a href="${meetLink}" style="color: #4285f4; word-break: break-all;">${meetLink}</a>
-                  </p>
-                </div>
-                ${
-                  smtpConfig.signature
-                    ? `
-                  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 14px;">
-                    ${smtpConfig.signature}
-                  </div>
-                `
-                    : ''
-                }
-              </div>
-            </div>
-          `;
-
-          // Générer le contenu texte de l'email
-          const emailText = `
-            Confirmation de rendez-vous
-
-            Bonjour ${contactName},
-
-            Votre rendez-vous a été confirmé avec succès.
-
-            ${title}
-
-            Date : ${formatDate(startDate)}
-            Heure : ${formatTime(startDate)}
-            Durée : ${formatDuration(durationMinutes)}
-            Organisateur : ${organizerName}
-
-            ${description ? `Description :\n${htmlToText(description)}\n` : ''}
-
-            Lien de la réunion : ${meetLink}
-            
-            ${smtpConfig.signature ? `\n\n${htmlToText(smtpConfig.signature)}` : ''}
-          `.trim();
+          const emailHtml = await render(emailComponent);
+          const emailText = htmlToText(emailHtml);
 
           // Construire la liste de tous les destinataires (contact + invités additionnels)
           const allRecipients: string[] = [];
