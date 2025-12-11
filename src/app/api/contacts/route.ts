@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const statusId = searchParams.get('statusId');
     const assignedCommercialId = searchParams.get('assignedCommercialId');
     const assignedTeleproId = searchParams.get('assignedTeleproId');
-    const isCompany = searchParams.get('isCompany');
+    // const isCompany = searchParams.get('isCompany');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
     const skip = (page - 1) * limit;
@@ -48,13 +48,16 @@ export async function GET(request: NextRequest) {
       where.assignedTeleproId = assignedTeleproId;
     }
 
-    if (isCompany === 'true') {
-      where.isCompany = true;
-    }
+    // if (isCompany === 'true') {
+    //   where.isCompany = true;
+    // }
 
     const [contacts, total] = await Promise.all([
       prisma.contact.findMany({
-        where,
+        where: {
+          ...where,
+          isCompany: false
+        },
         include: {
           status: true,
           companyRelation: {
