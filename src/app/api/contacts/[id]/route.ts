@@ -222,7 +222,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       // Normaliser les valeurs pour la comparaison (null, undefined, '' sont considérés comme équivalents)
       const normalizedExistingCommercial = existing.assignedCommercialId || null;
       const normalizedNewCommercial = assignedCommercialId || null;
-      
+
       if (
         assignedCommercialId !== undefined &&
         normalizedExistingCommercial !== normalizedNewCommercial
@@ -242,11 +242,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       // Normaliser les valeurs pour la comparaison (null, undefined, '' sont considérés comme équivalents)
       const normalizedExistingTelepro = existing.assignedTeleproId || null;
       const normalizedNewTelepro = assignedTeleproId || null;
-      
-      if (
-        assignedTeleproId !== undefined &&
-        normalizedExistingTelepro !== normalizedNewTelepro
-      ) {
+
+      if (assignedTeleproId !== undefined && normalizedExistingTelepro !== normalizedNewTelepro) {
         await logAssignmentChange(
           id,
           'TELEPRO',

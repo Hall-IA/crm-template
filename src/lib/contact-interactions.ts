@@ -122,7 +122,7 @@ export async function logAssignmentChange(
   // Normaliser les valeurs pour la comparaison (null, undefined, '' sont considérés comme équivalents)
   const normalizedOldUserId = oldUserId || null;
   const normalizedNewUserId = newUserId || null;
-  
+
   // Ne créer l'interaction que si les valeurs ont réellement changé
   if (normalizedOldUserId === normalizedNewUserId) {
     return null;
@@ -268,7 +268,7 @@ export async function logFileUploaded(
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
   return await createInteraction({
@@ -300,7 +300,7 @@ export async function logFileReplaced(
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
   return await createInteraction({
@@ -332,7 +332,7 @@ export async function logFileDeleted(
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
   return await createInteraction({

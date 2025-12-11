@@ -50,7 +50,7 @@ export async function DELETE(
 
     if (file.uploadedById !== session.user.id && user?.role !== 'ADMIN') {
       return NextResponse.json(
-        { error: 'Vous n\'avez pas la permission de supprimer ce fichier' },
+        { error: "Vous n'avez pas la permission de supprimer ce fichier" },
         { status: 403 },
       );
     }
@@ -74,12 +74,7 @@ export async function DELETE(
 
     // Créer une interaction pour la suppression du fichier
     try {
-      await logFileDeleted(
-        contactId,
-        fileName,
-        fileSize,
-        session.user.id,
-      );
+      await logFileDeleted(contactId, fileName, fileSize, session.user.id);
     } catch (interactionError: any) {
       console.error(
         "Erreur lors de la création de l'interaction de suppression:",
@@ -97,4 +92,3 @@ export async function DELETE(
     );
   }
 }
-

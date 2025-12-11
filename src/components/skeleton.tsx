@@ -97,10 +97,7 @@ export function ContactCardsSkeleton({ isAdmin = false }: { isAdmin?: boolean })
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 9 }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
-        >
+        <div key={i} className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           {/* En-tête */}
           <div className="mb-4 flex items-start justify-between">
             <div className="flex items-center gap-3">

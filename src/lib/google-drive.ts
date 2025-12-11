@@ -53,24 +53,24 @@ async function getOrCreateFolder(
         // Vérifier si le dossier est directement à la racine
         return file.parents.length === 1 && file.parents[0] === 'root';
       });
-      
+
       if (rootFolder) {
         return rootFolder.id;
       }
-      
+
       // Si aucun n'est exactement à la racine, prendre le premier
       return searchData.files[0].id;
     }
-    
+
     // Si on cherche dans un parent spécifique, vérifier que le dossier est bien dans ce parent
-    const matchingFolder = searchData.files.find((file: any) => 
-      file.parents && file.parents.includes(parentId)
+    const matchingFolder = searchData.files.find(
+      (file: any) => file.parents && file.parents.includes(parentId),
     );
-    
+
     if (matchingFolder) {
       return matchingFolder.id;
     }
-    
+
     // Si aucun ne correspond exactement, prendre le premier (cas de migration)
     return searchData.files[0].id;
   }
@@ -151,11 +151,7 @@ export async function getOrCreateContactFolder(
 
   // 3. Créer ou récupérer le dossier du contact dans "Contacts"
   const contactFolderName = `Contact - ${contactName || contactId}`;
-  const contactFolderId = await getOrCreateFolder(
-    accessToken,
-    contactFolderName,
-    contactsFolderId,
-  );
+  const contactFolderId = await getOrCreateFolder(accessToken, contactFolderName, contactsFolderId);
 
   return contactFolderId;
 }
@@ -236,10 +232,7 @@ export async function uploadFileToDrive(
 
   // Créer le FormData pour l'upload multipart
   const formData = new FormData();
-  formData.append(
-    'metadata',
-    new Blob([JSON.stringify(metadata)], { type: 'application/json' }),
-  );
+  formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
   formData.append('file', file);
 
   // Upload le fichier
@@ -354,7 +347,7 @@ export async function getDownloadUrl(userId: string, fileId: string): Promise<st
 
   // Pour les fichiers Google Docs/Sheets/Slides, on doit exporter
   const fileInfo = await getFileInfo(userId, fileId);
-  
+
   // Si c'est un fichier Google Workspace, on retourne le lien de visualisation
   if (fileInfo.mimeType.startsWith('application/vnd.google-apps.')) {
     return fileInfo.webViewLink;
@@ -363,4 +356,3 @@ export async function getDownloadUrl(userId: string, fileId: string): Promise<st
   // Retourner l'URL de téléchargement directe avec le token
   return `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${accessToken}`;
 }
-

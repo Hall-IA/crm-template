@@ -76,7 +76,7 @@ export function Sidebar() {
       {/* Overlay for mobile */}
       {isMobileMenuOpen && (
         <div
-          className="backdrop-blur-sm fixed inset-0 z-40 bg-gray-500/20 lg:hidden"
+          className="fixed inset-0 z-40 bg-gray-500/20 backdrop-blur-sm lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
@@ -87,7 +87,7 @@ export function Sidebar() {
           'fixed top-0 left-0 z-40 flex h-screen flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out lg:relative lg:translate-x-0',
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
           // En mobile, toujours w-64. En desktop, utiliser le système de collapse
-          isCollapsed && !isPinned ? 'w-64 lg:w-16' : 'w-64 lg:w-64'
+          isCollapsed && !isPinned ? 'w-64 lg:w-16' : 'w-64 lg:w-64',
         )}
         onMouseEnter={() => {
           // Le système de hover ne s'applique qu'en desktop (lg:)
@@ -112,7 +112,7 @@ export function Sidebar() {
         <div
           className={cn(
             'flex h-16 items-center justify-between border-b border-gray-200 transition-all duration-300',
-            isCollapsed && !isPinned ? 'px-6 lg:justify-center lg:px-2' : 'px-6'
+            isCollapsed && !isPinned ? 'px-6 lg:justify-center lg:px-2' : 'px-6',
           )}
         >
           {!isCollapsed || isPinned ? (
@@ -189,7 +189,7 @@ export function Sidebar() {
         <nav
           className={cn(
             'flex-1 space-y-1 overflow-y-auto py-4 transition-all duration-300',
-            isCollapsed && !isPinned ? 'px-3 lg:px-2' : 'px-3'
+            isCollapsed && !isPinned ? 'px-3 lg:px-2' : 'px-3',
           )}
         >
           {navigation.map((item) => {
@@ -205,7 +205,7 @@ export function Sidebar() {
                   isCollapsed && !isPinned ? 'px-3 lg:justify-center lg:px-2' : 'px-3',
                   isActive
                     ? 'bg-indigo-50 text-indigo-600'
-                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900',
                 )}
                 title={isCollapsed && !isPinned ? item.name : undefined}
               >
@@ -223,7 +223,7 @@ export function Sidebar() {
           <div
             className={cn(
               'border-t border-gray-200 transition-all duration-300',
-              isCollapsed && !isPinned ? 'p-3 lg:p-2' : 'p-3'
+              isCollapsed && !isPinned ? 'p-3 lg:p-2' : 'p-3',
             )}
           >
             {!isCollapsed || isPinned ? (
@@ -233,7 +233,7 @@ export function Sidebar() {
                   'w-full cursor-pointer rounded-lg border-2 p-3 text-left transition-all',
                   isViewingAsOther
                     ? 'border-indigo-600 bg-indigo-600 text-white hover:border-indigo-700 hover:bg-indigo-700'
-                    : 'border-gray-300 bg-white text-gray-900 hover:border-indigo-300 hover:bg-indigo-50'
+                    : 'border-gray-300 bg-white text-gray-900 hover:border-indigo-300 hover:bg-indigo-50',
                 )}
                 aria-label="Changer de vue"
               >
@@ -241,7 +241,7 @@ export function Sidebar() {
                   <div
                     className={cn(
                       'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
-                      isViewingAsOther ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-600'
+                      isViewingAsOther ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-600',
                     )}
                   >
                     {!isMounted
@@ -254,7 +254,7 @@ export function Sidebar() {
                     <p
                       className={cn(
                         'text-xs font-medium',
-                        isViewingAsOther ? 'text-white/80' : 'text-gray-500'
+                        isViewingAsOther ? 'text-white/80' : 'text-gray-500',
                       )}
                     >
                       {isViewingAsOther ? 'Vue:' : 'Ma vue'}
@@ -277,7 +277,7 @@ export function Sidebar() {
                   'w-full cursor-pointer rounded-lg p-2 transition-colors',
                   isViewingAsOther
                     ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                    : 'text-gray-500 hover:bg-gray-100'
+                    : 'text-gray-500 hover:bg-gray-100',
                 )}
                 title="Changer de vue"
                 aria-label="Changer de vue"
@@ -294,7 +294,7 @@ export function Sidebar() {
         <div
           className={cn(
             'border-t border-gray-200 transition-all duration-300',
-            isCollapsed && !isPinned ? 'p-4 lg:p-2' : 'p-4'
+            isCollapsed && !isPinned ? 'p-4 lg:p-2' : 'p-4',
           )}
         >
           {!isCollapsed || isPinned ? (

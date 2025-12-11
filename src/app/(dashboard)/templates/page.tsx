@@ -263,7 +263,7 @@ export default function TemplatesPage() {
               'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
               filterType === 'ALL'
                 ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
+                : 'bg-white text-gray-700 hover:bg-gray-50',
             )}
           >
             Tous
@@ -274,7 +274,7 @@ export default function TemplatesPage() {
               'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
               filterType === 'EMAIL'
                 ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
+                : 'bg-white text-gray-700 hover:bg-gray-50',
             )}
           >
             <Mail className="mr-2 inline h-4 w-4" />
@@ -286,7 +286,7 @@ export default function TemplatesPage() {
               'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
               filterType === 'SMS'
                 ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
+                : 'bg-white text-gray-700 hover:bg-gray-50',
             )}
           >
             <MessageSquare className="mr-2 inline h-4 w-4" />
@@ -298,7 +298,7 @@ export default function TemplatesPage() {
               'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
               filterType === 'NOTE'
                 ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
+                : 'bg-white text-gray-700 hover:bg-gray-50',
             )}
           >
             <FileText className="mr-2 inline h-4 w-4" />
@@ -339,7 +339,7 @@ export default function TemplatesPage() {
                     <span
                       className={cn(
                         'mt-2 inline-flex rounded-full border px-2 py-1 text-xs font-medium',
-                        getTypeColor(template.type)
+                        getTypeColor(template.type),
                       )}
                     >
                       {getTypeLabel(template.type)}

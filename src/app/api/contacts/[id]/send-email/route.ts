@@ -178,13 +178,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // Ajouter le pixel de tracking dans le HTML
     // Utiliser l'URL absolue depuis les variables d'environnement
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || 'http://localhost:3000';
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || 'http://localhost:3000';
     // Ajouter un timestamp pour éviter le cache du client email
     const timestamp = Date.now();
     const trackingPixelUrl = `${baseUrl}/api/email/track/${emailTracking.id}?t=${timestamp}`;
-    
+
     const trackingPixel = `<img src="${trackingPixelUrl}" width="1" height="1" style="display:none;" alt="" />`;
-    
+
     // Insérer le pixel de tracking avant la fermeture du body ou à la fin du contenu
     let htmlWithTracking = `${baseHtml}${signatureHtml}`;
     // Si le HTML contient déjà une balise </body>, insérer avant, sinon à la fin

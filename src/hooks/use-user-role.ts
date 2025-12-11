@@ -33,10 +33,10 @@ export function useUserRole() {
         if (response.ok) {
           const userData = await response.json();
           const userRole = userData.role || 'USER';
-          
+
           // Toujours stocker le rôle réel de l'utilisateur connecté
           setRealUserRole(userRole);
-          
+
           // Si on est en mode "vue en tant que", utiliser le rôle de l'utilisateur visualisé
           if (isViewingAsOther && viewAsUser?.role) {
             setRole(viewAsUser.role);

@@ -5,10 +5,7 @@ import { uploadFileToDrive, getFileInfo } from '@/lib/google-drive';
 import { logFileUploaded, logFileReplaced } from '@/lib/contact-interactions';
 
 // POST /api/contacts/[id]/files - Uploader un fichier
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
@@ -41,7 +38,10 @@ export async function POST(
 
     if (!googleAccount) {
       return NextResponse.json(
-        { error: 'Aucun compte Google connecté. Veuillez connecter votre compte Google dans les paramètres.' },
+        {
+          error:
+            'Aucun compte Google connecté. Veuillez connecter votre compte Google dans les paramètres.',
+        },
         { status: 400 },
       );
     }
@@ -64,7 +64,8 @@ export async function POST(
     }
 
     // Nom du contact pour le dossier
-    const contactName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || `Contact ${contactId}`;
+    const contactName =
+      `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || `Contact ${contactId}`;
 
     // Vérifier si un fichier avec le même nom existe déjà pour ce contact
     const existingFile = await prisma.contactFile.findFirst({
@@ -82,17 +83,12 @@ export async function POST(
         const { deleteFileFromDrive } = await import('@/lib/google-drive');
         await deleteFileFromDrive(session.user.id, existingFile.googleDriveFileId);
       } catch (error) {
-        console.error('Erreur lors de la suppression de l\'ancien fichier:', error);
+        console.error("Erreur lors de la suppression de l'ancien fichier:", error);
         // On continue même si la suppression échoue
       }
 
       // Uploader le nouveau fichier vers Google Drive
-      const { fileId } = await uploadFileToDrive(
-        session.user.id,
-        contactId,
-        contactName,
-        file,
-      );
+      const { fileId } = await uploadFileToDrive(session.user.id, contactId, contactName, file);
 
       // Mettre à jour l'enregistrement existant
       contactFile = await prisma.contactFile.update({
@@ -117,13 +113,7 @@ export async function POST(
 
       // Créer une interaction pour le remplacement du fichier
       try {
-        await logFileReplaced(
-          contactId,
-          contactFile.id,
-          file.name,
-          file.size,
-          session.user.id,
-        );
+        await logFileReplaced(contactId, contactFile.id, file.name, file.size, session.user.id);
       } catch (interactionError: any) {
         console.error(
           "Erreur lors de la création de l'interaction de remplacement:",
@@ -133,12 +123,7 @@ export async function POST(
       }
     } else {
       // Uploader le fichier vers Google Drive
-      const { fileId } = await uploadFileToDrive(
-        session.user.id,
-        contactId,
-        contactName,
-        file,
-      );
+      const { fileId } = await uploadFileToDrive(session.user.id, contactId, contactName, file);
 
       // Créer un nouvel enregistrement dans la base de données
       contactFile = await prisma.contactFile.create({
@@ -163,18 +148,9 @@ export async function POST(
 
       // Créer une interaction pour l'upload du fichier (seulement si c'est un nouveau fichier)
       try {
-        await logFileUploaded(
-          contactId,
-          contactFile.id,
-          file.name,
-          file.size,
-          session.user.id,
-        );
+        await logFileUploaded(contactId, contactFile.id, file.name, file.size, session.user.id);
       } catch (interactionError: any) {
-        console.error(
-          "Erreur lors de la création de l'interaction d'upload:",
-          interactionError,
-        );
+        console.error("Erreur lors de la création de l'interaction d'upload:", interactionError);
         // On continue même si l'interaction échoue
       }
     }
@@ -194,19 +170,16 @@ export async function POST(
       updatedAt: contactFile.updatedAt,
     });
   } catch (error: any) {
-    console.error('Erreur lors de l\'upload du fichier:', error);
+    console.error("Erreur lors de l'upload du fichier:", error);
     return NextResponse.json(
-      { error: error.message || 'Erreur lors de l\'upload du fichier' },
+      { error: error.message || "Erreur lors de l'upload du fichier" },
       { status: 500 },
     );
   }
 }
 
 // GET /api/contacts/[id]/files - Lister les fichiers d'un contact
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
@@ -266,7 +239,10 @@ export async function GET(
             };
           }
         } catch (error) {
-          console.error(`Erreur lors de la récupération du lien pour le fichier ${file.id}:`, error);
+          console.error(
+            `Erreur lors de la récupération du lien pour le fichier ${file.id}:`,
+            error,
+          );
         }
 
         return {
@@ -291,4 +267,3 @@ export async function GET(
     );
   }
 }
-
