@@ -88,6 +88,12 @@ export default function ContactsPage() {
   const [assignedCommercialFilter, setAssignedCommercialFilter] = useState<string>('');
   const [assignedTeleproFilter, setAssignedTeleproFilter] = useState<string>('');
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalContacts, setTotalContacts] = useState(0);
+  const [limit] = useState(50);
+
   // Formulaire
   const [formData, setFormData] = useState({
     civility: '',
@@ -148,11 +154,6 @@ export default function ContactsPage() {
     fetchData();
   }, []);
 
-  // Charger les contacts
-  useEffect(() => {
-    fetchContacts();
-  }, [search, statusFilter, assignedCommercialFilter, assignedTeleproFilter]);
-
   const fetchContacts = async () => {
     try {
       setLoading(true);
@@ -161,11 +162,17 @@ export default function ContactsPage() {
       if (statusFilter) params.append('statusId', statusFilter);
       if (assignedCommercialFilter) params.append('assignedCommercialId', assignedCommercialFilter);
       if (assignedTeleproFilter) params.append('assignedTeleproId', assignedTeleproFilter);
+      params.append('page', currentPage.toString());
+      params.append('limit', limit.toString());
 
       const response = await fetch(`/api/contacts?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setContacts(data.contacts || []);
+        if (data.pagination) {
+          setTotalPages(data.pagination.totalPages);
+          setTotalContacts(data.pagination.total);
+        }
       } else {
         setError('Erreur lors du chargement des contacts');
       }
@@ -176,6 +183,18 @@ export default function ContactsPage() {
       setLoading(false);
     }
   };
+
+  // Réinitialiser à la page 1 quand les filtres changent
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [search, statusFilter, assignedCommercialFilter, assignedTeleproFilter]);
+
+  // Charger les contacts quand la page ou les filtres changent
+  useEffect(() => {
+    fetchContacts();
+  }, [currentPage, search, statusFilter, assignedCommercialFilter, assignedTeleproFilter]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -614,8 +633,16 @@ export default function ContactsPage() {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg bg-white shadow">
-            <table className="min-w-full divide-y divide-gray-200">
+          <>
+            <div className="mb-4 flex items-center justify-between text-sm text-gray-700">
+              <div>
+                Affichage de {contacts.length > 0 ? (currentPage - 1) * limit + 1 : 0} à{' '}
+                {Math.min(currentPage * limit, totalContacts)} sur {totalContacts} contact(s)
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-lg bg-white shadow">
+              <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
@@ -795,6 +822,81 @@ export default function ContactsPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between rounded-lg bg-white p-4 shadow">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Précédent
+              </button>
+
+              <div className="flex items-center gap-2">
+                {/* Première page */}
+                {currentPage > 3 && (
+                  <>
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      className="cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                    >
+                      1
+                    </button>
+                    {currentPage > 4 && <span className="text-gray-500">...</span>}
+                  </>
+                )}
+
+                {/* Pages autour de la page courante */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((page) => {
+                    return (
+                      page === currentPage ||
+                      page === currentPage - 1 ||
+                      page === currentPage - 2 ||
+                      page === currentPage + 1 ||
+                      page === currentPage + 2
+                    );
+                  })
+                  .map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`cursor-pointer rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                        currentPage === page
+                          ? 'border-indigo-600 bg-indigo-600 text-white'
+                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+
+                {/* Dernière page */}
+                {currentPage < totalPages - 2 && (
+                  <>
+                    {currentPage < totalPages - 3 && <span className="text-gray-500">...</span>}
+                    <button
+                      onClick={() => setCurrentPage(totalPages)}
+                      className="cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                    >
+                      {totalPages}
+                    </button>
+                  </>
+                )}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Suivant
+              </button>
+            </div>
+          )}
+          </>
         )}
       </div>
 
