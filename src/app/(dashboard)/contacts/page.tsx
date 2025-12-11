@@ -7,6 +7,7 @@ import { useUserRole } from '@/hooks/use-user-role';
 import { PageHeader } from '@/components/page-header';
 import { Search, Plus, Edit, Trash2, Phone, Mail, MapPin, Upload, X, Filter } from 'lucide-react';
 import { ContactTableSkeleton } from '@/components/skeleton';
+import { cn } from '@/lib/utils';
 
 interface Status {
   id: string;
@@ -863,11 +864,12 @@ export default function ContactsPage() {
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`cursor-pointer rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                      className={cn(
+                        'cursor-pointer rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
                         currentPage === page
                           ? 'border-indigo-600 bg-indigo-600 text-white'
                           : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
+                      )}
                     >
                       {page}
                     </button>

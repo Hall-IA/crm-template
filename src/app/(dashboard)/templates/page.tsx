@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { PageHeader } from '@/components/page-header';
-import { Plus, Edit, Trash2, Mail, MessageSquare, FileText, X, Info } from 'lucide-react';
+import { Plus, Edit, Trash2, Mail, MessageSquare, FileText, X } from 'lucide-react';
 import { Editor, type DefaultTemplateRef } from '@/components/editor';
 import { AVAILABLE_VARIABLES } from '@/lib/template-variables';
 import { TemplatesPageSkeleton } from '@/components/skeleton';
+import { cn } from '@/lib/utils';
 
 interface Template {
   id: string;
@@ -258,43 +259,47 @@ export default function TemplatesPage() {
         <div className="mb-6 flex flex-wrap gap-2">
           <button
             onClick={() => setFilterType('ALL')}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            className={cn(
+              'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
               filterType === 'ALL'
                 ? 'bg-indigo-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
+            )}
           >
             Tous
           </button>
           <button
             onClick={() => setFilterType('EMAIL')}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            className={cn(
+              'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
               filterType === 'EMAIL'
                 ? 'bg-indigo-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
+            )}
           >
             <Mail className="mr-2 inline h-4 w-4" />
             Emails
           </button>
           <button
             onClick={() => setFilterType('SMS')}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            className={cn(
+              'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
               filterType === 'SMS'
                 ? 'bg-indigo-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
+            )}
           >
             <MessageSquare className="mr-2 inline h-4 w-4" />
             SMS
           </button>
           <button
             onClick={() => setFilterType('NOTE')}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            className={cn(
+              'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
               filterType === 'NOTE'
                 ? 'bg-indigo-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
+            )}
           >
             <FileText className="mr-2 inline h-4 w-4" />
             Notes
@@ -332,9 +337,10 @@ export default function TemplatesPage() {
                       <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
                     </div>
                     <span
-                      className={`mt-2 inline-flex rounded-full border px-2 py-1 text-xs font-medium ${getTypeColor(
-                        template.type,
-                      )}`}
+                      className={cn(
+                        'mt-2 inline-flex rounded-full border px-2 py-1 text-xs font-medium',
+                        getTypeColor(template.type)
+                      )}
                     >
                       {getTypeLabel(template.type)}
                     </span>

@@ -21,6 +21,7 @@ import {
   FileText,
   Eye,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -76,12 +77,12 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 z-40 flex h-screen flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out lg:relative lg:translate-x-0 ${
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        } ${
+        className={cn(
+          'fixed top-0 left-0 z-40 flex h-screen flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out lg:relative lg:translate-x-0',
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
           // En mobile, toujours w-64. En desktop, utiliser le système de collapse
           isCollapsed && !isPinned ? 'w-64 lg:w-16' : 'w-64 lg:w-64'
-        }`}
+        )}
         onMouseEnter={() => {
           // Le système de hover ne s'applique qu'en desktop (lg:)
           // Vérifier la largeur de l'écran pour éviter les problèmes en mobile
@@ -103,9 +104,10 @@ export function Sidebar() {
       >
         {/* Logo/Brand */}
         <div
-          className={`flex h-16 items-center justify-between border-b border-gray-200 transition-all duration-300 ${
+          className={cn(
+            'flex h-16 items-center justify-between border-b border-gray-200 transition-all duration-300',
             isCollapsed && !isPinned ? 'px-6 lg:justify-center lg:px-2' : 'px-6'
-          }`}
+          )}
         >
           {!isCollapsed || isPinned ? (
             <>
@@ -179,9 +181,10 @@ export function Sidebar() {
 
         {/* Navigation */}
         <nav
-          className={`flex-1 space-y-1 overflow-y-auto py-4 transition-all duration-300 ${
+          className={cn(
+            'flex-1 space-y-1 overflow-y-auto py-4 transition-all duration-300',
             isCollapsed && !isPinned ? 'px-3 lg:px-2' : 'px-3'
-          }`}
+          )}
         >
           {navigation.map((item) => {
             const isActive = pathname === item.href;
@@ -191,13 +194,13 @@ export function Sidebar() {
                 key={item.name}
                 href={item.href}
                 onClick={handleLinkClick}
-                className={`flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors ${
-                  isCollapsed && !isPinned ? 'px-3 lg:justify-center lg:px-2' : 'px-3'
-                } ${
+                className={cn(
+                  'flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors',
+                  isCollapsed && !isPinned ? 'px-3 lg:justify-center lg:px-2' : 'px-3',
                   isActive
                     ? 'bg-indigo-50 text-indigo-600'
                     : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                }`}
+                )}
                 title={isCollapsed && !isPinned ? item.name : undefined}
               >
                 <Icon className="h-5 w-5 shrink-0" />
@@ -212,25 +215,28 @@ export function Sidebar() {
         {/* Vue active - pour les admins seulement */}
         {isRealAdmin && (
           <div
-            className={`border-t border-gray-200 transition-all duration-300 ${
+            className={cn(
+              'border-t border-gray-200 transition-all duration-300',
               isCollapsed && !isPinned ? 'p-3 lg:p-2' : 'p-3'
-            }`}
+            )}
           >
             {!isCollapsed || isPinned ? (
               <button
                 onClick={() => setShowViewAsModal(true)}
-                className={`w-full cursor-pointer rounded-lg border-2 p-3 text-left transition-all ${
+                className={cn(
+                  'w-full cursor-pointer rounded-lg border-2 p-3 text-left transition-all',
                   isViewingAsOther
                     ? 'border-indigo-600 bg-indigo-600 text-white hover:border-indigo-700 hover:bg-indigo-700'
                     : 'border-gray-300 bg-white text-gray-900 hover:border-indigo-300 hover:bg-indigo-50'
-                }`}
+                )}
                 aria-label="Changer de vue"
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                    className={cn(
+                      'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
                       isViewingAsOther ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-600'
-                    }`}
+                    )}
                   >
                     {isViewingAsOther
                       ? viewAsUser?.name?.[0]?.toUpperCase() || 'U'
@@ -238,7 +244,10 @@ export function Sidebar() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p
-                      className={`text-xs font-medium ${isViewingAsOther ? 'text-white/80' : 'text-gray-500'}`}
+                      className={cn(
+                        'text-xs font-medium',
+                        isViewingAsOther ? 'text-white/80' : 'text-gray-500'
+                      )}
                     >
                       {isViewingAsOther ? 'Vue:' : 'Ma vue'}
                     </p>
@@ -252,11 +261,12 @@ export function Sidebar() {
             ) : (
               <button
                 onClick={() => setShowViewAsModal(true)}
-                className={`w-full cursor-pointer rounded-lg p-2 transition-colors ${
+                className={cn(
+                  'w-full cursor-pointer rounded-lg p-2 transition-colors',
                   isViewingAsOther
                     ? 'bg-indigo-600 text-white hover:bg-indigo-700'
                     : 'text-gray-500 hover:bg-gray-100'
-                }`}
+                )}
                 title="Changer de vue"
                 aria-label="Changer de vue"
               >
@@ -270,9 +280,10 @@ export function Sidebar() {
 
         {/* User Profile */}
         <div
-          className={`border-t border-gray-200 transition-all duration-300 ${
+          className={cn(
+            'border-t border-gray-200 transition-all duration-300',
             isCollapsed && !isPinned ? 'p-4 lg:p-2' : 'p-4'
-          }`}
+          )}
         >
           {!isCollapsed || isPinned ? (
             <>

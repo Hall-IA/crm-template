@@ -2265,11 +2265,12 @@ export default function ContactDetailPage() {
                       <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex cursor-pointer items-center gap-1.5 border-b-2 px-4 py-4 text-sm font-medium transition-colors sm:gap-2 sm:px-6 ${
+                        className={cn(
+                          'flex cursor-pointer items-center gap-1.5 border-b-2 px-4 py-4 text-sm font-medium transition-colors sm:gap-2 sm:px-6',
                           activeTab === tab.id
                             ? 'border-indigo-600 text-indigo-600'
                             : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                        }`}
+                        )}
                       >
                         <TabIcon className="h-4 w-4 shrink-0" />
                         <span className="whitespace-nowrap">{tab.label}</span>
@@ -2343,11 +2344,12 @@ export default function ContactDetailPage() {
                                             {interaction.type === 'EMAIL' &&
                                               interaction.emailTracking && (
                                                 <span
-                                                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                  className={cn(
+                                                    'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium',
                                                     interaction.emailTracking.openCount > 0
                                                       ? 'bg-green-100 text-green-700'
                                                       : 'bg-gray-100 text-gray-600'
-                                                  }`}
+                                                  )}
                                                   title={`${interaction.emailTracking.openCount} ouverture${interaction.emailTracking.openCount > 1 ? 's' : ''}`}
                                                 >
                                                   👁️ {interaction.emailTracking.openCount}
@@ -2506,11 +2508,12 @@ export default function ContactDetailPage() {
                           return (
                             <div
                               key={appointment.id}
-                              className={`cursor-pointer rounded-lg border p-4 transition-colors hover:bg-gray-50 ${
+                              className={cn(
+                                'cursor-pointer rounded-lg border p-4 transition-colors hover:bg-gray-50',
                                 isPast
                                   ? 'border-gray-200 bg-gray-50'
                                   : 'border-gray-200 bg-white shadow-sm'
-                              }`}
+                              )}
                               onClick={() => {
                                 // Ouvrir le modal de visualisation
                                 setViewingAppointment(appointment);
@@ -2529,11 +2532,12 @@ export default function ContactDetailPage() {
                                       {appointment.title || 'Rendez-vous'}
                                     </h3>
                                     <span
-                                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                                      className={cn(
+                                        'rounded-full px-2 py-0.5 text-xs font-medium',
                                         isVideoConference
                                           ? 'bg-indigo-100 text-indigo-700'
                                           : 'bg-yellow-100 text-yellow-700'
-                                      }`}
+                                      )}
                                     >
                                       {isVideoConference ? 'Google Meet' : 'Rendez-vous physique'}
                                     </span>
@@ -2897,11 +2901,12 @@ export default function ContactDetailPage() {
                                         </p>
                                         {interaction.emailTracking && (
                                           <span
-                                            className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                                            className={cn(
+                                              'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium',
                                               interaction.emailTracking.openCount > 0
                                                 ? 'bg-green-100 text-green-700'
                                                 : 'bg-gray-100 text-gray-600'
-                                            }`}
+                                            )}
                                             title={`${interaction.emailTracking.openCount} ouverture${interaction.emailTracking.openCount > 1 ? 's' : ''}`}
                                           >
                                             👁️ {interaction.emailTracking.openCount}
@@ -3949,11 +3954,12 @@ export default function ContactDetailPage() {
                               priority: option.value,
                             })
                           }
-                          className={`cursor-pointer rounded-xl border px-3 py-2 text-xs font-medium transition-colors sm:text-sm ${
+                          className={cn(
+                            'cursor-pointer rounded-xl border px-3 py-2 text-xs font-medium transition-colors sm:text-sm',
                             isActive
                               ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                               : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-200 hover:bg-indigo-50/60'
-                          }`}
+                          )}
                         >
                           {option.label}
                         </button>
@@ -4189,11 +4195,12 @@ export default function ContactDetailPage() {
                               priority: option.value,
                             })
                           }
-                          className={`cursor-pointer rounded-xl border px-3 py-2 text-xs font-medium transition-colors sm:text-sm ${
+                          className={cn(
+                            'cursor-pointer rounded-xl border px-3 py-2 text-xs font-medium transition-colors sm:text-sm',
                             isActive
                               ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                               : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-200 hover:bg-indigo-50/60'
-                          }`}
+                          )}
                         >
                           {option.label}
                         </button>
@@ -4462,11 +4469,12 @@ export default function ContactDetailPage() {
                               priority: option.value,
                             })
                           }
-                          className={`cursor-pointer rounded-xl border px-3 py-2 text-xs font-medium transition-colors sm:text-sm ${
+                          className={cn(
+                            'cursor-pointer rounded-xl border px-3 py-2 text-xs font-medium transition-colors sm:text-sm',
                             isActive
                               ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                               : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-200 hover:bg-indigo-50/60'
-                          }`}
+                          )}
                         >
                           {option.label}
                         </button>

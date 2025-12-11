@@ -5,6 +5,7 @@ import { useSession } from '@/lib/auth-client';
 import { useViewAs } from '@/contexts/view-as-context';
 import { X, Check, User as UserIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 interface User {
   id: string;
@@ -111,18 +112,20 @@ export function ViewAsModal({ isOpen, onClose }: ViewAsModalProps) {
                     onClose();
                     router.refresh();
                   }}
-                  className={`w-full cursor-pointer rounded-lg border-2 p-4 text-left transition-all ${
+                  className={cn(
+                    'w-full cursor-pointer rounded-lg border-2 p-4 text-left transition-all',
                     !viewAsUser
                       ? 'border-indigo-500 bg-indigo-50'
                       : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50'
-                  }`}
+                  )}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div
-                        className={`flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold ${
+                        className={cn(
+                          'flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold',
                           !viewAsUser ? 'bg-indigo-600 text-white' : 'bg-indigo-100 text-indigo-600'
-                        }`}
+                        )}
                       >
                         {getInitials(session.user.name || session.user.email)}
                       </div>
@@ -146,20 +149,22 @@ export function ViewAsModal({ isOpen, onClose }: ViewAsModalProps) {
                   <button
                     key={user.id}
                     onClick={() => handleSelectUser(user)}
-                    className={`w-full cursor-pointer rounded-lg border-2 p-4 text-left transition-all ${
+                    className={cn(
+                      'w-full cursor-pointer rounded-lg border-2 p-4 text-left transition-all',
                       viewAsUser?.id === user.id
                         ? 'border-indigo-500 bg-indigo-50'
                         : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50'
-                    }`}
+                    )}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div
-                          className={`flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold ${
+                          className={cn(
+                            'flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold',
                             viewAsUser?.id === user.id
                               ? 'bg-indigo-600 text-white'
                               : 'bg-gray-200 text-gray-600'
-                          }`}
+                          )}
                         >
                           {getInitials(user.name || user.email)}
                         </div>

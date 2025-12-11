@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useUserRole } from '@/hooks/use-user-role';
 import { PageHeader } from '@/components/page-header';
+import { cn } from '@/lib/utils';
 import {
   Calendar,
   Clock,
@@ -377,18 +378,21 @@ export default function AgendaPage() {
                     return (
                       <div
                         key={index}
-                        className={`min-h-[100px] border-r border-b border-gray-200 p-2 last:border-r-0 ${
-                          !day.isCurrentMonth ? 'bg-gray-50' : ''
-                        } ${isToday ? 'bg-indigo-50' : ''}`}
+                        className={cn(
+                          'min-h-[100px] border-r border-b border-gray-200 p-2 last:border-r-0',
+                          !day.isCurrentMonth && 'bg-gray-50',
+                          isToday && 'bg-indigo-50',
+                        )}
                       >
                         <div
-                          className={`mb-1 text-sm font-medium ${
+                          className={cn(
+                            'mb-1 text-sm font-medium',
                             isToday
                               ? 'text-indigo-600'
                               : day.isCurrentMonth
                                 ? 'text-gray-900'
-                                : 'text-gray-400'
-                          }`}
+                                : 'text-gray-400',
+                          )}
                         >
                           {day.date.getDate()}
                         </div>
@@ -397,9 +401,10 @@ export default function AgendaPage() {
                             <Link
                               key={task.id}
                               href={task.contact ? `/contacts/${task.contact.id}` : '#'}
-                              className={`block rounded px-1.5 py-0.5 text-xs transition-colors ${
-                                task.contact ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
-                              }`}
+                              className={cn(
+                                'block rounded px-1.5 py-0.5 text-xs transition-colors',
+                                task.contact ? 'cursor-pointer hover:opacity-80' : 'cursor-default',
+                              )}
                               style={{
                                 backgroundColor: `${PRIORITY_COLORS[task.priority]}20`,
                                 borderLeft: `3px solid ${PRIORITY_COLORS[task.priority]}`,
@@ -452,9 +457,10 @@ export default function AgendaPage() {
                           {day.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}
                         </div>
                         <div
-                          className={`mx-auto mt-1 flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
-                            isToday ? 'bg-indigo-600 text-white' : 'text-gray-900'
-                          }`}
+                          className={cn(
+                            'mx-auto mt-1 flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold',
+                            isToday ? 'bg-indigo-600 text-white' : 'text-gray-900',
+                          )}
                         >
                           {day.getDate()}
                         </div>
@@ -576,9 +582,10 @@ export default function AgendaPage() {
                                 </span>
                               </div>
                               <h3
-                                className={`mt-1 text-base font-semibold ${
-                                  task.completed ? 'text-gray-400 line-through' : 'text-gray-900'
-                                }`}
+                                className={cn(
+                                  'mt-1 text-base font-semibold',
+                                  task.completed ? 'text-gray-400 line-through' : 'text-gray-900',
+                                )}
                               >
                                 {task.title || TASK_TYPE_LABELS[task.type]}
                               </h3>
@@ -728,9 +735,10 @@ export default function AgendaPage() {
                               </span>
                             </div>
                             <h3
-                              className={`mt-1 text-base font-semibold ${
-                                task.completed ? 'text-gray-400 line-through' : 'text-gray-900'
-                              }`}
+                              className={cn(
+                                'mt-1 text-base font-semibold',
+                                task.completed ? 'text-gray-400 line-through' : 'text-gray-900',
+                              )}
                             >
                               {task.title || TASK_TYPE_LABELS[task.type]}
                             </h3>
