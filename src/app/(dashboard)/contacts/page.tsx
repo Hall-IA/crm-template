@@ -5,7 +5,19 @@ import { useRouter } from 'next/navigation';
 import { useSession } from '@/lib/auth-client';
 import { useUserRole } from '@/hooks/use-user-role';
 import { PageHeader } from '@/components/page-header';
-import { Search, Plus, Edit, Trash2, Phone, Mail, MapPin, Upload, X, Filter } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  Trash2,
+  Phone,
+  Mail,
+  MapPin,
+  Upload,
+  X,
+  Filter,
+  LayoutGrid,
+  List,
+} from 'lucide-react';
 import { ContactTableSkeleton } from '@/components/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -52,7 +64,6 @@ interface Contact {
 
 export default function ContactsPage() {
   const router = useRouter();
-  const { data: session } = useSession();
   const { isAdmin } = useUserRole();
 
   // Fonction pour formater les dates en français
@@ -94,6 +105,15 @@ export default function ContactsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalContacts, setTotalContacts] = useState(0);
   const [limit] = useState(50);
+
+  // Vue (table ou cards) - Persistée dans localStorage
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('contactsViewMode');
+      return saved === 'cards' || saved === 'table' ? saved : 'table';
+    }
+    return 'table';
+  });
 
   // Formulaire
   const [formData, setFormData] = useState({
@@ -154,6 +174,11 @@ export default function ContactsPage() {
     };
     fetchData();
   }, []);
+
+  // Persister la préférence de vue
+  useEffect(() => {
+    localStorage.setItem('contactsViewMode', viewMode);
+  }, [viewMode]);
 
   const fetchContacts = async () => {
     try {
@@ -288,29 +313,6 @@ export default function ContactsPage() {
     } catch (err: any) {
       setError(err.message);
     }
-  };
-
-  const handleEdit = (contact: Contact) => {
-    setEditingContact(contact);
-    setFormData({
-      civility: contact.civility || '',
-      firstName: contact.firstName || '',
-      lastName: contact.lastName || '',
-      phone: contact.phone,
-      secondaryPhone: contact.secondaryPhone || '',
-      email: contact.email || '',
-      address: contact.address || '',
-      city: contact.city || '',
-      postalCode: contact.postalCode || '',
-      origin: contact.origin || '',
-      company: contact.companyName || '',
-      isCompany: contact.isCompany || false,
-      companyId: contact.companyId || '',
-      statusId: contact.statusId || '',
-      assignedCommercialId: contact.assignedCommercialId || '',
-      assignedTeleproId: contact.assignedTeleproId || '',
-    });
-    setShowModal(true);
   };
 
   const handleNewContact = () => {
@@ -640,264 +642,477 @@ export default function ContactsPage() {
                 Affichage de {contacts.length > 0 ? (currentPage - 1) * limit + 1 : 0} à{' '}
                 {Math.min(currentPage * limit, totalContacts)} sur {totalContacts} contact(s)
               </div>
+              {/* Toggle Vue */}
+              <div className="flex items-center rounded-lg border border-gray-300 bg-white p-1">
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={cn(
+                    'flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                    viewMode === 'table'
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100',
+                  )}
+                  title="Vue tableau"
+                >
+                  <List className="h-4 w-4" />
+                  <span className="hidden sm:inline">Tableau</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('cards')}
+                  className={cn(
+                    'flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                    viewMode === 'cards'
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100',
+                  )}
+                  title="Vue cartes"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  <span className="hidden sm:inline">Cartes</span>
+                </button>
+              </div>
             </div>
 
-            <div className="overflow-x-auto rounded-lg bg-white shadow">
-              <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                    Contact
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                    Téléphone
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                    Email
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                    Statut
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                    <div className="flex items-center gap-1">
-                      COMMERCIAL
-                      <Filter className="h-3 w-3 text-gray-400" />
-                    </div>
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                    <div className="flex items-center gap-1">
-                      TÉLÉPRO
-                      <Filter className="h-3 w-3 text-gray-400" />
-                    </div>
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                    Créé le
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                    Modifié le
-                  </th>
-                  <th className="px-3 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
-                {contacts.map((contact) => (
-                  <tr
-                    key={contact.id}
-                    onClick={() => router.push(`/contacts/${contact.id}`)}
-                    className="cursor-pointer hover:bg-gray-50"
-                  >
-                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
-                      <div className="flex items-center">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
-                          {contact.isCompany ? (
-                            <span className="text-xs font-bold">🏢</span>
-                          ) : (
-                            (contact.firstName?.[0] || contact.lastName?.[0] || '?').toUpperCase()
-                          )}
+            {/* Vue Tableau */}
+            {viewMode === 'table' && (
+              <div className="overflow-x-auto rounded-lg bg-white shadow">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                        Contact
+                      </th>
+                      <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                        Téléphone
+                      </th>
+                      <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                        Email
+                      </th>
+                      <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                        Statut
+                      </th>
+                      <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                        <div className="flex items-center gap-1">
+                          COMMERCIAL
+                          <Filter className="h-3 w-3 text-gray-400" />
                         </div>
-                        <div className="ml-3 min-w-0 sm:ml-4">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-gray-900">
-                              {contact.civility && `${contact.civility}. `}
-                              {contact.firstName} {contact.lastName}
+                      </th>
+                      <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                        <div className="flex items-center gap-1">
+                          TÉLÉPRO
+                          <Filter className="h-3 w-3 text-gray-400" />
+                        </div>
+                      </th>
+                      <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                        Créé le
+                      </th>
+                      <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                        Modifié le
+                      </th>
+                      <th className="px-3 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {contacts.map((contact) => (
+                      <tr
+                        key={contact.id}
+                        onClick={() => router.push(`/contacts/${contact.id}`)}
+                        className="cursor-pointer hover:bg-gray-50"
+                      >
+                        <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                          <div className="flex items-center">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+                              {contact.isCompany ? (
+                                <span className="text-xs font-bold">🏢</span>
+                              ) : (
+                                (
+                                  contact.firstName?.[0] ||
+                                  contact.lastName?.[0] ||
+                                  '?'
+                                ).toUpperCase()
+                              )}
+                            </div>
+                            <div className="ml-3 min-w-0 sm:ml-4">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-900">
+                                  {contact.civility && `${contact.civility}. `}
+                                  {contact.firstName} {contact.lastName}
+                                </span>
+                                {contact.isCompany && (
+                                  <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                                    Entreprise
+                                  </span>
+                                )}
+                              </div>
+                              {contact.companyName && (
+                                <div className="text-xs text-gray-500">
+                                  Entreprise: {contact.companyName}
+                                </div>
+                              )}
+                              {!contact.companyName && contact.companyRelation && (
+                                <div className="text-xs text-gray-500">
+                                  Entreprise:{' '}
+                                  {contact.companyRelation.firstName ||
+                                    contact.companyRelation.lastName ||
+                                    'Sans nom'}
+                                </div>
+                              )}
+                              {contact.city && (
+                                <div className="flex items-center text-xs text-gray-500">
+                                  <MapPin className="mr-1 h-3 w-3" />
+                                  {contact.city}
+                                  {contact.postalCode && ` ${contact.postalCode}`}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 text-sm whitespace-nowrap sm:px-6">
+                          <div className="flex items-center text-gray-900">
+                            <Phone className="mr-2 h-4 w-4 text-gray-400" />
+                            {contact.phone}
+                          </div>
+                          {contact.secondaryPhone && (
+                            <div className="mt-1 text-xs text-gray-500">
+                              {contact.secondaryPhone}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-4 text-sm whitespace-nowrap sm:px-6">
+                          {contact.email ? (
+                            <div className="flex items-center text-gray-900">
+                              <Mail className="mr-2 h-4 w-4 text-gray-400" />
+                              <span className="max-w-[200px] truncate">{contact.email}</span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                          {contact.status ? (
+                            <span
+                              className="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
+                              style={{
+                                backgroundColor: `${contact.status.color}20`,
+                                color: contact.status.color,
+                              }}
+                            >
+                              {contact.status.name}
                             </span>
-                            {contact.isCompany && (
-                              <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-                                Entreprise
-                              </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                          {contact.assignedCommercial ? (
+                            <span className="text-sm text-gray-900">
+                              {contact.assignedCommercial.name}
+                            </span>
+                          ) : (
+                            <span className="inline-flex rounded-full border border-orange-300 bg-orange-50 px-2 py-1 text-xs font-medium text-orange-800">
+                              Non Attribué
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                          {contact.assignedTelepro ? (
+                            <span className="text-sm text-gray-900">
+                              {contact.assignedTelepro.name}
+                            </span>
+                          ) : (
+                            <span className="inline-flex rounded-full border border-orange-300 bg-orange-50 px-2 py-1 text-xs font-medium text-orange-800">
+                              Non Attribué
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-4 text-sm whitespace-nowrap text-gray-500 sm:px-6">
+                          {contact.createdAt ? formatDate(contact.createdAt) : '-'}
+                        </td>
+                        <td className="px-3 py-4 text-sm whitespace-nowrap text-gray-500 sm:px-6">
+                          {contact.updatedAt ? formatDate(contact.updatedAt) : '-'}
+                        </td>
+                        <td className="px-3 py-4 text-right text-sm font-medium whitespace-nowrap sm:px-6">
+                          <div className="flex items-center justify-end gap-2">
+                            {isAdmin && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(contact.id);
+                                }}
+                                className="cursor-pointer rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50"
+                                title="Supprimer"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
                             )}
                           </div>
-                          {contact.companyName && (
-                            <div className="text-xs text-gray-500">
-                              Entreprise: {contact.companyName}
-                            </div>
-                          )}
-                          {!contact.companyName && contact.companyRelation && (
-                            <div className="text-xs text-gray-500">
-                              Entreprise:{' '}
-                              {contact.companyRelation.firstName || contact.companyRelation.lastName || 'Sans nom'}
-                            </div>
-                          )}
-                          {contact.city && (
-                            <div className="flex items-center text-xs text-gray-500">
-                              <MapPin className="mr-1 h-3 w-3" />
-                              {contact.city}
-                              {contact.postalCode && ` ${contact.postalCode}`}
-                            </div>
-                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Vue Cartes */}
+            {viewMode === 'cards' && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {contacts.map((contact) => {
+                  return (
+                    <div
+                      key={contact.id}
+                      onClick={() => router.push(`/contacts/${contact.id}`)}
+                      className="relative cursor-pointer rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-indigo-300 hover:shadow-md"
+                    >
+                      {/* En-tête avec trois points */}
+                      <div className="mb-4 flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-lg font-semibold text-indigo-600">
+                            {contact.isCompany ? (
+                              <span>🏢</span>
+                            ) : (
+                              (contact.firstName?.[0] || contact.lastName?.[0] || '?').toUpperCase()
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-base font-semibold text-gray-900">
+                              {contact.civility && `${contact.civility}. `}
+                              {contact.firstName} {contact.lastName}
+                            </h3>
+                            <p className="text-xs text-gray-500">
+                              Créé le :{' '}
+                              {new Date(contact.createdAt).toLocaleDateString('fr-FR', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-3 py-4 text-sm whitespace-nowrap sm:px-6">
-                      <div className="flex items-center text-gray-900">
-                        <Phone className="mr-2 h-4 w-4 text-gray-400" />
-                        {contact.phone}
-                      </div>
-                      {contact.secondaryPhone && (
-                        <div className="mt-1 text-xs text-gray-500">{contact.secondaryPhone}</div>
-                      )}
-                    </td>
-                    <td className="px-3 py-4 text-sm whitespace-nowrap sm:px-6">
-                      {contact.email ? (
-                        <div className="flex items-center text-gray-900">
+
+                      {/* Informations de contact */}
+                      <div className="mb-4 space-y-2">
+                        <div className="flex items-center text-sm text-gray-900">
+                          <Phone className="mr-2 h-4 w-4 text-gray-400" />
+                          <span className="font-medium">Tél. :</span>
+                          <span className="ml-1">{contact.phone}</span>
+                        </div>
+                        {contact.secondaryPhone && (
+                          <div className="text-xs text-gray-500">
+                            Tél. secondaire : {contact.secondaryPhone}
+                          </div>
+                        )}
+                        <div className="flex items-center text-sm text-gray-900">
                           <Mail className="mr-2 h-4 w-4 text-gray-400" />
-                          <span className="max-w-[200px] truncate">{contact.email}</span>
+                          <span className="font-medium">Email :</span>
+                          <span className="ml-1 truncate">{contact.email || '-'}</span>
                         </div>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
-                      {contact.status ? (
-                        <span
-                          className="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
-                          style={{
-                            backgroundColor: `${contact.status.color}20`,
-                            color: contact.status.color,
-                          }}
-                        >
-                          {contact.status.name}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
-                      {contact.assignedCommercial ? (
-                        <span className="text-sm text-gray-900">
-                          {contact.assignedCommercial.name}
-                        </span>
-                      ) : (
-                        <span className="inline-flex rounded-full border border-orange-300 bg-orange-50 px-2 py-1 text-xs font-medium text-orange-800">
-                          Non Attribué
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
-                      {contact.assignedTelepro ? (
-                        <span className="text-sm text-gray-900">
-                          {contact.assignedTelepro.name}
-                        </span>
-                      ) : (
-                        <span className="inline-flex rounded-full border border-orange-300 bg-orange-50 px-2 py-1 text-xs font-medium text-orange-800">
-                          Non Attribué
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-4 text-sm whitespace-nowrap text-gray-500 sm:px-6">
-                      {contact.createdAt ? formatDate(contact.createdAt) : '-'}
-                    </td>
-                    <td className="px-3 py-4 text-sm whitespace-nowrap text-gray-500 sm:px-6">
-                      {contact.updatedAt ? formatDate(contact.updatedAt) : '-'}
-                    </td>
-                    <td className="px-3 py-4 text-right text-sm font-medium whitespace-nowrap sm:px-6">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(contact);
-                          }}
-                          className="cursor-pointer rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100"
-                          title="Modifier"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        {isAdmin && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(contact.id);
-                            }}
-                            className="cursor-pointer rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50"
-                            title="Supprimer"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                        {(contact.companyName || contact.companyRelation) && (
+                          <div className="flex items-center text-sm text-gray-900">
+                            <span className="mr-2 text-xs">🏢</span>
+                            <span className="font-medium">Entreprise :</span>
+                            <span className="ml-1 truncate">
+                              {contact.companyName ||
+                                (contact.companyRelation &&
+                                  (contact.companyRelation.firstName ||
+                                    contact.companyRelation.lastName ||
+                                    'Sans nom'))}
+                            </span>
+                          </div>
+                        )}
+                        {contact.city && (
+                          <div className="flex items-center text-sm text-gray-500">
+                            <MapPin className="mr-2 h-4 w-4 text-gray-400" />
+                            <span className="font-medium">Localisation :</span>
+                            <span className="ml-1">
+                              {contact.city}
+                              {contact.postalCode && `, ${contact.postalCode}`}
+                            </span>
+                          </div>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-between rounded-lg bg-white p-4 shadow">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Précédent
-              </button>
+                      {/* Badges et statut */}
+                      <div className="mb-4 flex flex-wrap items-center gap-2">
+                        {contact.status && (
+                          <span
+                            className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                            style={{
+                              backgroundColor: `${contact.status.color}20`,
+                              color: contact.status.color,
+                            }}
+                          >
+                            {contact.status.name}
+                          </span>
+                        )}
+                        {contact.isCompany && (
+                          <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+                            Entreprise
+                          </span>
+                        )}
+                        {!contact.assignedCommercial && (
+                          <span className="inline-flex items-center rounded-full border border-orange-300 bg-orange-50 px-2.5 py-0.5 text-xs font-semibold text-orange-800">
+                            Non Attribué
+                          </span>
+                        )}
+                      </div>
 
-              <div className="flex items-center gap-2">
-                {/* Première page */}
-                {currentPage > 3 && (
-                  <>
-                    <button
-                      onClick={() => setCurrentPage(1)}
-                      className="cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-                    >
-                      1
-                    </button>
-                    {currentPage > 4 && <span className="text-gray-500">...</span>}
-                  </>
-                )}
+                      {/* Pied de carte avec utilisateurs assignés */}
+                      <div className="flex items-start justify-between border-t border-gray-100 pt-4">
+                        <div className="space-y-2">
+                          {/* Commercial */}
+                          {contact.assignedCommercial && (
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">
+                                {contact.assignedCommercial.name
+                                  .split(' ')
+                                  .map((n) => n[0])
+                                  .join('')
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-medium text-gray-900">
+                                    {contact.assignedCommercial.name}
+                                  </span>
+                                  <span className="inline-flex items-center rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                                    Commercial
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
 
-                {/* Pages autour de la page courante */}
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter((page) => {
-                    return (
-                      page === currentPage ||
-                      page === currentPage - 1 ||
-                      page === currentPage - 2 ||
-                      page === currentPage + 1 ||
-                      page === currentPage + 2
-                    );
-                  })
-                  .map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={cn(
-                        'cursor-pointer rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
-                        currentPage === page
-                          ? 'border-indigo-600 bg-indigo-600 text-white'
-                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                      )}
-                    >
-                      {page}
-                    </button>
-                  ))}
+                          {/* Télépro */}
+                          {contact.assignedTelepro && (
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-semibold text-purple-600">
+                                {contact.assignedTelepro.name
+                                  .split(' ')
+                                  .map((n) => n[0])
+                                  .join('')
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-medium text-gray-900">
+                                    {contact.assignedTelepro.name}
+                                  </span>
+                                  <span className="inline-flex items-center rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700">
+                                    Télépro
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
 
-                {/* Dernière page */}
-                {currentPage < totalPages - 2 && (
-                  <>
-                    {currentPage < totalPages - 3 && <span className="text-gray-500">...</span>}
-                    <button
-                      onClick={() => setCurrentPage(totalPages)}
-                      className="cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-                    >
-                      {totalPages}
-                    </button>
-                  </>
-                )}
+                          {/* Aucun utilisateur assigné */}
+                          {!contact.assignedCommercial && !contact.assignedTelepro && (
+                            <div className="text-xs text-gray-400">Aucun utilisateur assigné</div>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center justify-end gap-2">
+                          {isAdmin && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(contact.id);
+                              }}
+                              className="cursor-pointer rounded-lg p-1.5 text-red-600 transition-colors hover:bg-red-50"
+                              title="Supprimer"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
+            )}
 
-              <button
-                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Suivant
-              </button>
-            </div>
-          )}
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-between rounded-lg bg-white p-4 shadow">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Précédent
+                </button>
+
+                <div className="flex items-center gap-2">
+                  {/* Première page */}
+                  {currentPage > 3 && (
+                    <>
+                      <button
+                        onClick={() => setCurrentPage(1)}
+                        className="cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                      >
+                        1
+                      </button>
+                      {currentPage > 4 && <span className="text-gray-500">...</span>}
+                    </>
+                  )}
+
+                  {/* Pages autour de la page courante */}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((page) => {
+                      return (
+                        page === currentPage ||
+                        page === currentPage - 1 ||
+                        page === currentPage - 2 ||
+                        page === currentPage + 1 ||
+                        page === currentPage + 2
+                      );
+                    })
+                    .map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={cn(
+                          'cursor-pointer rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+                          currentPage === page
+                            ? 'border-indigo-600 bg-indigo-600 text-white'
+                            : 'border-gray-300 text-gray-700 hover:bg-gray-50',
+                        )}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                  {/* Dernière page */}
+                  {currentPage < totalPages - 2 && (
+                    <>
+                      {currentPage < totalPages - 3 && <span className="text-gray-500">...</span>}
+                      <button
+                        onClick={() => setCurrentPage(totalPages)}
+                        className="cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                      >
+                        {totalPages}
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Suivant
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
