@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       prisma.contact.findMany({
         where: {
           ...where,
-          isCompany: false
+          isCompany: false,
         },
         include: {
           status: true,
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit,
       }),
-      prisma.contact.count({ where }),
+      prisma.contact.count({ where: { ...where, isCompany: false } }),
     ]);
 
     return NextResponse.json({
