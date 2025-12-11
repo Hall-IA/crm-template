@@ -4,10 +4,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from '@/lib/auth-client';
 import { useRouter } from 'next/navigation';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useUserRole } from '@/hooks/use-user-role';
 import { useMobileMenuContext } from '@/contexts/mobile-menu-context';
 import { useSidebarContext } from '@/contexts/sidebar-context';
+import { useViewAs } from '@/contexts/view-as-context';
+import { ViewAsModal } from '@/components/view-as-modal';
 import {
   LayoutDashboard,
   Users,
@@ -17,6 +19,7 @@ import {
   Pin,
   PinOff,
   FileText,
+  Eye,
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -25,9 +28,11 @@ export function Sidebar() {
   const router = useRouter();
   const { isOpen: isMobileMenuOpen, setIsOpen: setIsMobileMenuOpen } = useMobileMenuContext();
   const { isCollapsed, isPinned, setIsCollapsed, togglePin } = useSidebarContext();
+  const { viewAsUser, isViewingAsOther } = useViewAs();
+  const [showViewAsModal, setShowViewAsModal] = useState(false);
 
   // Obtenir le rôle de l'utilisateur via le hook personnalisé
-  const { isAdmin } = useUserRole();
+  const { isAdmin, isRealAdmin } = useUserRole();
   // Navigation conditionnelle basée sur le rôle
   const navigation = useMemo(() => {
     const baseNav = [
@@ -64,7 +69,7 @@ export function Sidebar() {
       {/* Overlay for mobile */}
       {isMobileMenuOpen && (
         <div
-          className="bg-opacity-50 fixed inset-0 z-40 bg-black lg:hidden"
+          className="backdrop-blur-sm fixed inset-0 z-40 bg-gray-500/20 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
@@ -204,6 +209,65 @@ export function Sidebar() {
           })}
         </nav>
 
+        {/* Vue active - pour les admins seulement */}
+        {isRealAdmin && (
+          <div
+            className={`border-t border-gray-200 transition-all duration-300 ${
+              isCollapsed && !isPinned ? 'p-3 lg:p-2' : 'p-3'
+            }`}
+          >
+            {!isCollapsed || isPinned ? (
+              <button
+                onClick={() => setShowViewAsModal(true)}
+                className={`w-full cursor-pointer rounded-lg border-2 p-3 text-left transition-all ${
+                  isViewingAsOther
+                    ? 'border-indigo-600 bg-indigo-600 text-white hover:border-indigo-700 hover:bg-indigo-700'
+                    : 'border-gray-300 bg-white text-gray-900 hover:border-indigo-300 hover:bg-indigo-50'
+                }`}
+                aria-label="Changer de vue"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                      isViewingAsOther ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-600'
+                    }`}
+                  >
+                    {isViewingAsOther
+                      ? viewAsUser?.name?.[0]?.toUpperCase() || 'U'
+                      : session?.user?.name?.[0]?.toUpperCase() || 'U'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`text-xs font-medium ${isViewingAsOther ? 'text-white/80' : 'text-gray-500'}`}
+                    >
+                      {isViewingAsOther ? 'Vue:' : 'Ma vue'}
+                    </p>
+                    <p className={`truncate text-sm font-semibold`}>
+                      {isViewingAsOther ? viewAsUser?.name : session?.user?.name || 'Utilisateur'}
+                    </p>
+                  </div>
+                  <Eye className="h-5 w-5 shrink-0" />
+                </div>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowViewAsModal(true)}
+                className={`w-full cursor-pointer rounded-lg p-2 transition-colors ${
+                  isViewingAsOther
+                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    : 'text-gray-500 hover:bg-gray-100'
+                }`}
+                title="Changer de vue"
+                aria-label="Changer de vue"
+              >
+                <div className="flex items-center justify-center">
+                  <Eye className="h-5 w-5" />
+                </div>
+              </button>
+            )}
+          </div>
+        )}
+
         {/* User Profile */}
         <div
           className={`border-t border-gray-200 transition-all duration-300 ${
@@ -254,6 +318,9 @@ export function Sidebar() {
           )}
         </div>
       </div>
+
+      {/* Modal de changement de vue */}
+      <ViewAsModal isOpen={showViewAsModal} onClose={() => setShowViewAsModal(false)} />
     </>
   );
 }
