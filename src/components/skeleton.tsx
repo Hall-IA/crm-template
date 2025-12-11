@@ -8,7 +8,7 @@ export function Skeleton({ className = '' }: { className?: string }) {
   );
 }
 
-export function ContactTableSkeleton() {
+export function ContactTableSkeleton({ isAdmin = false }: { isAdmin?: boolean }) {
   return (
     <div className="overflow-x-auto rounded-lg bg-white shadow">
       <table className="min-w-full divide-y divide-gray-200">
@@ -38,9 +38,11 @@ export function ContactTableSkeleton() {
             <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
               Modifié le
             </th>
-            <th className="px-3 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-              Actions
-            </th>
+            {isAdmin && (
+              <th className="px-3 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                Actions
+              </th>
+            )}
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200 bg-white">
@@ -76,16 +78,87 @@ export function ContactTableSkeleton() {
               <td className="px-3 py-4 whitespace-nowrap sm:px-6">
                 <Skeleton className="h-4 w-32" />
               </td>
-              <td className="px-3 py-4 text-right text-sm font-medium whitespace-nowrap sm:px-6">
-                <div className="flex items-center justify-end gap-2">
-                  <Skeleton className="h-8 w-8 rounded-lg" />
-                  <Skeleton className="h-8 w-8 rounded-lg" />
-                </div>
-              </td>
+              {isAdmin && (
+                <td className="px-3 py-4 text-right text-sm font-medium whitespace-nowrap sm:px-6">
+                  <div className="flex items-center justify-end gap-2">
+                    <Skeleton className="h-8 w-8 rounded-lg" />
+                  </div>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+export function ContactCardsSkeleton({ isAdmin = false }: { isAdmin?: boolean }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 9 }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
+        >
+          {/* En-tête */}
+          <div className="mb-4 flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-12 w-12 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            </div>
+          </div>
+
+          {/* Informations de contact */}
+          <div className="mb-4 space-y-2">
+            <div className="flex items-center">
+              <Skeleton className="mr-2 h-4 w-4" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+            <div className="flex items-center">
+              <Skeleton className="mr-2 h-4 w-4" />
+              <Skeleton className="h-4 w-36" />
+            </div>
+            <div className="flex items-center">
+              <Skeleton className="mr-2 h-4 w-4" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </div>
+
+          {/* Badge statut */}
+          <div className="mb-4">
+            <Skeleton className="h-6 w-24 rounded-full" />
+          </div>
+
+          {/* Pied de carte avec utilisateurs assignés */}
+          <div className="flex items-start justify-between border-t border-gray-100 pt-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-7 w-7 rounded-full" />
+                <div className="space-y-1">
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-7 w-7 rounded-full" />
+                <div className="space-y-1">
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            {isAdmin && (
+              <div className="flex items-center justify-end gap-2">
+                <Skeleton className="h-8 w-8 rounded-lg" />
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

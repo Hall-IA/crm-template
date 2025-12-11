@@ -22,7 +22,7 @@
     "@lexical/utils": "^0.38.2",
     "@lexkit/editor": "^0.0.38",
     "@prisma/adapter-pg": "^7.0.1",
-    "@prisma/client": "^7.0.1",
+    "@prisma/client": "^7.1.0",
     "@react-email/render": "^2.0.0",
     "bcryptjs": "^3.0.3",
     "better-auth": "^1.4.2",
@@ -55,7 +55,7 @@
     "eslint-config-next": "16.0.7",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.7.1",
-    "prisma": "^7.0.1",
+    "prisma": "^7.1.0",
     "tailwindcss": "^4",
     "tsx": "^4.20.6",
     "typescript": "^5"

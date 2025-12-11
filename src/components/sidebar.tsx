@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from '@/lib/auth-client';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useUserRole } from '@/hooks/use-user-role';
 import { useMobileMenuContext } from '@/contexts/mobile-menu-context';
 import { useSidebarContext } from '@/contexts/sidebar-context';
@@ -31,6 +31,12 @@ export function Sidebar() {
   const { isCollapsed, isPinned, setIsCollapsed, togglePin } = useSidebarContext();
   const { viewAsUser, isViewingAsOther } = useViewAs();
   const [showViewAsModal, setShowViewAsModal] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Éviter l'erreur d'hydratation
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Obtenir le rôle de l'utilisateur via le hook personnalisé
   const { isAdmin, isRealAdmin } = useUserRole();
@@ -238,9 +244,11 @@ export function Sidebar() {
                       isViewingAsOther ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-600'
                     )}
                   >
-                    {isViewingAsOther
-                      ? viewAsUser?.name?.[0]?.toUpperCase() || 'U'
-                      : session?.user?.name?.[0]?.toUpperCase() || 'U'}
+                    {!isMounted
+                      ? 'U'
+                      : isViewingAsOther
+                        ? viewAsUser?.name?.[0]?.toUpperCase() || 'U'
+                        : session?.user?.name?.[0]?.toUpperCase() || 'U'}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p
@@ -252,7 +260,11 @@ export function Sidebar() {
                       {isViewingAsOther ? 'Vue:' : 'Ma vue'}
                     </p>
                     <p className={`truncate text-sm font-semibold`}>
-                      {isViewingAsOther ? viewAsUser?.name : session?.user?.name || 'Utilisateur'}
+                      {!isMounted
+                        ? 'Utilisateur'
+                        : isViewingAsOther
+                          ? viewAsUser?.name
+                          : session?.user?.name || 'Utilisateur'}
                     </p>
                   </div>
                   <Eye className="h-5 w-5 shrink-0" />
@@ -289,13 +301,15 @@ export function Sidebar() {
             <>
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
-                  {session?.user?.name?.[0]?.toUpperCase() || 'U'}
+                  {!isMounted ? 'U' : session?.user?.name?.[0]?.toUpperCase() || 'U'}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-gray-900">
-                    {session?.user?.name || 'Utilisateur'}
+                    {!isMounted ? 'Utilisateur' : session?.user?.name || 'Utilisateur'}
                   </p>
-                  <p className="truncate text-xs text-gray-500">{session?.user?.email}</p>
+                  <p className="truncate text-xs text-gray-500">
+                    {!isMounted ? '' : session?.user?.email}
+                  </p>
                 </div>
               </div>
               <button
@@ -308,7 +322,7 @@ export function Sidebar() {
           ) : (
             <div className="flex flex-col items-center gap-2">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
-                {session?.user?.name?.[0]?.toUpperCase() || 'U'}
+                {!isMounted ? 'U' : session?.user?.name?.[0]?.toUpperCase() || 'U'}
               </div>
               <button
                 onClick={handleSignOut}

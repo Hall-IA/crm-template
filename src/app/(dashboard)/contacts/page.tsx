@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from '@/lib/auth-client';
 import { useUserRole } from '@/hooks/use-user-role';
 import { PageHeader } from '@/components/page-header';
 import {
@@ -18,7 +17,7 @@ import {
   LayoutGrid,
   List,
 } from 'lucide-react';
-import { ContactTableSkeleton } from '@/components/skeleton';
+import { ContactTableSkeleton, ContactCardsSkeleton } from '@/components/skeleton';
 import { cn } from '@/lib/utils';
 
 interface Status {
@@ -107,13 +106,16 @@ export default function ContactsPage() {
   const [limit] = useState(50);
 
   // Vue (table ou cards) - Persistée dans localStorage
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('contactsViewMode');
-      return saved === 'cards' || saved === 'table' ? saved : 'table';
+  // Initialiser avec 'table' pour éviter l'erreur d'hydratation
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+
+  // Charger la préférence depuis localStorage après le montage
+  useEffect(() => {
+    const saved = localStorage.getItem('contactsViewMode');
+    if (saved === 'cards' || saved === 'table') {
+      setViewMode(saved);
     }
-    return 'table';
-  });
+  }, []);
 
   // Formulaire
   const [formData, setFormData] = useState({
@@ -614,7 +616,11 @@ export default function ContactsPage() {
 
         {/* Liste des contacts */}
         {loading ? (
-          <ContactTableSkeleton />
+          viewMode === 'table' ? (
+            <ContactTableSkeleton isAdmin={isAdmin} />
+          ) : (
+            <ContactCardsSkeleton isAdmin={isAdmin} />
+          )
         ) : contacts.length === 0 ? (
           <div className="rounded-lg bg-white p-12 text-center shadow">
             <div className="text-4xl sm:text-6xl">👥</div>
@@ -709,9 +715,11 @@ export default function ContactsPage() {
                       <th className="px-3 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
                         Modifié le
                       </th>
-                      <th className="px-3 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
-                        Actions
-                      </th>
+                      {isAdmin && (
+                        <th className="px-3 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase sm:px-6">
+                          Actions
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
@@ -833,9 +841,9 @@ export default function ContactsPage() {
                         <td className="px-3 py-4 text-sm whitespace-nowrap text-gray-500 sm:px-6">
                           {contact.updatedAt ? formatDate(contact.updatedAt) : '-'}
                         </td>
-                        <td className="px-3 py-4 text-right text-sm font-medium whitespace-nowrap sm:px-6">
-                          <div className="flex items-center justify-end gap-2">
-                            {isAdmin && (
+                        {isAdmin && (
+                          <td className="px-3 py-4 text-right text-sm font-medium whitespace-nowrap sm:px-6">
+                            <div className="flex items-center justify-end gap-2">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -846,9 +854,9 @@ export default function ContactsPage() {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
-                            )}
-                          </div>
-                        </td>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
