@@ -1,77 +1,188 @@
 'use client';
 
-import { useSession } from '@/lib/auth-client';
+import { useEffect, useState } from 'react';
+import { Users, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
+import { StatCard } from '@/components/dashboard/stat-card';
+import { ContactsChart } from '@/components/dashboard/contacts-chart';
+import { StatusDistributionChart } from '@/components/dashboard/status-distribution-chart';
+import { ActivityChart } from '@/components/dashboard/activity-chart';
+import { TasksPieChart } from '@/components/dashboard/tasks-pie-chart';
+import { UpcomingTasksList } from '@/components/dashboard/upcoming-tasks-list';
+import { RecentActivity } from '@/components/dashboard/recent-activity';
+import { TopContactsList } from '@/components/dashboard/top-contacts-list';
 import { PageHeader } from '@/components/page-header';
-import { cn } from '@/lib/utils';
+
+interface DashboardStats {
+  overview: {
+    totalContacts: number;
+    contactsThisMonth: number;
+    contactsGrowth: number;
+    monthsData: Array<{ month: string; count: number }>;
+  };
+  statusDistribution: Array<{ name: string; value: number }>;
+  tasks: {
+    total: number;
+    completed: number;
+    pending: number;
+    upcoming: Array<{
+      id: string;
+      title: string;
+      type: string;
+      scheduledAt: string;
+      contact: { id: string; name: string } | null;
+      priority: string;
+    }>;
+    byType: Array<{ type: string; count: number }>;
+  };
+  interactions: {
+    recent: Array<{
+      id: string;
+      type: string;
+      title: string | null;
+      content: string;
+      date: string;
+      contact: {
+        id: string;
+        name: string;
+      };
+    }>;
+    byType: Array<{ type: string; count: number }>;
+  };
+  activity: {
+    last7Days: Array<{ date: string; interactions: number; tasks: number }>;
+  };
+  topContacts: Array<{
+    id: string;
+    name: string;
+    phone: string;
+    email: string | null;
+    status: string;
+    interactionsCount: number;
+    assignedCommercial?: string;
+    assignedTelepro?: string;
+  }>;
+}
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const stats = [
-    { name: 'Contacts', value: '0', icon: '👥', color: 'bg-blue-500' },
-    { name: 'Revenus', value: '0 €', icon: '💰', color: 'bg-yellow-500' },
-  ];
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const response = await fetch('/api/dashboard/stats');
+        if (!response.ok) {
+          throw new Error('Erreur lors du chargement des statistiques');
+        }
+        const data = await response.json();
+        setStats(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  const recentActivities = [
-    {
-      id: 1,
-      title: 'Bienvenue sur votre CRM !',
-      description: 'Commencez par ajouter vos premiers contacts.',
-      time: 'Maintenant',
-    },
-  ];
+    fetchStats();
+  }, []);
 
-  return (
-    <div className="h-full">
-      {/* Header */}
-      <PageHeader
-        title="Tableau de bord"
-        description={`Bienvenue, ${session?.user?.name || 'Utilisateur'} ! Voici un aperçu de votre activité.`}
-      />
-
-      {/* Content */}
-      <div className="p-4 sm:p-6 lg:p-8">
-        {/* Stats Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 sm:gap-6">
-          {stats.map((stat) => (
-            <div key={stat.name} className="overflow-hidden rounded-lg bg-white shadow">
-              <div className="p-4 sm:p-6">
-                <div className="flex items-center">
-                  <div
-                    className={cn(
-                      'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg sm:h-12 sm:w-12',
-                      stat.color,
-                    )}
-                  >
-                    <span className="text-xl sm:text-2xl">{stat.icon}</span>
-                  </div>
-                  <div className="ml-3 min-w-0 sm:ml-4">
-                    <p className="text-xs font-medium text-gray-600 sm:text-sm">{stat.name}</p>
-                    <p className="text-xl font-bold text-gray-900 sm:text-2xl">{stat.value}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Recent Activity */}
-        <div className="mt-6 sm:mt-8">
-          <h2 className="text-base font-semibold text-gray-900 sm:text-lg">Activité récente</h2>
-          <div className="mt-4 space-y-4">
-            {recentActivities.map((activity) => (
-              <div key={activity.id} className="rounded-lg bg-white p-4 shadow sm:p-6">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-medium text-gray-900">{activity.title}</h3>
-                    <p className="mt-1 text-sm text-gray-600">{activity.description}</p>
-                  </div>
-                  <span className="shrink-0 text-xs text-gray-500">{activity.time}</span>
-                </div>
-              </div>
+  if (loading) {
+    return (
+      <div className="h-full">
+        <PageHeader title="Tableau de Bord" description="Vue d'ensemble de votre activité" />
+        <div className="p-4 sm:p-6">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-32 animate-pulse rounded-lg bg-gray-200" />
+            ))}
+          </div>
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-96 animate-pulse rounded-lg bg-gray-200" />
             ))}
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="h-full">
+        <PageHeader title="Tableau de Bord" description="Vue d'ensemble de votre activité" />
+        <div className="flex h-96 items-center justify-center p-4 sm:p-6">
+          <div className="text-center">
+            <p className="text-red-600">{error || 'Erreur de chargement'}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full">
+      <PageHeader title="Tableau de Bord" description="Vue d'ensemble de votre activité" />
+
+      <div className="space-y-6 p-4 sm:p-6">
+        {/* Statistiques principales */}
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Total Contacts"
+            value={stats.overview.totalContacts.toLocaleString('fr-FR')}
+            icon={Users}
+            trend={{
+              value: stats.overview.contactsGrowth,
+              label: 'ce mois',
+            }}
+            iconColor="text-indigo-600"
+            iconBgColor="bg-indigo-100"
+          />
+          <StatCard
+            title="Nouveaux ce Mois"
+            value={stats.overview.contactsThisMonth.toLocaleString('fr-FR')}
+            icon={TrendingUp}
+            iconColor="text-green-600"
+            iconBgColor="bg-green-100"
+          />
+          <StatCard
+            title="Tâches Complétées"
+            value={stats.tasks.completed.toLocaleString('fr-FR')}
+            icon={CheckCircle2}
+            iconColor="text-emerald-600"
+            iconBgColor="bg-emerald-100"
+          />
+          <StatCard
+            title="Tâches en Attente"
+            value={stats.tasks.pending.toLocaleString('fr-FR')}
+            icon={Clock}
+            iconColor="text-amber-600"
+            iconBgColor="bg-amber-100"
+          />
+        </div>
+
+        {/* Graphiques principaux */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <ContactsChart data={stats.overview.monthsData} />
+          <StatusDistributionChart data={stats.statusDistribution} />
+        </div>
+
+        {/* Graphiques secondaires */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <ActivityChart data={stats.activity.last7Days} />
+          </div>
+          <TasksPieChart completed={stats.tasks.completed} pending={stats.tasks.pending} />
+        </div>
+
+        {/* Listes et activités */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <UpcomingTasksList tasks={stats.tasks.upcoming} />
+          <RecentActivity interactions={stats.interactions.recent} />
+        </div>
+
+        {/* Top contacts */}
+        <TopContactsList contacts={stats.topContacts} />
       </div>
     </div>
   );
