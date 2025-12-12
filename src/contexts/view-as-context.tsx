@@ -40,11 +40,13 @@ export function ViewAsProvider({ children }: { children: React.ReactNode }) {
 
   const setViewAsUser = (user: User | null) => {
     // Si l'utilisateur a un customRole, copier les permissions dans un champ direct pour faciliter l'accès
-    const userWithPermissions = user ? {
-      ...user,
-      permissions: user.customRole?.permissions || []
-    } : null;
-    
+    const userWithPermissions = user
+      ? {
+          ...user,
+          permissions: user.customRole?.permissions || [],
+        }
+      : null;
+
     setViewAsUserState(userWithPermissions);
     if (userWithPermissions) {
       localStorage.setItem('viewAsUser', JSON.stringify(userWithPermissions));

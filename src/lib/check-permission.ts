@@ -55,7 +55,7 @@ export async function checkPermission(requiredPermission: string): Promise<boole
  */
 export async function checkPermissions(
   requiredPermissions: string[],
-  requireAll: boolean = true
+  requireAll: boolean = true,
 ): Promise<boolean> {
   try {
     const session = await auth.api.getSession({
@@ -144,7 +144,7 @@ export async function getUserPermissions(): Promise<string[]> {
 /**
  * Middleware pour protéger une route API avec des permissions
  * Exemple d'utilisation :
- * 
+ *
  * export async function GET(req: NextRequest) {
  *   const hasPermission = await requirePermission('contacts.view_all');
  *   if (!hasPermission) {
@@ -191,4 +191,3 @@ export async function isAdmin(): Promise<boolean> {
     return false;
   }
 }
-

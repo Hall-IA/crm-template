@@ -5,10 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { checkPermission } from '@/lib/check-permission';
 
 // PUT /api/roles/[id] - Modifier un profil
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -39,24 +36,21 @@ export async function PUT(
     });
 
     if (!existingRole) {
-      return NextResponse.json(
-        { error: 'Profil non trouvé' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Profil non trouvé' }, { status: 404 });
     }
 
     // Validation
     if (name && typeof name !== 'string') {
       return NextResponse.json(
         { error: 'Le nom doit être une chaîne de caractères' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (permissions && !Array.isArray(permissions)) {
       return NextResponse.json(
         { error: 'Les permissions doivent être un tableau' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -67,10 +61,7 @@ export async function PUT(
       });
 
       if (duplicateName) {
-        return NextResponse.json(
-          { error: 'Un profil avec ce nom existe déjà' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Un profil avec ce nom existe déjà' }, { status: 400 });
       }
     }
 
@@ -99,18 +90,12 @@ export async function PUT(
     });
   } catch (error) {
     console.error('Erreur lors de la modification du profil:', error);
-    return NextResponse.json(
-      { error: 'Erreur serveur' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
 // DELETE /api/roles/[id] - Supprimer un profil
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -139,10 +124,7 @@ export async function DELETE(
     });
 
     if (!existingRole) {
-      return NextResponse.json(
-        { error: 'Profil non trouvé' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Profil non trouvé' }, { status: 404 });
     }
 
     // Empêcher la suppression si des utilisateurs utilisent ce profil
@@ -151,7 +133,7 @@ export async function DELETE(
         {
           error: `Ce profil ne peut pas être supprimé car ${existingRole._count.users} l'utilisent`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -165,10 +147,6 @@ export async function DELETE(
     });
   } catch (error) {
     console.error('Erreur lors de la suppression du profil:', error);
-    return NextResponse.json(
-      { error: 'Erreur serveur' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
-

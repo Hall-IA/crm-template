@@ -103,7 +103,7 @@ async function getOrCreateFolder(
   }
 
   const createdData = await createResponse.json();
-  
+
   // Configurer les permissions pour rendre le dossier accessible avec le lien
   try {
     await setFilePublicWithLink(accessToken, createdData.id);
@@ -288,7 +288,7 @@ export async function uploadFileToDrive(
   }
 
   const fileData = await uploadResponse.json();
-  
+
   // Configurer les permissions pour rendre le fichier accessible avec le lien
   try {
     await setFilePublicWithLink(accessToken, fileData.id);
@@ -370,4 +370,3 @@ export async function deleteFileFromDrive(userId: string, fileId: string): Promi
     throw new Error('Erreur lors de la suppression du fichier');
   }
 }
-

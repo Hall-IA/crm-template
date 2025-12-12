@@ -49,10 +49,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(formattedRoles);
   } catch (error) {
     console.error('Erreur lors de la récupération des profils:', error);
-    return NextResponse.json(
-      { error: 'Erreur serveur' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
@@ -78,16 +75,13 @@ export async function POST(req: NextRequest) {
 
     // Validation
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Le nom du profil est requis' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Le nom du profil est requis' }, { status: 400 });
     }
 
     if (!Array.isArray(permissions)) {
       return NextResponse.json(
         { error: 'Les permissions doivent être un tableau' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -97,10 +91,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (existing) {
-      return NextResponse.json(
-        { error: 'Un profil avec ce nom existe déjà' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Un profil avec ce nom existe déjà' }, { status: 400 });
     }
 
     // Créer le profil
@@ -127,14 +118,10 @@ export async function POST(req: NextRequest) {
           updatedAt: newRole.updatedAt.toISOString(),
         },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error('Erreur lors de la création du profil:', error);
-    return NextResponse.json(
-      { error: 'Erreur serveur' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
-

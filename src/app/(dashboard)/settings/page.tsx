@@ -1984,7 +1984,6 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </div>
-                
               </div>
             ) : (
               <div className="mt-6">

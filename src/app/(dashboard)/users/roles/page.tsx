@@ -77,7 +77,7 @@ function RoleModal({ isOpen, onClose, onSave, role }: RoleModalProps) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erreur lors de l\'enregistrement');
+        throw new Error(data.error || "Erreur lors de l'enregistrement");
       }
 
       onSave();
@@ -113,9 +113,7 @@ function RoleModal({ isOpen, onClose, onSave, role }: RoleModalProps) {
           {/* Content */}
           <div className="max-h-[70vh] overflow-y-auto p-6">
             {error && (
-              <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">
-                {error}
-              </div>
+              <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>
             )}
             <div className="space-y-6">
               {/* Nom et description */}
@@ -319,11 +317,7 @@ export default function RolesPage() {
       </div>
 
       <div className="p-4 sm:p-6">
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">
-            {error}
-          </div>
-        )}
+        {error && <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">{error}</div>}
 
         {loading ? (
           <div className="grid gap-6 lg:grid-cols-2">
@@ -349,73 +343,74 @@ export default function RolesPage() {
                         <div className="rounded-lg bg-green-100 p-2">
                           <Shield className="h-5 w-5 text-green-600" />
                         </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">
-                          {role.name}
-                          {role.isSystem && (
-                            <span className="ml-2 inline-block rounded bg-indigo-100 px-2 py-0.5 text-xs text-indigo-600">
-                              Système
-                            </span>
-                          )}
-                        </h3>
-                        <p className="mt-1 text-sm text-gray-600">{role.description}</p>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">
+                            {role.name}
+                            {role.isSystem && (
+                              <span className="ml-2 inline-block rounded bg-indigo-100 px-2 py-0.5 text-xs text-indigo-600">
+                                Système
+                              </span>
+                            )}
+                          </h3>
+                          <p className="mt-1 text-sm text-gray-600">{role.description}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEditRole(role.id)}
+                          className="cursor-pointer rounded-lg p-2 text-orange-600 hover:bg-orange-50"
+                          title="Modifier"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRole(role.id)}
+                          className="cursor-pointer rounded-lg p-2 text-red-600 hover:bg-red-50"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleEditRole(role.id)}
-                        className="cursor-pointer rounded-lg p-2 text-orange-600 hover:bg-orange-50"
-                        title="Modifier"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteRole(role.id)}
-                        className="cursor-pointer rounded-lg p-2 text-red-600 hover:bg-red-50"
-                        title="Supprimer"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
 
-                <div className="mt-4 flex items-center gap-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-1">
-                    <UsersIcon className="h-4 w-4" />
-                    <span>
-                      {role.usersCount} utilisateur{role.usersCount > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Key className="h-4 w-4" />
-                    <span>
-                      {role.permissions.length} permission{role.permissions.length > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <h4 className="mb-2 text-xs font-medium tracking-wide text-gray-500 uppercase">
-                    Permissions
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {visiblePermissions.map((permCode) => {
-                      const perm = PERMISSIONS.find((p) => p.code === permCode);
-                      return (
-                        <span
-                          key={permCode}
-                          className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700"
-                        >
-                          {perm?.name || permCode}
+                    <div className="mt-4 flex items-center gap-4 text-sm text-gray-600">
+                      <div className="flex items-center gap-1">
+                        <UsersIcon className="h-4 w-4" />
+                        <span>
+                          {role.usersCount} utilisateur{role.usersCount > 1 ? 's' : ''}
                         </span>
-                      );
-                    })}
-                    {remainingCount > 0 && (
-                      <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-                        +{remainingCount} autres
-                      </span>
-                    )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Key className="h-4 w-4" />
+                        <span>
+                          {role.permissions.length} permission
+                          {role.permissions.length > 1 ? 's' : ''}
+                        </span>
+                      </div>
                     </div>
+
+                    <div className="mt-4">
+                      <h4 className="mb-2 text-xs font-medium tracking-wide text-gray-500 uppercase">
+                        Permissions
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {visiblePermissions.map((permCode) => {
+                          const perm = PERMISSIONS.find((p) => p.code === permCode);
+                          return (
+                            <span
+                              key={permCode}
+                              className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700"
+                            >
+                              {perm?.name || permCode}
+                            </span>
+                          );
+                        })}
+                        {remainingCount > 0 && (
+                          <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+                            +{remainingCount} autres
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

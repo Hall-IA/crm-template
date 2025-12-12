@@ -25,9 +25,7 @@ export function ViewAsBanner() {
             <span className="text-sm text-white/90">
               Vue : <span className="font-medium">{viewAsUser.name}</span>
               {viewAsUser.customRole && (
-                <span className="ml-1">
-                  ({viewAsUser.customRole.name})
-                </span>
+                <span className="ml-1">({viewAsUser.customRole.name})</span>
               )}
             </span>
           </div>
