@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { checkPermission } from '@/lib/check-permission';
 
 // PUT /api/roles/[id] - Modifier un profil
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -21,7 +21,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
     const { name, description, permissions } = body;
 
@@ -95,7 +95,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 // DELETE /api/roles/[id] - Supprimer un profil
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -111,7 +111,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Vérifier que le profil existe
     const existingRole = await prisma.customRole.findUnique({
