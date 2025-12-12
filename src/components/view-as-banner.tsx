@@ -23,8 +23,12 @@ export function ViewAsBanner() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
             <span className="font-semibold">Mode vue utilisateur active</span>
             <span className="text-sm text-white/90">
-              Vous visualisez le CRM en tant que{' '}
-              <span className="font-medium">{viewAsUser.name}</span>
+              Vue : <span className="font-medium">{viewAsUser.name}</span>
+              {viewAsUser.customRole && (
+                <span className="ml-1">
+                  ({viewAsUser.customRole.name})
+                </span>
+              )}
             </span>
           </div>
         </div>

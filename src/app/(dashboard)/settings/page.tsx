@@ -1941,17 +1941,17 @@ export default function SettingsPage() {
           <div className="rounded-lg bg-white p-4 shadow sm:p-6">
             <div>
               <h2 className="text-base font-semibold text-gray-900 sm:text-lg">
-                Intégration Google Calendar
+                Intégration Google
               </h2>
               <p className="mt-1 text-sm text-gray-600">
-                Connectez votre compte Google pour programmer des Google Meet depuis le CRM
+                Connectez votre compte Google pour activer Google Meet et Drive dans le CRM.
               </p>
             </div>
 
             {googleLoading ? (
               <div className="mt-6 text-center text-gray-500">Chargement...</div>
             ) : googleAccount?.connected ? (
-              <div className="mt-6">
+              <div className="mt-6 space-y-4">
                 <div className="rounded-lg border border-green-200 bg-green-50 p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -1984,6 +1984,7 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </div>
+                
               </div>
             ) : (
               <div className="mt-6">

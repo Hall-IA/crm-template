@@ -22,6 +22,19 @@ enum Role {
   COMPTABLE
 }
 
+model CustomRole {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  permissions Json // Tableau de codes de permissions
+  isSystem    Boolean  @default(false) // Profils système non modifiables
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+
+  @@map("custom_role")
+}
+
 model User {
   id                             String                  @id
   name                           String
@@ -30,6 +43,8 @@ model User {
   active                         Boolean                 @default(true)
   image                          String?
   role                           Role                    @default(USER)
+  customRoleId                   String? // Profil personnalisé optionnel
+  customRole                     CustomRole?             @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
   createdAt                      DateTime                @default(now())
   updatedAt                      DateTime                @updatedAt
   sessions                       Session[]
@@ -50,6 +65,7 @@ model User {
   filesUploaded                  ContactFile[]           @relation("ContactFileUploadedBy")
 
   @@unique([email])
+  @@index([customRoleId])
   @@map("user")
 }
 

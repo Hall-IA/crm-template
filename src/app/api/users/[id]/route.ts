@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin, Role } from '@/lib/roles';
+import { checkPermission } from '@/lib/check-permission';
+import { auth } from '@/lib/auth';
 
 // GET /api/users/[id] - Récupérer un utilisateur spécifique
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdmin(request.headers);
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+
+    // Vérifier que l'utilisateur a la permission de voir les utilisateurs
+    const hasPermission = await checkPermission('users.view');
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+    }
     const { id } = await params;
 
     const user = await prisma.user.findUnique({
@@ -46,18 +59,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 // PUT /api/users/[id] - Mettre à jour un utilisateur
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await requireAdmin(request.headers);
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+
+    // Vérifier que l'utilisateur a la permission de modifier des utilisateurs
+    const hasPermission = await checkPermission('users.edit');
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+    }
     const { id } = await params;
     const body = await request.json();
-    const { name, role, active } = body;
-
-    // Empêcher un admin de se retirer ses propres droits
-    if (id === session.user.id && role === Role.USER) {
-      return NextResponse.json(
-        { error: "Vous ne pouvez pas retirer vos propres droits d'admin" },
-        { status: 400 },
-      );
-    }
+    const { name, customRoleId, active } = body;
 
     // Vérifier que l'utilisateur existe
     const existingUser = await prisma.user.findUnique({
@@ -73,32 +90,33 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       where: { id },
       data: {
         ...(name && { name }),
-        ...(role && { role: role as any }), // Type assertion pour le champ role
+        ...(customRoleId !== undefined && { customRoleId: customRoleId || null }),
         ...(typeof active === 'boolean' && { active }),
+      },
+      include: {
+        customRole: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
-    // Retourner l'utilisateur avec le rôle
+    // Retourner l'utilisateur avec le profil
     return NextResponse.json({
       id: updatedUser.id,
       name: updatedUser.name,
       email: updatedUser.email,
       role: updatedUser.role || 'USER',
+      customRoleId: updatedUser.customRoleId,
+      customRole: updatedUser.customRole,
       emailVerified: updatedUser.emailVerified,
       active: updatedUser.active,
       updatedAt: updatedUser.updatedAt,
     });
   } catch (error: any) {
     console.error('Erreur:', error);
-
-    if (error.message === 'Non authentifié') {
-      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
-    }
-
-    if (error.message === 'Permissions insuffisantes') {
-      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
-    }
-
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }

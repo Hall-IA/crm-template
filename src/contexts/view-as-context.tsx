@@ -6,7 +6,12 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: string;
+  customRole: {
+    id: string;
+    name: string;
+    permissions: string[];
+  } | null;
+  permissions?: string[]; // Alias pour faciliter l'accès
 }
 
 interface ViewAsContextType {
@@ -34,9 +39,15 @@ export function ViewAsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setViewAsUser = (user: User | null) => {
-    setViewAsUserState(user);
-    if (user) {
-      localStorage.setItem('viewAsUser', JSON.stringify(user));
+    // Si l'utilisateur a un customRole, copier les permissions dans un champ direct pour faciliter l'accès
+    const userWithPermissions = user ? {
+      ...user,
+      permissions: user.customRole?.permissions || []
+    } : null;
+    
+    setViewAsUserState(userWithPermissions);
+    if (userWithPermissions) {
+      localStorage.setItem('viewAsUser', JSON.stringify(userWithPermissions));
     } else {
       localStorage.removeItem('viewAsUser');
     }

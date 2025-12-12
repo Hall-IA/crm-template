@@ -5,68 +5,78 @@ import { useEffect, useState } from 'react';
 import { useViewAs } from '@/contexts/view-as-context';
 
 /**
- * Hook personnalisé pour récupérer le rôle de l'utilisateur
- * Si le rôle n'est pas dans la session, on le récupère depuis l'API
+ * Hook personnalisé pour récupérer les permissions de l'utilisateur via son profil
+ * Les droits sont déterminés par le profil assigné, pas par un rôle
  * Supporte le mode "vue en tant que" pour les admins
  */
 export function useUserRole() {
   const { data: session, isPending } = useSession();
   const { viewAsUser, isViewingAsOther } = useViewAs();
-  const [role, setRole] = useState<string | null>(null);
-  const [realUserRole, setRealUserRole] = useState<string | null>(null); // Rôle de l'utilisateur réellement connecté
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [realUserPermissions, setRealUserPermissions] = useState<string[]>([]); // Permissions de l'utilisateur réellement connecté
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (isPending) return;
 
     if (!session?.user) {
-      setRole(null);
-      setRealUserRole(null);
+      setPermissions([]);
+      setRealUserPermissions([]);
       setLoading(false);
       return;
     }
 
-    // Récupérer le rôle de l'utilisateur réellement connecté depuis l'API
-    const fetchUserRole = async () => {
+    // Récupérer les permissions de l'utilisateur depuis l'API
+    const fetchUserPermissions = async () => {
       try {
         const response = await fetch('/api/users/me');
         if (response.ok) {
           const userData = await response.json();
-          const userRole = userData.role || 'USER';
+          const userPerms = (userData.customRole?.permissions as string[]) || [];
 
-          // Toujours stocker le rôle réel de l'utilisateur connecté
-          setRealUserRole(userRole);
+          // Toujours stocker les permissions réelles de l'utilisateur connecté
+          setRealUserPermissions(userPerms);
 
-          // Si on est en mode "vue en tant que", utiliser le rôle de l'utilisateur visualisé
-          if (isViewingAsOther && viewAsUser?.role) {
-            setRole(viewAsUser.role);
+          // Si on est en mode "vue en tant que", utiliser les permissions de l'utilisateur visualisé
+          if (isViewingAsOther && viewAsUser?.permissions) {
+            setPermissions(viewAsUser.permissions);
           } else {
-            setRole(userRole);
+            setPermissions(userPerms);
           }
         } else {
-          setRole('USER');
-          setRealUserRole('USER');
+          setPermissions([]);
+          setRealUserPermissions([]);
         }
       } catch (error) {
-        console.error('Erreur lors de la récupération du rôle:', error);
-        setRole('USER');
-        setRealUserRole('USER');
+        console.error('Erreur lors de la récupération des permissions:', error);
+        setPermissions([]);
+        setRealUserPermissions([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUserRole();
+    fetchUserPermissions();
   }, [session, isPending, isViewingAsOther, viewAsUser]);
 
+  // Helper pour vérifier une permission
+  const hasPermission = (permission: string) => permissions.includes(permission);
+  const hasRealPermission = (permission: string) => realUserPermissions.includes(permission);
+
   return {
-    role,
-    isAdmin: role === 'ADMIN',
-    isRealAdmin: realUserRole === 'ADMIN', // True seulement si l'utilisateur connecté est vraiment admin
-    isManager: role === 'MANAGER',
-    isCommercial: role === 'COMMERCIAL',
-    isTelepro: role === 'TELEPRO',
+    permissions,
+    realUserPermissions,
+    hasPermission,
+    hasRealPermission,
+    // Helpers de compatibilité basés sur les permissions
+    isAdmin: hasPermission('users.manage_roles'), // Admin = peut gérer les rôles
+    isRealAdmin: hasRealPermission('users.manage_roles'), // True seulement si l'utilisateur connecté peut gérer les rôles
+    isManager: hasPermission('users.view'), // Manager = peut voir les utilisateurs
+    isCommercial: hasPermission('contacts.view_own'), // Commercial = peut voir ses contacts
+    isTelepro: hasPermission('contacts.view_own'), // Télépro = peut voir ses contacts
     isLoading: loading || isPending,
     currentUserId: isViewingAsOther ? viewAsUser?.id : session?.user?.id,
+    // Rôle par défaut pour compatibilité
+    role: 'USER',
   };
 }

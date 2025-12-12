@@ -1,24 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/lib/roles';
+import { checkPermission } from '@/lib/check-permission';
+import { auth } from '@/lib/auth';
 
 // GET /api/users - Liste tous les utilisateurs (admin seulement)
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin(request.headers);
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+
+    // Vérifier que l'utilisateur a la permission de voir les utilisateurs
+    const hasPermission = await checkPermission('users.view');
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+    }
 
     const users = await prisma.user.findMany({
+      include: {
+        customRole: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
       orderBy: {
         createdAt: 'desc',
       },
     });
 
-    // Mapper les utilisateurs avec le rôle
+    // Mapper les utilisateurs avec le profil
     const usersWithRole = users.map((user: any) => ({
       id: user.id,
       name: user.name,
       email: user.email,
       role: user.role || 'USER',
+      customRoleId: user.customRoleId,
+      customRole: user.customRole,
       emailVerified: user.emailVerified,
       active: user.active,
       createdAt: user.createdAt,
@@ -29,15 +52,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(usersWithRole);
   } catch (error: any) {
     console.error('Erreur lors de la récupération des utilisateurs:', error);
-
-    if (error.message === 'Non authentifié') {
-      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
-    }
-
-    if (error.message === 'Permissions insuffisantes') {
-      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
-    }
-
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
@@ -45,14 +59,30 @@ export async function GET(request: NextRequest) {
 // POST /api/users - Créer un nouvel utilisateur (admin seulement)
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin(request.headers);
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+
+    // Vérifier que l'utilisateur a la permission de créer des utilisateurs
+    const hasPermission = await checkPermission('users.create');
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+    }
 
     const body = await request.json();
-    const { name, email, role = 'USER' } = body;
+    const { name, email, customRoleId } = body;
 
     // Validation
     if (!name || !email) {
       return NextResponse.json({ error: 'Nom et email requis' }, { status: 400 });
+    }
+
+    if (!customRoleId) {
+      return NextResponse.json({ error: 'Le profil est requis' }, { status: 400 });
     }
 
     // Vérifier si l'email existe déjà
@@ -80,7 +110,7 @@ export async function POST(request: NextRequest) {
         where: { id: existingUser.id },
         data: {
           name,
-          role: role,
+          customRoleId,
           active: true,
         },
       });
@@ -91,7 +121,8 @@ export async function POST(request: NextRequest) {
           id: crypto.randomUUID(),
           name,
           email,
-          role: role,
+          role: 'USER', // Rôle par défaut, mais les permissions viendront du customRole
+          customRoleId,
           emailVerified: false, // Pas encore vérifié
           active: true,
         },
@@ -177,14 +208,6 @@ export async function POST(request: NextRequest) {
     );
   } catch (error: any) {
     console.error("Erreur lors de la création de l'utilisateur:", error);
-
-    if (error.message === 'Non authentifié') {
-      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
-    }
-
-    if (error.message === 'Permissions insuffisantes') {
-      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
-    }
 
     // Gérer les erreurs spécifiques
     if (

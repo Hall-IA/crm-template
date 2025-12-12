@@ -50,10 +50,10 @@ export function Sidebar() {
       { name: 'Paramètres', href: '/settings', icon: Settings },
     ];
 
-    // Ajouter la gestion des utilisateurs seulement pour les admins
+    // Ajouter la gestion des droits d'accès seulement pour les admins
     if (isAdmin) {
       baseNav.splice(baseNav.length - 1, 0, {
-        name: "Gestions d'utilisateurs",
+        name: "Droits d'accès",
         href: '/users',
         icon: UserCog,
       });

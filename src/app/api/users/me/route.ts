@@ -13,21 +13,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
-    // Récupérer l'utilisateur avec son rôle depuis la base de données
+    // Récupérer l'utilisateur avec son profil depuis la base de données
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
+      include: {
+        customRole: {
+          select: {
+            id: true,
+            name: true,
+            permissions: true,
+          },
+        },
+      },
     });
 
     if (!user) {
       return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 });
     }
 
-    // Retourner l'utilisateur avec le rôle
+    // Retourner l'utilisateur avec son profil et ses permissions
     return NextResponse.json({
       id: user.id,
       name: user.name,
       email: user.email,
-      role: (user as any).role || 'USER',
+      role: 'USER', // Tous les utilisateurs ont le rôle USER
+      customRole: user.customRole,
       emailVerified: user.emailVerified,
       image: user.image,
     });

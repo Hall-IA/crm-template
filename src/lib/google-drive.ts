@@ -103,7 +103,42 @@ async function getOrCreateFolder(
   }
 
   const createdData = await createResponse.json();
+  
+  // Configurer les permissions pour rendre le dossier accessible avec le lien
+  try {
+    await setFilePublicWithLink(accessToken, createdData.id);
+  } catch (permError) {
+    console.error('Erreur lors de la configuration des permissions du dossier:', permError);
+    // On continue même si la configuration des permissions échoue
+  }
+
   return createdData.id;
+}
+
+/**
+ * Configure les permissions d'un fichier/dossier pour le rendre accessible avec le lien
+ * Type: 'anyone' avec rôle 'reader' = accessible à quiconque possède le lien
+ */
+async function setFilePublicWithLink(accessToken: string, fileId: string): Promise<void> {
+  const permissionResponse = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'anyone',
+        role: 'reader',
+      }),
+    },
+  );
+
+  if (!permissionResponse.ok) {
+    const error = await permissionResponse.json();
+    throw new Error(`Erreur lors de la configuration des permissions: ${JSON.stringify(error)}`);
+  }
 }
 
 /**
@@ -253,6 +288,15 @@ export async function uploadFileToDrive(
   }
 
   const fileData = await uploadResponse.json();
+  
+  // Configurer les permissions pour rendre le fichier accessible avec le lien
+  try {
+    await setFilePublicWithLink(accessToken, fileData.id);
+  } catch (permError) {
+    console.error('Erreur lors de la configuration des permissions du fichier:', permError);
+    // On continue même si la configuration des permissions échoue
+  }
+
   return {
     fileId: fileData.id,
     webViewLink: fileData.webViewLink || `https://drive.google.com/file/d/${fileData.id}/view`,
@@ -327,32 +371,3 @@ export async function deleteFileFromDrive(userId: string, fileId: string): Promi
   }
 }
 
-/**
- * Génère une URL de téléchargement temporaire pour un fichier
- */
-export async function getDownloadUrl(userId: string, fileId: string): Promise<string> {
-  const googleAccount = await prisma.userGoogleAccount.findUnique({
-    where: { userId },
-  });
-
-  if (!googleAccount) {
-    throw new Error('Aucun compte Google connecté');
-  }
-
-  const accessToken = await getValidAccessToken(
-    googleAccount.accessToken,
-    googleAccount.refreshToken,
-    googleAccount.tokenExpiresAt,
-  );
-
-  // Pour les fichiers Google Docs/Sheets/Slides, on doit exporter
-  const fileInfo = await getFileInfo(userId, fileId);
-
-  // Si c'est un fichier Google Workspace, on retourne le lien de visualisation
-  if (fileInfo.mimeType.startsWith('application/vnd.google-apps.')) {
-    return fileInfo.webViewLink;
-  }
-
-  // Retourner l'URL de téléchargement directe avec le token
-  return `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${accessToken}`;
-}

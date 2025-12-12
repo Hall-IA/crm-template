@@ -11,21 +11,17 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: string;
+  customRole: {
+    id: string;
+    name: string;
+    permissions: string[];
+  } | null;
 }
 
 interface ViewAsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-const ROLE_LABELS: Record<string, string> = {
-  ADMIN: 'Admin',
-  MANAGER: 'Manager',
-  COMMERCIAL: 'Commercial',
-  TELEPRO: 'Télépro',
-  USER: 'Utilisateur',
-};
 
 export function ViewAsModal({ isOpen, onClose }: ViewAsModalProps) {
   const { data: session } = useSession();
@@ -83,7 +79,7 @@ export function ViewAsModal({ isOpen, onClose }: ViewAsModalProps) {
             <div>
               <h2 className="text-xl font-bold">Changer de vue</h2>
               <p className="text-sm text-white/90">
-                Sélectionnez un utilisateur pour voir ses contacts
+                Voir l'application avec les permissions d'un profil
               </p>
             </div>
           </div>
@@ -173,7 +169,7 @@ export function ViewAsModal({ isOpen, onClose }: ViewAsModalProps) {
                         <div>
                           <div className="font-semibold text-gray-900">{user.name}</div>
                           <div className="text-sm text-gray-600">
-                            {ROLE_LABELS[user.role] || user.role} · {user.email.split('@')[0]}
+                            {user.customRole?.name || 'Sans profil'} · {user.email.split('@')[0]}
                           </div>
                         </div>
                       </div>

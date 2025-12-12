@@ -20,7 +20,6 @@ import {
   Edit,
   Trash2,
   Upload,
-  Download,
   File,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -2833,14 +2832,7 @@ export default function ContactDetailPage() {
                                 className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
                               >
                                 <ExternalLink className="h-3.5 w-3.5" />
-                                Ouvrir
-                              </a>
-                              <a
-                                href={`/api/contacts/${contactId}/files/${file.id}/download`}
-                                className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
-                              >
-                                <Download className="h-3.5 w-3.5" />
-                                Télécharger
+                                Ouvrir dans Drive
                               </a>
                               <button
                                 onClick={() => handleFileDeleteClick(file.id, file.fileName)}
